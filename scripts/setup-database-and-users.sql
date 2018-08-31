@@ -16,7 +16,7 @@ CREATE DATABASE waveforms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
  */
 CREATE TABLE waveforms.system_type (
     system_id int(2) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    system_name varchar(16) NOT NULL
+    system_name varchar(16) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
 /*
