@@ -26,7 +26,7 @@ CREATE TABLE waveforms.system_type (
  */
 CREATE TABLE waveforms.event (
     event_id int(15) NOT NULL AUTO_INCREMENT,
-    event_time datetime NOT NULL,
+    event_time_utc datetime NOT NULL,
     location varchar(10) NOT NULL,
     system_id int(2) NOT NULL,
     archive tinyint(1) DEFAULT NULL,
