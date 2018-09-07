@@ -18,13 +18,15 @@ import javax.sql.DataSource;
  * @author adamc
  */
 public class SqlUtil {
+
     private static final Logger LOGGER = Logger.getLogger(SqlUtil.class.getName());
-    
+
     private static DataSource source;
+
     private SqlUtil() {
         // not public so these cannot be instantiated
     }
-    
+
     static {
         try {
             source = (DataSource) new InitialContext().lookup("jdbc/waveform_writer");
@@ -33,18 +35,20 @@ public class SqlUtil {
             throw new ExceptionInInitializerError(e);
         }
     }
-    
+
     public static Connection getConnection() throws SQLException {
         return source.getConnection();
     }
-    
+
     public static void close(AutoCloseable... resources) {
         if (resources != null) {
-            for(AutoCloseable resource : resources) {
-                try {
-                    resource.close();
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "unable to close resource", e);
+            for (AutoCloseable resource : resources) {
+                if (resource != null) {
+                    try {
+                        resource.close();
+                    } catch (Exception e) {
+                        LOGGER.log(Level.WARNING, "unable to close resource", e);
+                    }
                 }
             }
         }
