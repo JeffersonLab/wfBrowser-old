@@ -140,7 +140,7 @@ public class WaveformService {
             pstmt = conn.prepareStatement(getEventSql);
             pstmt.setLong(1, eventId);
             rs = pstmt.executeQuery();
-            while (rs.next()){
+            while (rs.next()) {
                 Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
                 Timestamp ts = rs.getTimestamp("event_time_utc", cal);
                 if (ts != null) {
@@ -174,7 +174,6 @@ public class WaveformService {
                 } else if (!wf.getSeriesName().equals(seriesName)) {
                     // Since the query is sorted on series_name, if the name changes we're done with current waveform.  Add it to the list
                     // and make a new waveform object for the next set of data.
-                    System.out.println("FOUND A NEW SERIES - " + seriesName);
                     waveforms.add(wf);
                     wf = new Waveform(seriesName);
                 }
@@ -192,7 +191,53 @@ public class WaveformService {
         } finally {
             SqlUtil.close(pstmt, conn, rs);
         }
-        
+
         return event;
+    }
+
+    public int deleteEvent(long eventId) throws SQLException {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        int rowsAffected;
+        String deleteSql = "DELETE FROM waveforms.event WHERE event_id = ?";
+
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(deleteSql);
+            pstmt.setLong(1, eventId);
+            rowsAffected = pstmt.executeUpdate();
+        } finally {
+            SqlUtil.close(pstmt, conn);
+        }
+
+        return rowsAffected;
+    }
+
+    public int setEventArchiveFlag(long eventId, boolean archive) throws SQLException {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        int rowsAffected;
+        String updateSql = "UPDATE waveforms.event SET archive = ? WHERE event_id = ?";
+
+        try {
+            conn = SqlUtil.getConnection();
+            conn.setAutoCommit(false);
+            pstmt = conn.prepareStatement(updateSql);
+            pstmt.setLong(1, archive ? 1 : 0);
+            pstmt.setLong(2, eventId);
+            rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 1) {
+                conn.rollback();
+                throw new RuntimeException("Updating event archive flag affected more than one row.");
+            }
+            conn.commit();
+        } finally {
+            SqlUtil.close(pstmt, conn);
+        }
+
+        return rowsAffected;
     }
 }

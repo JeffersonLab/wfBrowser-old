@@ -17,41 +17,35 @@ import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Waveform;
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
+import org.junit.runners.MethodSorters;
 
 /**
  *
  * @author adamc
  */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class WaveformServiceTest {
 
-    StandaloneConnectionPools pools;
+    private static StandaloneConnectionPools pools;
+    private static long eventId;
+    private static Instant now;
+    private static Event e;
 
     public WaveformServiceTest() {
     }
 
-    @Before
-    public void setUp() throws NamingException, SQLException {
+    @BeforeClass
+    public static void oneTimeSetUp() throws NamingException, SQLException {
         new StandaloneJndi();
         pools = new StandaloneConnectionPools();
-    }
 
-    @After
-    public void tearDown() throws IOException {
-        if (pools.isOpen()) {
-            pools.close();
-        }
-    }
-
-    /**
-     * Test of addEvent method, of class WaveformService.
-     * @throws java.lang.Exception
-     */
-    @Test
-    public void testAddEvent() throws Exception {
-        System.out.println("addEvent");
+        // Construct an example event for use in tests
         List<Double> time1 = Arrays.asList(1.1, 2.1, 3.1);
         List<Double> vals1 = Arrays.asList(1.5, 2.5, 0.5);
         List<Double> time2 = Arrays.asList(100.1, 200.5, 300.3);
@@ -62,19 +56,80 @@ public class WaveformServiceTest {
         waveforms.add(w1);
         waveforms.add(w2);
 
-        Instant now = Instant.now();
-        Event e = new Event(now, "Bldg87", "rf", false, waveforms);
+        now = Instant.now();
+        e = new Event(now, "Bldg87", "rf", false, waveforms);
+
+    }
+
+    @AfterClass
+    public static void oneTimeTearDown() throws IOException {
+        if (pools.isOpen()) {
+            pools.close();
+        }
+    }
+
+    /**
+     * Test of addEvent method, of class WaveformService.
+     *
+     * @throws java.lang.Exception
+     */
+    @Test
+    public void test1AddEvent() throws Exception {
+        System.out.println("addEvent");
         WaveformService instance = new WaveformService();
-        long eventId = instance.addEvent(e);
+
+        // Set the test class parameter for use in other tests
+        eventId = instance.addEvent(e);
         e.setEventId(eventId);
-        
-        Event expResult = new Event(eventId, now, "Bldg87", "rf", false, waveforms);
+
+        Event expResult = e;
         Event result = instance.getEvent(eventId);
-        
-        System.out.println(expResult);
-        System.out.println(result);
-        
+
         assertEquals(result, expResult);
+        System.out.println("Added event:\n" + result);
+    }
+
+    /**
+     * Test of getEvent method, of class WaveformService.
+     */
+    @Test
+    public void test2GetEvent() throws Exception {
+        System.out.println("getEvent");
+
+        WaveformService instance = new WaveformService();
+        Event result = instance.getEvent(eventId);
+        Event expResult = e;
+        assertEquals(expResult, result);
+        System.out.println("Retrieved event:\n" + result);
+    }
+
+    /**
+     * Test of deleteEvent method, of class WaveformService.
+     */
+    @Test
+    public void test4DeleteEvent() throws Exception {
+        System.out.println("deleteEvent");
+        WaveformService instance = new WaveformService();
+        int expResult = 1;
+        int result = instance.deleteEvent(eventId);
+        assertEquals(expResult, result);
+        System.out.println("Deleted " + result + " event with ID matching\n" + e);
+
+    }
+
+    /**
+     * Test of setEventArchiveFlag method, of class WaveformService.
+     */
+    @Test
+    public void test3SetEventArchiveFlag() throws Exception {
+        System.out.println("setEventArchiveFlag");
+        WaveformService instance = new WaveformService();
+        int expResult = 1;
+        int result = instance.setEventArchiveFlag(eventId, true);
+        assertEquals(expResult, result);
+        result = instance.setEventArchiveFlag(eventId, false);
+        assertEquals(expResult, result);
+
     }
 
 }
