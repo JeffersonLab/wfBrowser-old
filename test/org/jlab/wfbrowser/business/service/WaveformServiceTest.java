@@ -148,7 +148,7 @@ public class WaveformServiceTest {
     public void test5AddGetDeleteEventList() throws Exception {
         System.out.println("getEventList");
         WaveformService instance = new WaveformService();
-        WaveformFilter filter = new WaveformFilter(now, end, "rf", "Bldg89", null);
+        WaveformFilter filter = new WaveformFilter(null, now, end, "rf", "Bldg89", null);
 
         System.out.println("  addEventList");
         instance.addEventList(eventList);
@@ -172,5 +172,4 @@ public class WaveformServiceTest {
         result = instance.getEventListWithoutData(filter);
         assert (result.isEmpty());
     }
-
 }
