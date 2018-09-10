@@ -22,6 +22,7 @@ import org.jlab.wfbrowser.business.util.TimeUtil;
  */
 public class WaveformFilter {
 
+    private final List<Long> eventIdList;
     private final Instant begin, end;
     private final String system, location;
     private final Boolean archive;
@@ -30,13 +31,15 @@ public class WaveformFilter {
      * Construct the basic filter object and save the individual filter values.
      * Supply null if no filter is to be done on that field.
      *
+     * @param eventIdList
      * @param begin
      * @param end
      * @param system
      * @param location
      * @param archive
      */
-    public WaveformFilter(Instant begin, Instant end, String system, String location, Boolean archive) {
+    public WaveformFilter(List<Long> eventIdList, Instant begin, Instant end, String system, String location, Boolean archive) {
+        this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
         this.system = system;
@@ -54,6 +57,14 @@ public class WaveformFilter {
         String filter = "";
         List<String> filters = new ArrayList<>();
 
+        if (eventIdList != null && !eventIdList.isEmpty()) {
+            String eventIdFilter = "event_id IN (?";
+            for (Long l : eventIdList) {
+                eventIdFilter += ",?";
+            }
+            eventIdFilter += ")";
+            filters.add(eventIdFilter);
+        }
         if (begin != null) {
             filters.add("event_time_utc >= ?");
         }
@@ -84,12 +95,18 @@ public class WaveformFilter {
     }
 
     /**
-     *
+     * Assign the filter parameter values to the prepared statement.
      * @param stmt
      * @throws SQLException
      */
     public void assignParameterValues(PreparedStatement stmt) throws SQLException {
         int i = 1;
+
+        if (eventIdList != null && !eventIdList.isEmpty()) {
+            for (Long eventId : eventIdList) {
+                stmt.setLong(i++, eventId);
+            }
+        }
         if (begin != null) {
             stmt.setString(i++, TimeUtil.getDateTimeString(begin));
         }
