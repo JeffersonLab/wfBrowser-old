@@ -118,11 +118,15 @@ public class Event {
 
     @Override
     public String toString() {
-        String wData = "";
-        for(Waveform w: waveforms) {
-            wData = wData + w.toString() + "\n";
+        String wData = "null";
+        String wSize = "null";
+        if (waveforms != null) {
+            wSize = "" + waveforms.size();
+            for (Waveform w : waveforms) {
+                wData = wData + w.toString() + "\n";
+            }
         }
         return "eventId: " + eventId + "\neventTime: " + getEventTimeString() + "\nlocation: " + location + "\nsystem: " + system
-                + "\nnum Waveforms: " + waveforms.size() + "\nWaveform Data:\n" + wData;
+                + "\nnum Waveforms: " + wSize + "\nWaveform Data:\n" + wData;
     }
 }
