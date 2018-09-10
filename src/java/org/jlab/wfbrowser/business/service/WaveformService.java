@@ -10,18 +10,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jlab.wfbrowser.business.filter.WaveformFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
+import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Waveform;
 
@@ -33,6 +29,14 @@ public class WaveformService {
 
     private static final Logger LOGGER = Logger.getLogger(WaveformService.class.getName());
 
+    /**
+     * Adds a single event with waveform data to the database. Requires that the
+     * Event has a waveform list containing at least a single waveform.
+     *
+     * @param e
+     * @return The database value of eventId for the newly added event
+     * @throws SQLException
+     */
     public long addEvent(Event e) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -93,6 +97,10 @@ public class WaveformService {
             }
 
             List<Waveform> waveforms = e.getWaveforms();
+            if (waveforms == null || waveforms.isEmpty()) {
+                conn.rollback();
+                throw new RuntimeException("Event has no waveform data.");
+            }
             String insertPointSql = "INSERT INTO waveforms.data (event_id, series_name, time_offset, val) VALUES (?, ?, ? ,?)";
             for (Waveform w : waveforms) {
                 pstmt = conn.prepareStatement(insertPointSql);
@@ -120,6 +128,14 @@ public class WaveformService {
         return eventId;
     }
 
+    /**
+     * Returns the event object mapping to the event records with eventId from
+     * the database.
+     *
+     * @param eventId
+     * @return
+     * @throws SQLException
+     */
     public Event getEvent(long eventId) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -141,13 +157,7 @@ public class WaveformService {
             pstmt.setLong(1, eventId);
             rs = pstmt.executeQuery();
             while (rs.next()) {
-                Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
-                Timestamp ts = rs.getTimestamp("event_time_utc", cal);
-                if (ts != null) {
-                    eventTime = ts.toInstant();
-                } else {
-                    throw new RuntimeException("Event date time field mssing in database");
-                }
+                eventTime = TimeUtil.getInstantFromDateTime(rs);
                 location = rs.getString("location");
                 system = rs.getString("system_name");
                 archive = rs.getBoolean("archive");
@@ -195,6 +205,14 @@ public class WaveformService {
         return event;
     }
 
+    /**
+     * Deletes the event and related waveform data from the database.
+     *
+     * @param eventId
+     * @return The number of rows affected. Should only ever be one since
+     * eventId should be the primary key.
+     * @throws SQLException
+     */
     public int deleteEvent(long eventId) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -239,5 +257,93 @@ public class WaveformService {
         }
 
         return rowsAffected;
+    }
+
+    /**
+     * Add a list of events to the database.
+     *
+     * @param eventList
+     * @return
+     * @throws SQLException
+     */
+    public int addEventList(List<Event> eventList) throws SQLException {
+        long eventId = -1;
+        int numAdded = 0;
+        for (Event e : eventList) {
+            if (e != null && e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+                // eventId is an autoincremented primary key starting at 1.  It should never be < 0
+                eventId = addEvent(e);
+                if (eventId != -1) {
+                    numAdded++;
+                }
+                eventId = -1;
+            }
+        }
+        return numAdded;
+    }
+
+    /**
+     * Delete a list of events by eventId
+     *
+     * @param eventIds
+     * @return The number of affected events in the database
+     * @throws SQLException
+     */
+    public int deleteEventList(List<Long> eventIds) throws SQLException {
+        int numDeleted = 0;
+        if (eventIds != null) {
+            for (Long eventId : eventIds) {
+                if (eventId != null) {
+                    numDeleted += deleteEvent(eventId);
+                }
+            }
+        }
+        return numDeleted;
+    }
+
+    
+    /**
+     * Get a list of events from the database matching the specified filter.
+     *
+     * @param filter
+     * @return A list of events
+     * @throws SQLException
+     */
+    public List<Event> getEventListWithoutData(WaveformFilter filter) throws SQLException {
+        List<Event> events = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        String sql = "SELECT event_id,event_time_utc,location,archive,system_type.system_name"
+                + " FROM waveforms.event"
+                + " JOIN waveforms.system_type USING(system_id)";
+        try {
+            conn = SqlUtil.getConnection();
+            if (filter != null) {
+                sql += " " + filter.getWhereClause();
+            }
+            pstmt = conn.prepareStatement(sql);
+            if (filter != null) {
+                filter.assignParameterValues(pstmt);
+            }
+            rs = pstmt.executeQuery();
+            long eventId;
+            Instant eventTime;
+            String location, system;
+            Boolean archive;
+            while (rs.next()) {
+                eventId = rs.getLong("event_id");
+                eventTime = TimeUtil.getInstantFromDateTime(rs);
+                system = rs.getString("system_name");
+                location = rs.getString("location");
+                archive = rs.getBoolean("archive");
+                events.add(new Event(eventId, eventTime, location, system, archive, null));
+            }
+        } finally {
+            SqlUtil.close(rs, pstmt, conn);
+        }
+
+        return events;
     }
 }

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import javax.naming.NamingException;
+import org.jlab.wfbrowser.business.filter.WaveformFilter;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
 import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
@@ -34,8 +35,9 @@ public class WaveformServiceTest {
 
     private static StandaloneConnectionPools pools;
     private static long eventId;
-    private static Instant now;
+    private static Instant now, end;
     private static Event e;
+    private static List<Event> eventList;
 
     public WaveformServiceTest() {
     }
@@ -57,7 +59,13 @@ public class WaveformServiceTest {
         waveforms.add(w2);
 
         now = Instant.now();
+        end = now.plusMillis(5000);
+
         e = new Event(now, "Bldg87", "rf", false, waveforms);
+        eventList = new ArrayList<>();
+        eventList.add(new Event(now.plusMillis(1000), "Bldg89", "rf", false, waveforms));
+        eventList.add(new Event(now.plusMillis(2000), "Bldg89", "rf", false, waveforms));
+        eventList.add(new Event(now.plusMillis(3000), "Bldg89", "rf", false, waveforms));
 
     }
 
@@ -130,6 +138,39 @@ public class WaveformServiceTest {
         result = instance.setEventArchiveFlag(eventId, false);
         assertEquals(expResult, result);
 
+    }
+
+    /**
+     * Test of the addEventList, getEventList, and deleteEventList method of
+     * class WaveformService.
+     */
+    @Test
+    public void test5AddGetDeleteEventList() throws Exception {
+        System.out.println("getEventList");
+        WaveformService instance = new WaveformService();
+        WaveformFilter filter = new WaveformFilter(now, end, "rf", "Bldg89", null);
+
+        System.out.println("  addEventList");
+        instance.addEventList(eventList);
+
+        List<Event> result = instance.getEventListWithoutData(filter);
+        // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
+        // Set them to null so that the match the expected results / the list we added
+        List<Long> eventIds = new ArrayList<>();
+        for (Event event : result) {
+            eventIds.add(event.getEventId());
+            event.setEventId(null);
+        }
+        List<Event> expResult = eventList;
+
+        System.out.println("  getEventList");
+        assertEquals(expResult, result);
+
+        System.out.println("  deleteEventList");
+        instance.deleteEventList(eventIds);
+
+        result = instance.getEventListWithoutData(filter);
+        assert (result.isEmpty());
     }
 
 }
