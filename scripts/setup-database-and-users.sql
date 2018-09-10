@@ -31,6 +31,7 @@ CREATE TABLE waveforms.event (
     system_id int(2) NOT NULL,
     archive tinyint(1) DEFAULT NULL,
     PRIMARY KEY (event_id),
+    UNIQUE KEY `event_time_utc` (`event_time_utc`,`location`,`system_id`),
     INDEX i_location(location),
     INDEX i_event_time(event_time),
     FOREIGN KEY fk_system_id (system_id) 
