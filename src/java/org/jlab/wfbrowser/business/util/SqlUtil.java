@@ -29,7 +29,7 @@ public class SqlUtil {
 
     static {
         try {
-            source = (DataSource) new InitialContext().lookup("jdbc/waveform_writer");
+            source = (DataSource) new InitialContext().lookup("jdbc/waveforms_rw");
         } catch (NamingException e) {
             LOGGER.log(Level.WARNING, "JDBC resource lookup failed", e);
             throw new ExceptionInInitializerError(e);

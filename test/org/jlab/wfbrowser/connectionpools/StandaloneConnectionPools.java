@@ -87,7 +87,7 @@ public class StandaloneConnectionPools implements Channel {
 
         ds.setMaxTotal(20); // Max connections in the pool (regardless of idle vs active)
 
-        envCtx.rebind("jdbc/waveform_writer", ds);
+        envCtx.rebind("jdbc/waveforms_rw", ds);
         dsList.add(ds);
     }
 
