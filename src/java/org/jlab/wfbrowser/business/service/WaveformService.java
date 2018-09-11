@@ -132,16 +132,17 @@ public class WaveformService {
      * Returns the event object mapping to the event records with eventId from
      * the database.
      *
-     * @param eventId
+     * @param filter
      * @return
      * @throws SQLException
      */
-    public Event getEvent(long eventId) throws SQLException {
+    public List<Event> getEventList(WaveformFilter filter) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        Event event = null;
+        List<Event> eventList = new ArrayList<>();
+        Long eventId = null;
         Instant eventTime = null;
         String location = null;
         String system = null;
@@ -151,58 +152,62 @@ public class WaveformService {
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_time_utc,location,system_type.system_name,archive FROM waveforms.event, waveforms.system_type "
-                    + "WHERE waveforms.system_type.system_id = waveforms.event.system_id AND event_id = ?";
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive FROM waveforms.event"
+                    + " JOIN waveforms.system_type USING(system_id) " + filter.getWhereClause();
             pstmt = conn.prepareStatement(getEventSql);
-            pstmt.setLong(1, eventId);
+            filter.assignParameterValues(pstmt);
             rs = pstmt.executeQuery();
             while (rs.next()) {
+                eventId = rs.getLong("event_id");
                 eventTime = TimeUtil.getInstantFromDateTime(rs);
                 location = rs.getString("location");
                 system = rs.getString("system_name");
                 archive = rs.getBoolean("archive");
-            }
-            if (location == null || system == null || archive == null) {
-                throw new RuntimeException("Error querying event information from database");
+                if (eventId == null || location == null || system == null || archive == null) {
+                    throw new RuntimeException("Error querying event information from database");
+                } else {
+                    eventList.add(new Event(eventId, eventTime, location, system, archive, new ArrayList<>()));
+                }
             }
             rs.close();
             pstmt.close();
 
             String getDataSql = "SELECT series_name,time_offset,val FROM data WHERE event_id = ?";
-            pstmt = conn.prepareStatement(getDataSql);
-            pstmt.setLong(1, eventId);
-            rs = pstmt.executeQuery();
+            for (Event e : eventList) {
+                eventId = e.getEventId();
+                pstmt = conn.prepareStatement(getDataSql);
+                pstmt.setLong(1, eventId);
+                rs = pstmt.executeQuery();
 
-            String seriesName;
-            Double timeOffset, value;
-            Waveform wf = null;
-            while (rs.next()) {
-                seriesName = rs.getString("series_name");
-                if (wf == null) {
-                    // FIrst run through the loop.  Create a waveform to hold data.
-                    wf = new Waveform(seriesName);
-                } else if (!wf.getSeriesName().equals(seriesName)) {
-                    // Since the query is sorted on series_name, if the name changes we're done with current waveform.  Add it to the list
-                    // and make a new waveform object for the next set of data.
-                    waveforms.add(wf);
-                    wf = new Waveform(seriesName);
+                String seriesName;
+                Double timeOffset, value;
+                Waveform wf = null;
+                while (rs.next()) {
+                    seriesName = rs.getString("series_name");
+                    if (wf == null) {
+                        // FIrst run through the loop.  Create a waveform to hold data.
+                        wf = new Waveform(seriesName);
+                    } else if (!wf.getSeriesName().equals(seriesName)) {
+                        // Since the query is sorted on series_name, if the name changes we're done with current waveform.  Add it to the list
+                        // and make a new waveform object for the next set of data.
+                        e.getWaveforms().add(wf);
+                        wf = new Waveform(seriesName);
+                    }
+                    // Now the we have managed the waveform "lifecycle" events, we only need to add more data points to the current
+                    // waveform
+                    timeOffset = rs.getDouble("time_offset");
+                    value = rs.getDouble("val");
+                    wf.addPoint(timeOffset, value);
                 }
-                // Now the we have managed the waveform "lifecycle" events, we only need to add more data points to the current
-                // waveform
-                timeOffset = rs.getDouble("time_offset");
-                value = rs.getDouble("val");
-                wf.addPoint(timeOffset, value);
+
+                // Add the last waveform
+                e.getWaveforms().add(wf);
             }
-
-            // Add the last waveform
-            waveforms.add(wf);
-            event = new Event(eventId, eventTime, location, system, archive, waveforms);
-
         } finally {
             SqlUtil.close(pstmt, conn, rs);
         }
 
-        return event;
+        return eventList;
     }
 
     /**
@@ -301,9 +306,10 @@ public class WaveformService {
         return numDeleted;
     }
 
-    
     /**
      * Get a list of events from the database matching the specified filter.
+     * Useful for querying what events exist without the overhead of
+     * transferring all of the actual waveform data around.
      *
      * @param filter
      * @return A list of events

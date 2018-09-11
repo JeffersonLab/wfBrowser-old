@@ -59,7 +59,7 @@ public class WaveformFilter {
 
         if (eventIdList != null && !eventIdList.isEmpty()) {
             String eventIdFilter = "event_id IN (?";
-            for (Long l : eventIdList) {
+            for (int i = 1; i < eventIdList.size(); i++) {
                 eventIdFilter += ",?";
             }
             eventIdFilter += ")";

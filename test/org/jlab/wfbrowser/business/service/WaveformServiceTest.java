@@ -89,9 +89,13 @@ public class WaveformServiceTest {
         // Set the test class parameter for use in other tests
         eventId = instance.addEvent(e);
         e.setEventId(eventId);
+        List<Long> eventIdList = new ArrayList<>();
+        eventIdList.add(eventId);
+        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null);
 
-        Event expResult = e;
-        Event result = instance.getEvent(eventId);
+        List<Event> expResult = new ArrayList<>();
+        expResult.add(e);
+        List<Event> result = instance.getEventList(filter);
 
         assertEquals(result, expResult);
         System.out.println("Added event:\n" + result);
@@ -104,9 +108,14 @@ public class WaveformServiceTest {
     public void test2GetEvent() throws Exception {
         System.out.println("getEvent");
 
+        List<Event> expResult = new ArrayList<>();
+        expResult.add(e);
+        List<Long> eventIdList = new ArrayList<>();
+        eventIdList.add(eventId);
+
         WaveformService instance = new WaveformService();
-        Event result = instance.getEvent(eventId);
-        Event expResult = e;
+        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null);
+        List<Event> result = instance.getEventList(filter);
         assertEquals(expResult, result);
         System.out.println("Retrieved event:\n" + result);
     }
