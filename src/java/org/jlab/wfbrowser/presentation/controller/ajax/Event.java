@@ -36,7 +36,8 @@ public class Event extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method.
+     * Handles the HTTP <code>GET</code> method. Used to query for "Event" data
+     * as REST API end point.
      *
      * @param request servlet request
      * @param response servlet response
@@ -51,9 +52,20 @@ public class Event extends HttpServlet {
         List<Long> eventIdList = new ArrayList<>();
         if (eArray != null) {
             for (String eventId : eArray) {
-                eventIdList.add(Long.valueOf(eventId));
+                if (eventId != null && (!eventId.isEmpty())) {
+                    eventIdList.add(Long.valueOf(eventId));
+                }
             }
         }
+        
+        if (eventIdList.isEmpty()) {
+            try (PrintWriter pw = response.getWriter()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                pw.write("{\"error\":\"No event IDs specified\"}");
+            }
+            return;
+        }
+        
         WaveformService wfs = new WaveformService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
         WaveformFilter filter = new WaveformFilter(eventIdList, null, null, "rf", null, null);
@@ -76,12 +88,19 @@ public class Event extends HttpServlet {
             }
         }
 
-        if (job != null) {
-            try (PrintWriter pw = response.getWriter()) {
+        try (PrintWriter pw = response.getWriter()) {
+            if (job != null) {
                 pw.print(job.build().toString());
+            } else {
+                pw.print("{\"error\":\"null response\"}");
             }
         }
 
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        super.doPost(req, resp); //To change body of generated methods, choose Tools | Templates.
     }
 
     /**
