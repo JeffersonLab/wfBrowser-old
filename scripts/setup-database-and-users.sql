@@ -25,7 +25,7 @@ CREATE TABLE waveforms.system_type (
  * group events, and can be used flexibly.  In the case of RF it will be the zone, but other systems may have different location schemes.
  */
 CREATE TABLE waveforms.event (
-    event_id int(15) NOT NULL AUTO_INCREMENT,
+    event_id BIGINT NOT NULL AUTO_INCREMENT,
     event_time_utc datetime(6) NOT NULL,
     location varchar(10) NOT NULL,
     system_id int(2) NOT NULL,
@@ -48,8 +48,8 @@ CREATE TABLE waveforms.event (
 * 640,000 * 10^15 = 6.4 * 10^20.  Just go with 10^20 since 10^15 is already outlandishly large for what we're doing.
  */
 CREATE TABLE waveforms.data (
-    data_id int(20) NOT NULL AUTO_INCREMENT,
-    event_id int(15) NOT NULL,
+    data_id BIGINT NOT NULL AUTO_INCREMENT,
+    event_id BIGINT NOT NULL,
     series_name varchar(24) NOT NULL,
     time_offset double NOT NULL,
     val double NOT NULL,
