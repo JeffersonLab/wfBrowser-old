@@ -9,6 +9,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -63,5 +65,9 @@ public class TimeUtil {
             throw new RuntimeException("Event date time field mssing in database");
         }
         return out;
+    }
+
+    public static Instant getInstantFromDateTimeString(String datetime) {
+        return LocalDateTime.parse(datetime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")).atZone(ZoneId.systemDefault()).toInstant();
     }
 }
