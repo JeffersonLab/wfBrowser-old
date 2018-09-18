@@ -7,12 +7,10 @@ package org.jlab.wfbrowser.model;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import javax.json.JsonObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +37,8 @@ public class EventTest {
 
         Instant t1 = Instant.now();
         Instant t2 = t1.plusMillis(1000);
-        Instant t3 = LocalDateTime.of(2018, 01, 01, 5, 0, 0).toInstant(ZoneOffset.of("+05"));
+        Instant t3 = LocalDateTime.of(2018, 01, 01, 5, 0, 0).toInstant(ZoneOffset.of("+05")).plusMillis(500);
+        System.out.println(t3.toString());
         e1 = new Event(1, t1, "loc1", "test", false, null);
         e1a = new Event(1, t1, "loc1", "test", false, null); // Should match e1 since it is an exact copy
         e2 = new Event(1, t2, "loc1", "test", false, waveforms);  // Should not match e1 since different time
@@ -55,6 +54,13 @@ public class EventTest {
     public void tearDown() {
     }
 
+    @Test
+    public void testGetRelativeFilePath() {
+        String expResult = "test\\loc1\\2018_01_01\\050000.5";
+        String result = e4.getRelativeFilePath().toString();
+        System.out.println(result);
+        assertEquals(expResult, result);
+    }
 
     /**
      * Test of toJsonObject method, of class Event.
@@ -63,7 +69,7 @@ public class EventTest {
     public void testToJsonObject() {
         System.out.println("toJsonObject");
         String expResult = "{\"id\":2,"
-                + "\"datetime\":\"2018-01-01 00:00:00.000000\","
+                + "\"datetime\":\"2018-01-01 00:00:00.500000\","
                 + "\"location\":\"loc1\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
@@ -81,11 +87,7 @@ public class EventTest {
                 + "]"
                 + "}";
         String result = e4.toJsonObject().toString();
-        System.out.println(result);
-        System.out.println(expResult);
         assertEquals(expResult, result);
-        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
     }
 
     /**
@@ -94,9 +96,8 @@ public class EventTest {
     @Test
     public void testGetEventTimeString() {
         System.out.println("getEventTimeString");
-        String expResult = "2018-01-01 00:00:00.000000";
+        String expResult = "2018-01-01 00:00:00.500000";
         String result = e4.getEventTimeString();
-        System.out.println(result);
         assertEquals(expResult, result);
     }
 

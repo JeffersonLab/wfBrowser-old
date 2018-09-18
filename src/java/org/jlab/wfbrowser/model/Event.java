@@ -15,6 +15,9 @@ import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.ZoneId;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 
 /**
@@ -52,6 +55,24 @@ public class Event {
         this.system = system;
         this.archive = archive;
         this.waveforms = waveforms;
+    }
+
+    public Path getRelativeFilePath() {
+        DateTimeFormatter dFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd").withZone(ZoneId.systemDefault());
+        DateTimeFormatter tFormatter = DateTimeFormatter.ofPattern("HHmmss.S").withZone(ZoneId.systemDefault());
+        String day = dFormatter.format(eventTime);
+        String time = tFormatter.format(eventTime);
+
+        return Paths.get(system, location, day, time);
+    }
+
+    public Path getRelativeArchivePath() {
+        DateTimeFormatter dFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd").withZone(ZoneId.systemDefault());
+        DateTimeFormatter tFormatter = DateTimeFormatter.ofPattern("HHmmss.S").withZone(ZoneId.systemDefault());
+        String day = dFormatter.format(eventTime);
+        String time = tFormatter.format(eventTime);
+
+        return Paths.get(Paths.get(system, location, day, time).toString() + ".tar.gz");
     }
 
     public Long getEventId() {
