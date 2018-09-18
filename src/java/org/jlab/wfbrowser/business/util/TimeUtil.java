@@ -68,10 +68,10 @@ public class TimeUtil {
     }
 
     public static Instant getInstantFromDateTimeString(String datetime) {
+        if (datetime == null) {
+            return null;
+        }
         Instant t = LocalDateTime.parse(datetime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S")).atZone(ZoneId.systemDefault()).toInstant();
-        System.out.println("In getInsantFromDateTimeString()");
-        System.out.println("  " + datetime);
-        System.out.println("  " + t);
         return t;
     }
 }
