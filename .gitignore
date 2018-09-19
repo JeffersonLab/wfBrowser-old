@@ -1,2 +1,6 @@
 /build/
 /dist/
+/config/wfBrowser.properties
+/nbproject/
+/lib/nblibraries.properties
+/build.xml
