@@ -74,11 +74,12 @@ public class WaveformService {
             while ((entry = ais.getNextTarEntry()) != null) {
                 if (entry != null) {
                     if (!ais.canReadEntryData(entry)) {
-                        // TODO: log or throw exception?
+                        LOGGER.log(Level.WARNING, "Cannot read tar archive entry - {0}", entry.getName());
                         throw new IOException("Cannont read archive entry");
                     }
                     // These shouldn't have nested structures, so just treat the Entry as though it were a file
                     if (entry.isDirectory() && foundParentDir) {
+                        LOGGER.log(Level.WARNING, "Unexpected compressed directory structure - {0}", entry.getName());
                         throw new IOException("Unexpected compressed directory structure.");
                     } else if (entry.isDirectory()) {
                         foundParentDir = true;
