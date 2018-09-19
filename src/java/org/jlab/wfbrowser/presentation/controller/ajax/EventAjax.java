@@ -30,14 +30,14 @@ import org.jlab.wfbrowser.business.util.TimeUtil;
  * @author adamc
  */
 @WebServlet(name = "event", urlPatterns = {"/ajax/event"})
-public class Event extends HttpServlet {
+public class EventAjax extends HttpServlet {
 
-    private final static Logger LOGGER = Logger.getLogger(Event.class.getName());
+    private final static Logger LOGGER = Logger.getLogger(EventAjax.class.getName());
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method. Used to query for "Event" data
-     * as REST API end point.
+     * Handles the HTTP <code>GET</code> method. Used to query for "EventAjax" data
+ as REST API end point.
      *
      * @param request servlet request
      * @param response servlet response
@@ -57,7 +57,19 @@ public class Event extends HttpServlet {
                 }
             }
         }
-
+        
+        Instant begin = TimeUtil.getInstantFromDateTimeString(request.getParameter("begin"));
+        Instant end = TimeUtil.getInstantFromDateTimeString(request.getParameter("end"));
+        String system = request.getParameter("system");
+        system = system == null ? "rf" : system;
+        String location = request.getParameter("location");
+        String arch = request.getParameter("archive");
+        Boolean archive = (arch == null) ? null : arch.equals("on");
+        String del = request.getParameter("toDelete");
+        Boolean delete = (del == null) ? null : del.equals("on");        
+        Boolean includeData = Boolean.getBoolean(request.getParameter("includeData"));
+        // TODO: test out these changes!!
+        
         if (eventIdList.isEmpty()) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
