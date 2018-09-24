@@ -66,10 +66,10 @@ public class EventAjax extends HttpServlet {
         system = system == null ? "rf" : system;
         String location = request.getParameter("location");
         String arch = request.getParameter("archive");
-        Boolean archive = (arch == null) ? null : arch.equals("on");
+        Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
-        Boolean delete = (del == null) ? null : del.equals("on");
-        Boolean includeData = Boolean.getBoolean(request.getParameter("includeData"));
+        Boolean delete = (del == null) ? null : del.equals("true");
+        Boolean includeData = Boolean.getBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
         // TODO: test out these changes!!
 
         if (eventIdList != null && eventIdList.isEmpty()) {
@@ -86,7 +86,12 @@ public class EventAjax extends HttpServlet {
 
         JsonObjectBuilder job = null;
         try {
-            List<org.jlab.wfbrowser.model.Event> eventList = wfs.getEventList(filter);
+            List<org.jlab.wfbrowser.model.Event> eventList;
+            if (includeData) {
+                eventList = wfs.getEventList(filter);
+            } else {
+                eventList = wfs.getEventListWithoutData(filter);
+            }
             job = Json.createObjectBuilder();
             JsonArrayBuilder jab = Json.createArrayBuilder();
             for (org.jlab.wfbrowser.model.Event e : eventList) {
@@ -165,8 +170,78 @@ public class EventAjax extends HttpServlet {
     }
 
     @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) {
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setContentType("application/json");
+        String id = request.getParameter("id");
+        String arch = request.getParameter("archive");
+        String del = request.getParameter("delete");
+        Long eventId;
 
+        if (id == null || id.isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\": \"id must be specified and a valid long integer\"}");
+            }
+            return;
+        }
+
+        try {
+            eventId = Long.parseLong(id);
+        } catch (NumberFormatException ex) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\": \"id must be a valid long integer\"}");
+            }
+            return;
+        }
+        System.out.println("id=" + id + " eventId=" + eventId);
+
+        if (arch == null && del == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\": \"either archive or delete parameter must be specified\"}");
+            }
+            return;
+        } else if ((arch != null && del != null) && (Boolean.getBoolean(arch) && Boolean.getBoolean(del))) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\": \"only archive or delete flag can be set\"}");
+            }
+            return;
+        }
+        
+        Boolean archive = Boolean.parseBoolean(arch);
+        Boolean delete = Boolean.parseBoolean(del);
+
+        WaveformService wfs = new WaveformService();
+        try {
+            // Cannot set an event to both be deleted and archived
+            if (arch != null) {
+                wfs.setEventArchiveFlag(eventId, archive);
+                if ( archive == true) {
+                    wfs.setEventDeleteFlag(eventId, false);
+                }
+            }
+            // Cannot set an event to both be deleted and archived
+            if (del != null) {
+                wfs.setEventDeleteFlag(eventId, delete);
+                if ( delete == true) {
+                    wfs.setEventArchiveFlag(eventId, false);
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.WARNING, "Error updating database - {0}", ex.getMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\":\"Error updating the database - " + ex.getMessage() + "\"}");
+            }
+            return;
+        }
+
+        response.setStatus(HttpServletResponse.SC_OK);
+        try (PrintWriter pw = response.getWriter()) {
+            pw.write("{\"message\":\"Update successful\"}");
+        }
     }
 
     /**
