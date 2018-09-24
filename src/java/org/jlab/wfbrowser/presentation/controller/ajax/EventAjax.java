@@ -5,6 +5,7 @@
  */
 package org.jlab.wfbrowser.presentation.controller.ajax;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
@@ -36,8 +37,8 @@ public class EventAjax extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method. Used to query for "EventAjax" data
- as REST API end point.
+     * Handles the HTTP <code>GET</code> method. Used to query for "EventAjax"
+     * data as REST API end point.
      *
      * @param request servlet request
      * @param response servlet response
@@ -49,15 +50,16 @@ public class EventAjax extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("application/json");
         String[] eArray = request.getParameterValues("id");
-        List<Long> eventIdList = new ArrayList<>();
+        List<Long> eventIdList = null;
         if (eArray != null) {
+            eventIdList = new ArrayList<>();
             for (String eventId : eArray) {
                 if (eventId != null && (!eventId.isEmpty())) {
                     eventIdList.add(Long.valueOf(eventId));
                 }
             }
         }
-        
+
         Instant begin = TimeUtil.getInstantFromDateTimeString(request.getParameter("begin"));
         Instant end = TimeUtil.getInstantFromDateTimeString(request.getParameter("end"));
         String system = request.getParameter("system");
@@ -66,11 +68,11 @@ public class EventAjax extends HttpServlet {
         String arch = request.getParameter("archive");
         Boolean archive = (arch == null) ? null : arch.equals("on");
         String del = request.getParameter("toDelete");
-        Boolean delete = (del == null) ? null : del.equals("on");        
+        Boolean delete = (del == null) ? null : del.equals("on");
         Boolean includeData = Boolean.getBoolean(request.getParameter("includeData"));
         // TODO: test out these changes!!
-        
-        if (eventIdList.isEmpty()) {
+
+        if (eventIdList != null && eventIdList.isEmpty()) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 pw.write("{\"error\": \"No event IDs specified\"}");
@@ -93,11 +95,17 @@ public class EventAjax extends HttpServlet {
             job.add("events", jab.build());
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database");
-            // TODO: Update this to generate a JSON response with approriate error state, message, and HTTP status code
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             try (PrintWriter pw = response.getWriter()) {
                 pw.print("{\"error\": \"error querying database - " + ex.getMessage() + "\"}");
             }
+        } catch (FileNotFoundException ex) {
+            LOGGER.log(Level.SEVERE, "Error querying data - {0}", ex.getMessage());
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.print("{\"error\": \"error querying data - " + ex.getMessage() + "\"}");
+            }
+
         }
 
         try (PrintWriter pw = response.getWriter()) {
@@ -125,6 +133,7 @@ public class EventAjax extends HttpServlet {
         String location = request.getParameter("location");
         String system = request.getParameter("system");
         String archive = request.getParameter("archive");
+        String delete = request.getParameter("delete");
         response.setContentType("application/json");
 
         if (datetime == null || location == null || system == null) {
@@ -140,7 +149,8 @@ public class EventAjax extends HttpServlet {
         try {
 
             Boolean arch = archive != null;
-            org.jlab.wfbrowser.model.Event event = new org.jlab.wfbrowser.model.Event(t, location, system, arch, null);
+            Boolean del = delete != null;
+            org.jlab.wfbrowser.model.Event event = new org.jlab.wfbrowser.model.Event(t, location, system, arch, del, null);
             long id = wfs.addEvent(event, false);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
@@ -151,6 +161,11 @@ public class EventAjax extends HttpServlet {
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");
             }
         }
+
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) {
 
     }
 

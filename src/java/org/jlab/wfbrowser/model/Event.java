@@ -38,23 +38,30 @@ public class Event {
     private final String location;
     private final String system;
     private final boolean archive;
+    private final boolean delete;
     private final List<Waveform> waveforms;
 
-    public Event(long eventId, Instant eventTime, String location, String system, boolean archive, List<Waveform> waveforms) {
+    public Event(long eventId, Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms) {
         this.eventId = eventId;
         this.eventTime = eventTime.truncatedTo(ChronoUnit.MICROS);
         this.location = location;
         this.system = system;
         this.archive = archive;
+        this.delete = delete;
         this.waveforms = waveforms;
     }
 
-    public Event(Instant eventTime, String location, String system, boolean archive, List<Waveform> waveforms) {
+    public Event(Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms) {
         this.eventTime = eventTime.truncatedTo(ChronoUnit.MICROS);
         this.location = location;
         this.system = system;
         this.archive = archive;
+        this.delete = delete;
         this.waveforms = waveforms;
+    }
+
+    public boolean isDelete() {
+        return delete;
     }
 
     public Path getRelativeFilePath() {

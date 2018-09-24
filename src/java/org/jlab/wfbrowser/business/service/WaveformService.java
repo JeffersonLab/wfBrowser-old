@@ -266,12 +266,12 @@ public class WaveformService {
         Long eventId;
         Instant eventTime;
         String location, system;
-        Boolean archive;
+        Boolean archive, delete;
 
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive FROM waveforms.event"
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted FROM waveforms.event"
                     + " JOIN waveforms.system_type USING(system_id) " + filter.getWhereClause();
             pstmt = conn.prepareStatement(getEventSql);
             filter.assignParameterValues(pstmt);
@@ -282,11 +282,13 @@ public class WaveformService {
                 location = rs.getString("location");
                 system = rs.getString("system_name");
                 archive = rs.getBoolean("archive");
+                delete = rs.getBoolean("to_be_deleted");
+                
                 if (eventId == null || location == null || system == null || archive == null) {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-                    eventList.add(new Event(eventId, eventTime, location, system, archive, new ArrayList<>()));
+                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, new ArrayList<>()));
                 }
             }
 
@@ -300,6 +302,7 @@ public class WaveformService {
                 } else if (Files.exists(eventArchive)) {
                     waveformList = parseCompressedWaveformData(eventArchive);
                 } else {
+                    LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
                     throw new FileNotFoundException("Could not locate data files for requested event");
                 }
                 e.getWaveforms().addAll(waveformList);
@@ -455,7 +458,7 @@ public class WaveformService {
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        String sql = "SELECT event_id,event_time_utc,location,archive,system_type.system_name"
+        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_type.system_name"
                 + " FROM waveforms.event"
                 + " JOIN waveforms.system_type USING(system_id)";
         try {
@@ -471,14 +474,15 @@ public class WaveformService {
             long eventId;
             Instant eventTime;
             String location, system;
-            Boolean archive;
+            Boolean archive, delete;
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
                 eventTime = TimeUtil.getInstantFromDateTime(rs);
                 system = rs.getString("system_name");
                 location = rs.getString("location");
                 archive = rs.getBoolean("archive");
-                events.add(new Event(eventId, eventTime, location, system, archive, null));
+                delete = rs.getBoolean("to_be_deleted");
+                events.add(new Event(eventId, eventTime, location, system, archive, delete, null));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
