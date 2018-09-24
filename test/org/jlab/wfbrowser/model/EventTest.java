@@ -7,6 +7,7 @@ package org.jlab.wfbrowser.model;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,13 +38,13 @@ public class EventTest {
 
         Instant t1 = Instant.now();
         Instant t2 = t1.plusMillis(1000);
-        Instant t3 = LocalDateTime.of(2018, 01, 01, 5, 0, 0).toInstant(ZoneOffset.of("+05")).plusMillis(500);
+        Instant t3 = LocalDateTime.of(2018, 01, 01, 5, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(500);
         System.out.println(t3.toString());
-        e1 = new Event(1, t1, "loc1", "test", false, null);
-        e1a = new Event(1, t1, "loc1", "test", false, null); // Should match e1 since it is an exact copy
-        e2 = new Event(1, t2, "loc1", "test", false, waveforms);  // Should not match e1 since different time
-        e3 = new Event(1, t1, "loc1", "test", false, waveforms);  // Should not match e1 since this has a waveform list
-        e4 = new Event(2, t3, "loc1", "test", false, waveforms);  // Used in the toDateTimeString and toJsonObject test
+        e1 = new Event(1, t1, "loc1", "test", false, false, null);
+        e1a = new Event(1, t1, "loc1", "test", false, false, null); // Should match e1 since it is an exact copy
+        e2 = new Event(1, t2, "loc1", "test", false, false, waveforms);  // Should not match e1 since different time
+        e3 = new Event(1, t1, "loc1", "test", false, false, waveforms);  // Should not match e1 since this has a waveform list
+        e4 = new Event(2, t3, "loc1", "test", false, false, waveforms);  // Used in the toDateTimeString and toJsonObject test
     }
     
     @Before
@@ -69,7 +70,7 @@ public class EventTest {
     public void testToJsonObject() {
         System.out.println("toJsonObject");
         String expResult = "{\"id\":2,"
-                + "\"datetime\":\"2018-01-01 00:00:00.500000\","
+                + "\"datetime_utc\":\"2018-01-01 10:00:00.500000\","
                 + "\"location\":\"loc1\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
@@ -96,7 +97,7 @@ public class EventTest {
     @Test
     public void testGetEventTimeString() {
         System.out.println("getEventTimeString");
-        String expResult = "2018-01-01 00:00:00.500000";
+        String expResult = "2018-01-01 10:00:00.500000";
         String result = e4.getEventTimeString();
         assertEquals(expResult, result);
     }
