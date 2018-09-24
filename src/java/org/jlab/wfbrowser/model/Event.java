@@ -123,7 +123,7 @@ public class Event {
         JsonObjectBuilder job = Json.createObjectBuilder();
         if (eventId != null) {
             job.add("id", eventId)
-                    .add("datetime", TimeUtil.getDateTimeString(eventTime))
+                    .add("datetime_utc", TimeUtil.getDateTimeString(eventTime))
                     .add("location", location)
                     .add("system", system)
                     .add("archive", archive);
