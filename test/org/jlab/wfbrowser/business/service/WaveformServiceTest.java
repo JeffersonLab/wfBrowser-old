@@ -189,7 +189,7 @@ public class WaveformServiceTest {
         System.out.println("deleteEvent");
         WaveformService instance = new WaveformService();
         int expResult = 1;
-        int result = instance.setEventDeleteFlag(eventId);
+        int result = instance.setEventDeleteFlag(eventId, true);
         assertEquals(expResult, result);
     }
 
@@ -237,7 +237,7 @@ public class WaveformServiceTest {
         assertEquals(expResult, result);
 
         System.out.println("  deleteEventList");
-        instance.setEventDeleteFlag(eventIds);
+        instance.setEventDeleteFlag(eventIds, true);
         // Filter on to_be_deleted flag is set
         result = instance.getEventListWithoutData(new WaveformFilter(null, now, end, "rf", "test", null, true));
         // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
