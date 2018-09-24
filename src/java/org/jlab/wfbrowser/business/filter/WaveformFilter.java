@@ -26,6 +26,7 @@ public class WaveformFilter {
     private final Instant begin, end;
     private final String system, location;
     private final Boolean archive;
+    private final Boolean delete;
 
     /**
      * Construct the basic filter object and save the individual filter values.
@@ -37,14 +38,17 @@ public class WaveformFilter {
      * @param system
      * @param location
      * @param archive
+     * @param delete
      */
-    public WaveformFilter(List<Long> eventIdList, Instant begin, Instant end, String system, String location, Boolean archive) {
+    public WaveformFilter(List<Long> eventIdList, Instant begin, Instant end, String system, String location, Boolean archive,
+            Boolean delete) {
         this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
         this.system = system;
         this.location = location;
         this.archive = archive;
+        this.delete = delete;
     }
 
     /**
@@ -79,6 +83,9 @@ public class WaveformFilter {
         }
         if (archive != null) {
             filters.add("archive = ?");
+        }
+        if (delete != null) {
+            filters.add("to_be_deleted = ?");
         }
 
         if (!filters.isEmpty()) {
@@ -121,6 +128,9 @@ public class WaveformFilter {
         }
         if (archive != null) {
             stmt.setInt(i++, archive ? 1 : 0);
+        }
+        if (delete != null) {
+            stmt.setInt(i++, delete ? 1 : 0);
         }
     }
 }

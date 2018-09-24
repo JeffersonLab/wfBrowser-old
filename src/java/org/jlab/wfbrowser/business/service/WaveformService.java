@@ -165,18 +165,21 @@ public class WaveformService {
      * exists in the proper location on the filesystem prior to updating
      * database.
      *
-     * @param e
+     * @param e The Event to add to the database
+     * @param force Add to the database even if the data cannot be found on disk
      * @return The eventId of the new entry in the database corresponding to the
      * row in the event table.
      * @throws FileNotFoundException
      * @throws SQLException
      */
-    public long addEvent(Event e) throws FileNotFoundException, SQLException {
-        Path eventDir = dataDir.resolve(e.getRelativeFilePath());
-        Path eventArchive = dataDir.resolve(e.getRelativeArchivePath());
-        if (!Files.exists(eventDir) && !Files.exists(eventArchive)) {
-            throw new FileNotFoundException("Cannot add event to database if data is missing from disk.  Directory '"
-                    + eventDir.toString() + "' or '" + eventArchive.toString() + "' not found.");
+    public long addEvent(Event e, boolean force) throws FileNotFoundException, SQLException {
+        if (force == false) {
+            Path eventDir = dataDir.resolve(e.getRelativeFilePath());
+            Path eventArchive = dataDir.resolve(e.getRelativeArchivePath());
+            if (!Files.exists(eventDir) && !Files.exists(eventArchive)) {
+                throw new FileNotFoundException("Cannot add event to database if data is missing from disk.  Directory '"
+                        + eventDir.toString() + "' or '" + eventArchive.toString() + "' not found.");
+            }
         }
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -309,19 +312,52 @@ public class WaveformService {
     }
 
     /**
-     * Deletes the event and related waveform data from the database.
+     * Updates the to_be_deleted flag on the specified event in the waveform
+     * database
      *
      * @param eventId
      * @return The number of rows affected. Should only ever be one since
      * eventId should be the primary key.
      * @throws SQLException
      */
-    public int deleteEvent(long eventId) throws SQLException {
+    public int setEventDeleteFlag(long eventId) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
         int rowsAffected;
-        String deleteSql = "DELETE FROM waveforms.event WHERE event_id = ?";
+        String deleteSql = "UPDATE waveforms.event SET to_be_deleted = 1 WHERE event_id = ?";
+
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(deleteSql);
+            pstmt.setLong(1, eventId);
+            rowsAffected = pstmt.executeUpdate();
+        } finally {
+            SqlUtil.close(pstmt, conn);
+        }
+
+        return rowsAffected;
+    }
+
+    /**
+     * This method deletes an entry from the waveforms events table. By default
+     * it only searches for events that have the to_be_deleted flag set, but
+     * there is an optional force setting that just searches for the event_id.
+     *
+     * @param eventId
+     * @param force Delete the event even if the to_be_deleted flag is not set
+     * @return
+     * @throws SQLException
+     */
+    public int deleteEvent(long eventId, boolean force) throws SQLException {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        int rowsAffected;
+        String deleteSql = "DELETE waveforms.event WHERE to_be_deleted = 1 AND event_id = ?";
+        if (force) {
+            deleteSql = "DELETE FROM waveforms.event WHERE event_id = ?";
+        }
 
         try {
             conn = SqlUtil.getConnection();
@@ -366,17 +402,19 @@ public class WaveformService {
      * Add a list of events to the database.
      *
      * @param eventList
+     * @param force Add to the database even if the data cannot be found on
+     * disk. Should really only be used for testing.
      * @return
      * @throws SQLException
      * @throws java.io.FileNotFoundException
      */
-    public int addEventList(List<Event> eventList) throws SQLException, FileNotFoundException {
+    public int addEventList(List<Event> eventList, boolean force) throws SQLException, FileNotFoundException {
         long eventId;
         int numAdded = 0;
         for (Event e : eventList) {
-            if (e != null && e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+            if (e != null) {
                 // eventId is an autoincremented primary key starting at 1.  It should never be < 0
-                eventId = addEvent(e);
+                eventId = addEvent(e, force);
                 numAdded++;
             }
         }
@@ -384,18 +422,18 @@ public class WaveformService {
     }
 
     /**
-     * Delete a list of events by eventId
+     * Set the to_be_deleted flag on the specified events in the database.
      *
      * @param eventIds
      * @return The number of affected events in the database
      * @throws SQLException
      */
-    public int deleteEventList(List<Long> eventIds) throws SQLException {
+    public int setEventDeleteFlag(List<Long> eventIds) throws SQLException {
         int numDeleted = 0;
         if (eventIds != null) {
             for (Long eventId : eventIds) {
                 if (eventId != null) {
-                    numDeleted += deleteEvent(eventId);
+                    numDeleted += setEventDeleteFlag(eventId);
                 }
             }
         }

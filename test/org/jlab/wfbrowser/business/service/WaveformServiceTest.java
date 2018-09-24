@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,6 +39,7 @@ public class WaveformServiceTest {
     private static Instant now, end;
     private static Event e, eCompressed;
     private static List<Event> eventList;
+    private static List<Long> eventIds;
 
     public WaveformServiceTest() {
     }
@@ -86,6 +86,14 @@ public class WaveformServiceTest {
 
         e = new Event(t1, "test", "rf", false, waveforms);
         eCompressed = new Event(t2, "test", "rf", false, waveforms);
+        
+        now = Instant.now();
+        end = now.plusMillis(5000);
+        eventList = new ArrayList<>();
+        eventIds = new ArrayList<>();
+        eventList.add(new Event(now.plusMillis(1000), "test", "rf", false, null));
+        eventList.add(new Event(now.plusMillis(2000), "test", "rf", false, null));
+        eventList.add(new Event(now.plusMillis(3000), "test", "rf", false, null));
     }
 
     @AfterClass
@@ -106,11 +114,11 @@ public class WaveformServiceTest {
         WaveformService instance = new WaveformService();
 
         // Set the test class parameter for use in other tests
-        eventId = instance.addEvent(e);
+        eventId = instance.addEvent(e, false);
         e.setEventId(eventId);
         List<Long> eventIdList = new ArrayList<>();
         eventIdList.add(eventId);
-        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null);
+        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null, null);
 
         List<Event> expResult = new ArrayList<>();
         expResult.add(e);
@@ -121,7 +129,7 @@ public class WaveformServiceTest {
         // Add an event that doesn't exist in the data.  This should fail.
         boolean threwException = false;
         try {
-            instance.addEvent(new Event(Instant.now(), "test", "rf", false, null));
+            instance.addEvent(new Event(Instant.now(), "test", "rf", false, null), false);
         } catch (FileNotFoundException ex) {
             threwException = true;
         }
@@ -134,23 +142,24 @@ public class WaveformServiceTest {
      *
      * @throws java.lang.Exception
      */
-    @Test
+    //@Test
     public void test1AddEventCompressed() throws Exception {
         System.out.println("addEvent");
         WaveformService instance = new WaveformService();
 
         // Set the test class parameter for use in other tests
-        eventIdCompressed = instance.addEvent(eCompressed);
+        eventIdCompressed = instance.addEvent(eCompressed, false);
         eCompressed.setEventId(eventIdCompressed);
         List<Long> eventIdList = new ArrayList<>();
         eventIdList.add(eventIdCompressed);
-        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null);
+        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null, null);
 
         List<Event> expResult = new ArrayList<>();
         expResult.add(eCompressed);
-        List<Event> result = instance.getEventList(filter);
-
+        List<Event> result;
+        result = instance.getEventList(filter);
         assertEquals(expResult, result);
+
     }
 
     /**
@@ -162,11 +171,10 @@ public class WaveformServiceTest {
 
         List<Event> expResult = new ArrayList<>();
         expResult.add(e);
-        List<Long> eventIdList = new ArrayList<>();
-        eventIdList.add(eventId);
+        eventIds.add(eventId);
 
         WaveformService instance = new WaveformService();
-        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null);
+        WaveformFilter filter = new WaveformFilter(eventIds, null, null, null, null, null, null);
         List<Event> result = instance.getEventList(filter);
         assertEquals(expResult, result);
     }
@@ -175,13 +183,12 @@ public class WaveformServiceTest {
      * Test of deleteEvent method, of class WaveformService.
      */
     @Test
-    public void test4DeleteEvent() throws Exception {
+    public void test4SetEventDeleteFlag() throws Exception {
         System.out.println("deleteEvent");
         WaveformService instance = new WaveformService();
         int expResult = 1;
-        int result = instance.deleteEvent(eventId);
+        int result = instance.setEventDeleteFlag(eventId);
         assertEquals(expResult, result);
-
     }
 
     /**
@@ -193,7 +200,7 @@ public class WaveformServiceTest {
         WaveformService instance = new WaveformService();
         int expResult = 1;
         int result = instance.setEventArchiveFlag(eventId, true);
-        WaveformFilter filter = new WaveformFilter(Arrays.asList(eventId), null, null, null, null, null);
+        WaveformFilter filter = new WaveformFilter(Arrays.asList(eventId), null, null, null, null, null, null);
         List<Event> temp = instance.getEventList(filter);
         assertEquals(true, temp.get(0).isArchive());
         assertEquals(expResult, result);
@@ -208,32 +215,45 @@ public class WaveformServiceTest {
      * Test of the addEventList, getEventList, and deleteEventList method of
      * class WaveformService.
      */
-    //@Test
+    @Test
     public void test5AddGetDeleteEventList() throws Exception {
-        System.out.println("getEventList");
+        System.out.println("addGetDeleteEventList");
         WaveformService instance = new WaveformService();
-        WaveformFilter filter = new WaveformFilter(null, now, end, "rf", "Bldg89", null);
+        WaveformFilter filter = new WaveformFilter(null, now, end, "rf", "test", null, null);
 
         System.out.println("  addEventList");
-        instance.addEventList(eventList);
+        instance.addEventList(eventList, true);
 
         List<Event> result = instance.getEventListWithoutData(filter);
         // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
         // Set them to null so that the match the expected results / the list we added
-        List<Long> eventIds = new ArrayList<>();
         for (Event event : result) {
             eventIds.add(event.getEventId());
             event.setEventId(null);
         }
         List<Event> expResult = eventList;
-
-        System.out.println("  getEventList");
         assertEquals(expResult, result);
 
         System.out.println("  deleteEventList");
-        instance.deleteEventList(eventIds);
-
-        result = instance.getEventListWithoutData(filter);
-        assert (result.isEmpty());
+        instance.setEventDeleteFlag(eventIds);
+        // Filter on to_be_deleted flag is set
+        result = instance.getEventListWithoutData(new WaveformFilter(null, now, end, "rf", "test", null, true));
+        // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
+        // Set them to null so that the match the expected results / the list we added
+        for (Event event : result) {
+            eventIds.add(event.getEventId());
+            event.setEventId(null);
+        }
+        assertEquals(expResult, result);
+    }
+    
+    @Test
+    public void test6DeleteEvents() throws Exception {
+        System.out.println("Deleting Test Events");
+        WaveformService instance = new WaveformService();
+        instance.deleteEvent(eventId, true);
+        for(long id : eventIds) {
+            instance.deleteEvent(id, true);
+        }
     }
 }

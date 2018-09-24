@@ -80,7 +80,7 @@ public class EventAjax extends HttpServlet {
 
         WaveformService wfs = new WaveformService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, "rf", null, null);
+        WaveformFilter filter = new WaveformFilter(eventIdList, begin, end, system, location, archive, delete);
 
         JsonObjectBuilder job = null;
         try {
@@ -141,7 +141,7 @@ public class EventAjax extends HttpServlet {
 
             Boolean arch = archive != null;
             org.jlab.wfbrowser.model.Event event = new org.jlab.wfbrowser.model.Event(t, location, system, arch, null);
-            long id = wfs.addEvent(event);
+            long id = wfs.addEvent(event, false);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
             }
