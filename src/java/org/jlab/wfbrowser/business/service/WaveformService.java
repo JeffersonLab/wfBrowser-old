@@ -319,21 +319,23 @@ public class WaveformService {
      * database
      *
      * @param eventId
+     * @param delete The logical value of the to_be_deleted database flag
      * @return The number of rows affected. Should only ever be one since
      * eventId should be the primary key.
      * @throws SQLException
      */
-    public int setEventDeleteFlag(long eventId) throws SQLException {
+    public int setEventDeleteFlag(long eventId, boolean delete) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
         int rowsAffected;
-        String deleteSql = "UPDATE waveforms.event SET to_be_deleted = 1 WHERE event_id = ?";
+        String deleteSql = "UPDATE waveforms.event SET to_be_deleted = ? WHERE event_id = ?";
 
         try {
             conn = SqlUtil.getConnection();
             pstmt = conn.prepareStatement(deleteSql);
-            pstmt.setLong(1, eventId);
+            pstmt.setInt(1, delete ? 1 : 0);
+            pstmt.setLong(2, eventId);
             rowsAffected = pstmt.executeUpdate();
         } finally {
             SqlUtil.close(pstmt, conn);
@@ -428,15 +430,16 @@ public class WaveformService {
      * Set the to_be_deleted flag on the specified events in the database.
      *
      * @param eventIds
+     * @param delete Logical value of the to_be_deleted flag set in the database
      * @return The number of affected events in the database
      * @throws SQLException
      */
-    public int setEventDeleteFlag(List<Long> eventIds) throws SQLException {
+    public int setEventDeleteFlag(List<Long> eventIds, boolean delete) throws SQLException {
         int numDeleted = 0;
         if (eventIds != null) {
             for (Long eventId : eventIds) {
                 if (eventId != null) {
-                    numDeleted += setEventDeleteFlag(eventId);
+                    numDeleted += setEventDeleteFlag(eventId, delete);
                 }
             }
         }
