@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -84,16 +85,17 @@ public class WaveformServiceTest {
         waveforms.add(new Waveform("W33", to3, v33));
         waveforms.add(new Waveform("W34", to3, v34));
 
-        e = new Event(t1, "test", "rf", false, waveforms);
-        eCompressed = new Event(t2, "test", "rf", false, waveforms);
+        e = new Event(t1, "test", "rf", false, false, waveforms);
+        eCompressed = new Event(t2, "test", "rf", false, false, waveforms);
         
-        now = Instant.now();
+        now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        now = now.plusMillis(100);
         end = now.plusMillis(5000);
         eventList = new ArrayList<>();
         eventIds = new ArrayList<>();
-        eventList.add(new Event(now.plusMillis(1000), "test", "rf", false, null));
-        eventList.add(new Event(now.plusMillis(2000), "test", "rf", false, null));
-        eventList.add(new Event(now.plusMillis(3000), "test", "rf", false, null));
+        eventList.add(new Event(now.plusMillis(1000), "test", "rf", false, false, null));
+        eventList.add(new Event(now.plusMillis(2000), "test", "rf", false, false, null));
+        eventList.add(new Event(now.plusMillis(3000), "test", "rf", false, false, null));
     }
 
     @AfterClass
@@ -129,7 +131,7 @@ public class WaveformServiceTest {
         // Add an event that doesn't exist in the data.  This should fail.
         boolean threwException = false;
         try {
-            instance.addEvent(new Event(Instant.now(), "test", "rf", false, null), false);
+            instance.addEvent(new Event(Instant.now(), "test", "rf", false, false, null), false);
         } catch (FileNotFoundException ex) {
             threwException = true;
         }
