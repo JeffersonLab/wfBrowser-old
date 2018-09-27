@@ -6,7 +6,11 @@
 package org.jlab.wfbrowser.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -25,63 +29,68 @@ public class Waveform {
 
     private final String seriesName;
 
-    public String getSeriesName() {
-        return seriesName;
-    }
     private final List<Double> timeOffsets = new ArrayList<>();
     private final List<Double> values = new ArrayList<>();
+    private final SortedMap<Double, Double> points = new TreeMap<>();
 
     public Waveform(String seriesName, List<Double> timeOffsets, List<Double> values) {
         if (timeOffsets.size() != values.size()) {
             throw new IllegalArgumentException("time and value arrays are of unequal length");
         }
         this.seriesName = seriesName;
-        this.timeOffsets.addAll(timeOffsets);
-        this.values.addAll(values);
+        for (int i = 0; i < timeOffsets.size(); i++) {
+            points.put(timeOffsets.get(i), values.get(i));
+        }
     }
 
     public Waveform(String seriesName) {
         this.seriesName = seriesName;
     }
 
-    public List<Double> getTimeOffsets() {
-        return timeOffsets;
+    public String getSeriesName() {
+        return seriesName;
     }
 
-    public List<Double> getValues() {
-        return values;
+    public Set<Double> getTimeOffsets() {
+        return points.keySet();
+    }
+
+    public Collection<Double> getValues() {
+        return points.values();
     }
 
     public void addPoint(Double timeOffset, Double value) {
         if (timeOffset == null || value == null) {
             throw new IllegalArgumentException("Attempting to add point to waveform with null value");
         }
-        timeOffsets.add(timeOffset);
-        values.add(value);
+        points.put(timeOffset, value);
     }
 
+    /**
+     * This toString method provides more information about the contents of the waveform
+     * @return A JSON-like string describing the waveform
+     */
+    @Override
     public String toString() {
         String out = "seriesName: " + seriesName + "\npoints: {";
-        for (int i = 0; i < timeOffsets.size(); i++) {
-            out = out + " [" + timeOffsets.get(i) + "," + values.get(i) + "]";
+        for(Double t : points.keySet()) {
+            out += "[" + t + "," + points.get(t) + "]";
         }
-        out = out + "}";
+        out += "}";
         return out;
     }
 
     public JsonObject toJsonObject() {
-        JsonObjectBuilder wjob = Json.createObjectBuilder()
+        JsonObjectBuilder job = Json.createObjectBuilder()
                 .add("series", seriesName);
         JsonArrayBuilder tjab = Json.createArrayBuilder();
-        for (Double t : timeOffsets) {
-            tjab.add(t);
-        }
-        wjob.add("timeOffsets", tjab.build());
         JsonArrayBuilder vjab = Json.createArrayBuilder();
-        for (Double v : values){
-            vjab.add(v);
+        for(Double t : points.keySet()) {
+            tjab.add(t);
+            vjab.add(points.get(t));
         }
-        wjob.add("values", vjab.build());
-        return wjob.build();
+        job.add("timeOffsets", tjab.build());
+        job.add("values", vjab.build());
+        return job.build();
     }
 }
