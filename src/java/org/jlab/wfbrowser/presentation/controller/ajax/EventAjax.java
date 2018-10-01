@@ -22,7 +22,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.jlab.wfbrowser.business.filter.WaveformFilter;
+import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.service.EventService;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
@@ -98,7 +98,7 @@ public class EventAjax extends HttpServlet {
 
         EventService wfs = new EventService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        WaveformFilter filter = new WaveformFilter(eventIdList, begin, end, system, location, archive, delete);
+        EventFilter filter = new EventFilter(eventIdList, begin, end, system, location, archive, delete);
 
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.

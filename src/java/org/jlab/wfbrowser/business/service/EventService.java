@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.jlab.wfbrowser.business.filter.WaveformFilter;
+import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
@@ -257,7 +257,7 @@ public class EventService {
      * @throws SQLException
      * @throws java.io.IOException
      */
-    public List<Event> getEventList(WaveformFilter filter) throws SQLException, IOException {
+    public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -455,7 +455,7 @@ public class EventService {
      * @return A list of events
      * @throws SQLException
      */
-    public List<Event> getEventListWithoutData(WaveformFilter filter) throws SQLException {
+    public List<Event> getEventListWithoutData(EventFilter filter) throws SQLException {
         List<Event> events = new ArrayList<>();
         Connection conn = null;
         PreparedStatement pstmt = null;

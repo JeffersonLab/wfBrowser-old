@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import javax.naming.NamingException;
-import org.jlab.wfbrowser.business.filter.WaveformFilter;
+import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
 import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
@@ -120,7 +120,7 @@ public class EventServiceTest {
         e.setEventId(eventId);
         List<Long> eventIdList = new ArrayList<>();
         eventIdList.add(eventId);
-        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null);
 
         List<Event> expResult = new ArrayList<>();
         expResult.add(e);
@@ -154,7 +154,7 @@ public class EventServiceTest {
         eCompressed.setEventId(eventIdCompressed);
         List<Long> eventIdList = new ArrayList<>();
         eventIdList.add(eventIdCompressed);
-        WaveformFilter filter = new WaveformFilter(eventIdList, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null);
 
         List<Event> expResult = new ArrayList<>();
         expResult.add(eCompressed);
@@ -176,7 +176,7 @@ public class EventServiceTest {
         eventIds.add(eventId);
 
         EventService instance = new EventService();
-        WaveformFilter filter = new WaveformFilter(eventIds, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(eventIds, null, null, null, null, null, null);
         List<Event> result = instance.getEventList(filter);
         assertEquals(expResult, result);
     }
@@ -202,7 +202,7 @@ public class EventServiceTest {
         EventService instance = new EventService();
         int expResult = 1;
         int result = instance.setEventArchiveFlag(eventId, true);
-        WaveformFilter filter = new WaveformFilter(Arrays.asList(eventId), null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(Arrays.asList(eventId), null, null, null, null, null, null);
         List<Event> temp = instance.getEventList(filter);
         assertEquals(true, temp.get(0).isArchive());
         assertEquals(expResult, result);
@@ -221,7 +221,7 @@ public class EventServiceTest {
     public void test5AddGetDeleteEventList() throws Exception {
         System.out.println("addGetDeleteEventList");
         EventService instance = new EventService();
-        WaveformFilter filter = new WaveformFilter(null, now, end, "rf", "test", null, null);
+        EventFilter filter = new EventFilter(null, now, end, "rf", "test", null, null);
 
         System.out.println("  addEventList");
         instance.addEventList(eventList, true);
@@ -239,7 +239,7 @@ public class EventServiceTest {
         System.out.println("  deleteEventList");
         instance.setEventDeleteFlag(eventIds, true);
         // Filter on to_be_deleted flag is set
-        result = instance.getEventListWithoutData(new WaveformFilter(null, now, end, "rf", "test", null, true));
+        result = instance.getEventListWithoutData(new EventFilter(null, now, end, "rf", "test", null, true));
         // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
         // Set them to null so that the match the expected results / the list we added
         for (Event event : result) {
