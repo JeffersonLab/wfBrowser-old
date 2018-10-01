@@ -27,7 +27,7 @@ public class SeriesService {
     public List<Series> getSeries(SeriesFilter filter) throws SQLException {
         List<Series> seriesList = new ArrayList<>();
         
-        String sql = "SELECT pattern_id, system_name, pattern, series_name"
+        String sql = "SELECT pattern_id, system_name, pattern, series_name, comment"
                 + " FROM waveforms.series_patterns"
                 + " JOIN waveforms.system_type"
                 + " ON system_type.system_id = series_patterns.system_id";
@@ -43,14 +43,15 @@ public class SeriesService {
             filter.assignParameterValues(pstmt);
             rs = pstmt.executeQuery();
             
-            String name, system, pattern;
+            String name, system, pattern, comment;
             int id;
             while(rs.next()) {
                 id = rs.getInt("pattern_id");
                 name = rs.getString("series_name");
                 system = rs.getString("system_name");
                 pattern = rs.getString("pattern");
-                seriesList.add(new Series(name, id, pattern, system));
+                comment = rs.getString("comment");
+                seriesList.add(new Series(name, id, pattern, system, comment));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
