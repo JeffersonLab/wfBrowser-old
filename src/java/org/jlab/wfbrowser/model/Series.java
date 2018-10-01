@@ -5,10 +5,8 @@
  */
 package org.jlab.wfbrowser.model;
 
-import java.math.BigDecimal;
 import javax.json.Json;
 import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
 
 /**
  * Simple object for representing the lookup information for a single waveform
@@ -22,14 +20,20 @@ public class Series {
     private final int id;
     private final String pattern;
     private final String system;
+    private final String comment;
 
-    public Series(String name, int id, String pattern, String system) {
+    public Series(String name, int id, String pattern, String system, String comment) {
         this.name = name;
         this.id = id;
         this.pattern = pattern;
         this.system = system;
+        this.comment = comment;
     }
 
+    public String getComment() {
+        return comment;
+    }
+    
     public String getSystem() {
         return system;
     }
@@ -52,6 +56,7 @@ public class Series {
                 .add("seriesId", id)
                 .add("pattern", pattern)
                 .add("system", system)
+                .add("comment", comment)
                 .build();
     }
 }
