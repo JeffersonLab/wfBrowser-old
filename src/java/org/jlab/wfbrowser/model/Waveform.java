@@ -8,6 +8,8 @@ package org.jlab.wfbrowser.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -31,7 +33,7 @@ public class Waveform {
 
     private final List<Double> timeOffsets = new ArrayList<>();
     private final List<Double> values = new ArrayList<>();
-    private final SortedMap<Double, Double> points = new TreeMap<>();
+    private final NavigableMap<Double, Double> points = new TreeMap<>();
 
     public Waveform(String seriesName, List<Double> timeOffsets, List<Double> values) {
         if (timeOffsets.size() != values.size()) {
@@ -59,6 +61,29 @@ public class Waveform {
         return points.values();
     }
 
+    /**
+     * This method is returns the value of a waveform at a given offset, and allows for values to be queried for times when the
+     * buffer did not sample.  This is useful for "filling in" if waveforms were not sampled at exactly the same offset values.  If
+     * the requested offset is after the last point or before the first point, null is returned.
+     * @param timeOffset
+     * @return 
+     */
+    public Double getValueAtOffset(Double timeOffset) {
+        Double last = points.lastKey();
+        if (timeOffset > last) {
+            return null;
+        }
+        
+        // Check if the offset is directly represented.  I believe this is O(1).
+        if ( points.containsKey(timeOffset) ) {
+            return points.get(timeOffset);
+        }
+        
+        // Now we have to go searching for the point if it exists.
+        Entry<Double, Double> entry = points.floorEntry(timeOffset);
+        return entry == null ? null : entry.getValue();
+    }
+    
     public void addPoint(Double timeOffset, Double value) {
         if (timeOffset == null || value == null) {
             throw new IllegalArgumentException("Attempting to add point to waveform with null value");

@@ -5,6 +5,7 @@
  */
 package org.jlab.wfbrowser.model;
 
+import java.io.BufferedOutputStream;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -18,6 +19,13 @@ import javax.json.JsonObjectBuilder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 
 /**
@@ -40,6 +48,7 @@ public class Event {
     private final boolean archive;
     private final boolean delete;
     private final List<Waveform> waveforms;
+    private boolean areWaveformsConsistent = true;  // If all waveforms have the same set of time offsets.  Simplies certain data operaitons.
 
     public Event(long eventId, Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms) {
         this.eventId = eventId;
@@ -49,6 +58,8 @@ public class Event {
         this.archive = archive;
         this.delete = delete;
         this.waveforms = waveforms;
+
+        updateWaveformsConsistency();
     }
 
     public Event(Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms) {
@@ -58,6 +69,29 @@ public class Event {
         this.archive = archive;
         this.delete = delete;
         this.waveforms = waveforms;
+
+        updateWaveformsConsistency();
+    }
+
+    /**
+     * Check if the waveforms are consistent
+     *
+     * @return Whether the booleans
+     */
+    private void updateWaveformsConsistency() {
+        boolean consistent = true;
+        if (waveforms != null && !waveforms.isEmpty()) {
+            Set<Double> timeOffsets = new HashSet<>();
+            for (Waveform w : waveforms) {
+                if (timeOffsets.isEmpty()) {
+                    timeOffsets.addAll(w.getTimeOffsets());
+                } else if (!timeOffsets.equals(w.getTimeOffsets())) {
+                    consistent = false;
+                    break;
+                }
+            }
+        }
+        areWaveformsConsistent = consistent;
     }
 
     public boolean isDelete() {
@@ -148,6 +182,106 @@ public class Event {
     }
 
     /**
+     * Generate the contents of a CSV file that represents the waveform event
+     *
+     * @return A string representation of a CSV file representing the waveform
+     * event.
+     */
+    public String toCsv() {
+
+        if (waveforms == null || waveforms.isEmpty()) {
+            return null;
+        }
+
+        String csvOut;
+
+        if (areWaveformsConsistent) {
+            // 2D array for hold csv content - [rows][columns]
+            // +1 rows because of the header, +1 columns because of the time_offset column
+            String[][] csvData = new String[waveforms.get(0).getTimeOffsets().size() + 1][waveforms.size() + 1];
+
+            // Setup the header row
+            csvData[0][0] = "time_offset";
+            for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
+                csvData[0][j] = waveforms.get(j - 1).getSeriesName(); // j-1 since j-index includes the "time_offset" series
+            }
+
+            // Set up the time offset column
+            List<Double> tos = new ArrayList<>(waveforms.get(0).getTimeOffsets());
+            for (int i = 1, iMax = csvData.length; i < iMax; i++) {
+                csvData[i][0] = tos.get(i - 1).toString();
+            }
+
+            // Add in all of the waveform series information
+            for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
+                int i = 1;
+                Iterator<Double> it = waveforms.get(j - 1).getValues().iterator();
+                while (it.hasNext()) {
+                    csvData[i][j] = it.next().toString();
+                    i++;
+                }
+            }
+
+            // Generate the string representation of the CSV
+            List<String> csvRows = new ArrayList<>();
+            for (int i = 0, iMax = csvData.length; i < iMax; i++) {
+                csvRows.add(String.join(",", csvData[i]));
+            }
+            csvOut = String.join("\n", csvRows);
+            csvOut += "\n";
+        } else {  // The waveforms are not consistent.  Uses a slower general method involving "lookups" for compiling the CSV
+
+            System.out.println("Using generic approach");
+            SortedSet<Double> timeOffsetSet = new TreeSet<>();
+            for (Waveform w : waveforms) {
+                timeOffsetSet.addAll(w.getTimeOffsets());
+            }
+            List<Double> timeOffsets = new ArrayList<>();
+            for (Double t : timeOffsetSet) {
+                timeOffsets.add(t);
+            }
+
+            // 2D array for hold csv content - [rows][columns]
+            // +1 rows because of the header, +1 columns because of the time_offset column
+            String[][] csvData = new String[timeOffsets.size() + 1][waveforms.size() + 1];
+
+            // Setup the header row
+            csvData[0][0] = "time_offset";
+            for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
+                csvData[0][j] = waveforms.get(j - 1).getSeriesName(); // j-1 since j-index includes the "time_offset" series
+            }
+
+            // Set up the time offset column
+            List<Double> tos = new ArrayList<>(waveforms.get(0).getTimeOffsets());
+            for (int i = 1, iMax = csvData.length; i < iMax; i++) {
+                csvData[i][0] = tos.get(i - 1).toString();
+            }
+
+            // Add in all of the waveform series information
+            for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
+                for (int i = 1, iMax = csvData.length; i < iMax; i++) {
+                    csvData[i][j] = waveforms.get(j-1).getValueAtOffset(timeOffsets.get(i-1)).toString();
+                }
+                int i = 1;
+                Iterator<Double> it = waveforms.get(j - 1).getValues().iterator();
+                while (it.hasNext()) {
+                    csvData[i][j] = it.next().toString();
+                    i++;
+                }
+            }
+
+            // Generate the string representation of the CSV
+            List<String> csvRows = new ArrayList<>();
+            for (int i = 0, iMax = csvData.length; i < iMax; i++) {
+                csvRows.add(String.join(",", csvData[i]));
+            }
+            csvOut = String.join("\n", csvRows);
+            csvOut += "\n";
+        }
+        return csvOut;
+    }
+
+    /**
      * Events are considered equal if all of the metadata about the event are
      * equal. We currently do not enforce equality of waveform data, only that
      * an event has the same number of waveforms. The database should maintain
@@ -157,7 +291,8 @@ public class Event {
      * @return
      */
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o
+    ) {
         if (o == this) {
             return true;
         }

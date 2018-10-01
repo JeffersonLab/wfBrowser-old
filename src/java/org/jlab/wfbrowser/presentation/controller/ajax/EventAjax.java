@@ -25,6 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.jlab.wfbrowser.business.filter.WaveformFilter;
 import org.jlab.wfbrowser.business.service.WaveformService;
 import org.jlab.wfbrowser.business.util.TimeUtil;
+import org.jlab.wfbrowser.model.Event;
 
 /**
  *
@@ -48,7 +49,7 @@ public class EventAjax extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("application/json");
+        System.out.println("HERE");
         String[] eArray = request.getParameterValues("id");
         List<Long> eventIdList = null;
         if (eArray != null) {
@@ -69,10 +70,25 @@ public class EventAjax extends HttpServlet {
         Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
         Boolean delete = (del == null) ? null : del.equals("true");
-        Boolean includeData = Boolean.getBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
-        // TODO: test out these changes!!
+        Boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
+        String out = request.getParameter("out");
+
+        String output = "json";
+        if (out != null) {
+            switch (out) {
+                case "json":
+                    output = "json";
+                    break;
+                case "csv":
+                    output = "csv";
+                    break;
+                default:
+                    output = "json";
+            }
+        }
 
         if (eventIdList != null && eventIdList.isEmpty()) {
+            response.setContentType("application/json");
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 pw.write("{\"error\": \"No event IDs specified\"}");
@@ -84,43 +100,74 @@ public class EventAjax extends HttpServlet {
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
         WaveformFilter filter = new WaveformFilter(eventIdList, begin, end, system, location, archive, delete);
 
-        JsonObjectBuilder job = null;
-        try {
-            List<org.jlab.wfbrowser.model.Event> eventList;
-            if (includeData) {
-                eventList = wfs.getEventList(filter);
-            } else {
-                eventList = wfs.getEventListWithoutData(filter);
-            }
-            job = Json.createObjectBuilder();
-            JsonArrayBuilder jab = Json.createArrayBuilder();
-            for (org.jlab.wfbrowser.model.Event e : eventList) {
-                jab.add(e.toJsonObject());
-            }
-            job.add("events", jab.build());
-        } catch (SQLException ex) {
-            LOGGER.log(Level.SEVERE, "Error querying database");
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.print("{\"error\": \"error querying database - " + ex.getMessage() + "\"}");
-            }
-        } catch (FileNotFoundException ex) {
-            LOGGER.log(Level.SEVERE, "Error querying data - {0}", ex.getMessage());
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.print("{\"error\": \"error querying data - " + ex.getMessage() + "\"}");
-            }
+        // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
+        // the no data case.
+        List<Event> eventList;
+        if (output.equals("json")) {
+            System.out.println("json");
+            JsonObjectBuilder job = null;
+            try {
+                if (includeData) {
+                    eventList = wfs.getEventList(filter);
+                } else {
+                    eventList = wfs.getEventListWithoutData(filter);
+                }
+                job = Json.createObjectBuilder();
+                JsonArrayBuilder jab = Json.createArrayBuilder();
+                for (Event e : eventList) {
+                    jab.add(e.toJsonObject());
+                }
+                job.add("events", jab.build());
 
+                response.setContentType("application/json");
+                try (PrintWriter pw = response.getWriter()) {
+                    if (job != null) {
+                        pw.print(job.build().toString());
+                    } else {
+                        pw.print("{\"error\":\"null response\"}");
+                    }
+                }
+            } catch (SQLException ex) {
+                LOGGER.log(Level.SEVERE, "Error querying database");
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                try (PrintWriter pw = response.getWriter()) {
+                    pw.print("{\"error\": \"error querying database - " + ex.getMessage() + "\"}");
+                }
+            } catch (FileNotFoundException ex) {
+                LOGGER.log(Level.SEVERE, "Error querying data - {0}", ex.getMessage());
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                try (PrintWriter pw = response.getWriter()) {
+                    pw.print("{\"error\": \"error querying data - " + ex.getMessage() + "\"}");
+                }
+            }
+        } else if (output.equals("csv")) {
+            try {
+                if (includeData) {
+                    eventList = wfs.getEventList(filter);
+                } else {
+                    eventList = wfs.getEventListWithoutData(filter);
+                }
+                response.setContentType("text/csv");
+                // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
+                // for now.  Only used to send over a single event to a dygraph chart widget.
+                try (PrintWriter pw = response.getWriter()) {
+                    for (Event e : eventList) {
+                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty()))  {
+                            pw.write(e.toCsv());
+                        } else {
+                            pw.write("No data requested");
+                        }
+                        break;
+                    }
+                }
+            } catch (SQLException ex) {
+                LOGGER.log(Level.SEVERE, "Error querying database");
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                throw new ServletException("Error querying database");
+            }
         }
-
-        try (PrintWriter pw = response.getWriter()) {
-            if (job != null) {
-                pw.print(job.build().toString());
-            } else {
-                pw.print("{\"error\":\"null response\"}");
-            }
-        }
-
     }
 
     /**
@@ -155,7 +202,7 @@ public class EventAjax extends HttpServlet {
 
             Boolean arch = archive != null;
             Boolean del = delete != null;
-            org.jlab.wfbrowser.model.Event event = new org.jlab.wfbrowser.model.Event(t, location, system, arch, del, null);
+            Event event = new Event(t, location, system, arch, del, null);
             long id = wfs.addEvent(event, false);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
@@ -209,7 +256,7 @@ public class EventAjax extends HttpServlet {
             }
             return;
         }
-        
+
         Boolean archive = Boolean.parseBoolean(arch);
         Boolean delete = Boolean.parseBoolean(del);
 
@@ -218,14 +265,14 @@ public class EventAjax extends HttpServlet {
             // Cannot set an event to both be deleted and archived
             if (arch != null) {
                 wfs.setEventArchiveFlag(eventId, archive);
-                if ( archive == true) {
+                if (archive == true) {
                     wfs.setEventDeleteFlag(eventId, false);
                 }
             }
             // Cannot set an event to both be deleted and archived
             if (del != null) {
                 wfs.setEventDeleteFlag(eventId, delete);
-                if ( delete == true) {
+                if (delete == true) {
                     wfs.setEventArchiveFlag(eventId, false);
                 }
             }
