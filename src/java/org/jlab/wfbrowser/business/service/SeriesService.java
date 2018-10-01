@@ -66,9 +66,10 @@ public class SeriesService {
      * @param name The name of the series to lookup. Must be unique.
      * @param pattern The SQL "like" pattern to be used to match a series
      * @param system The system for which the pattern is intended
+     * @param comment A user created comment for the series
      * @throws java.sql.SQLException
      */
-    public void addSeries(String name, String pattern, String system) throws SQLException {
+    public void addSeries(String name, String pattern, String system, String comment) throws SQLException {
 
         String systemSql = "SELECT system_id FROM waveforms.system_type WHERE system_name = ?";
         Connection conn = null;
@@ -92,7 +93,7 @@ public class SeriesService {
             SqlUtil.close(rs, pstmt, conn);
         }
 
-        String sql = "INSERT INTO waveforms.series_patterns (pattern, series_name, system_id) VALUES (?,?,?)";
+        String sql = "INSERT INTO waveforms.series_patterns (pattern, series_name, system_id, comment) VALUES (?,?,?,?)";
         try {
             conn = SqlUtil.getConnection();
             conn.setAutoCommit(false);
@@ -100,6 +101,7 @@ public class SeriesService {
             pstmt.setString(1, pattern);
             pstmt.setString(2, name);
             pstmt.setInt(3, systemId);
+            pstmt.setString(4, comment);
             int n = pstmt.executeUpdate();
             if (n < 1) {
                 throw new SQLException("Error adding series to database.  No change made");
