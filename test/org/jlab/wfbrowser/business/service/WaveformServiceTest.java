@@ -106,14 +106,14 @@ public class WaveformServiceTest {
     }
 
     /**
-     * Test of addEvent method, of class WaveformService.
+     * Test of addEvent method, of class EventService.
      *
      * @throws java.lang.Exception
      */
     @Test
     public void test1AddEvent() throws Exception {
         System.out.println("addEvent");
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
 
         // Set the test class parameter for use in other tests
         eventId = instance.addEvent(e, false);
@@ -139,7 +139,7 @@ public class WaveformServiceTest {
     }
 
     /**
-     * Test of addEvent method, of class WaveformService. Testing with
+     * Test of addEvent method, of class EventService. Testing with
      * compressed event
      *
      * @throws java.lang.Exception
@@ -147,7 +147,7 @@ public class WaveformServiceTest {
     //@Test
     public void test1AddEventCompressed() throws Exception {
         System.out.println("addEvent");
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
 
         // Set the test class parameter for use in other tests
         eventIdCompressed = instance.addEvent(eCompressed, false);
@@ -165,7 +165,7 @@ public class WaveformServiceTest {
     }
 
     /**
-     * Test of getEventList method, of class WaveformService.
+     * Test of getEventList method, of class EventService.
      */
     @Test
     public void test2GetEventList() throws Exception {
@@ -175,31 +175,31 @@ public class WaveformServiceTest {
         expResult.add(e);
         eventIds.add(eventId);
 
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
         WaveformFilter filter = new WaveformFilter(eventIds, null, null, null, null, null, null);
         List<Event> result = instance.getEventList(filter);
         assertEquals(expResult, result);
     }
 
     /**
-     * Test of deleteEvent method, of class WaveformService.
+     * Test of deleteEvent method, of class EventService.
      */
     @Test
     public void test4SetEventDeleteFlag() throws Exception {
         System.out.println("deleteEvent");
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
         int expResult = 1;
         int result = instance.setEventDeleteFlag(eventId, true);
         assertEquals(expResult, result);
     }
 
     /**
-     * Test of setEventArchiveFlag method, of class WaveformService.
+     * Test of setEventArchiveFlag method, of class EventService.
      */
     @Test
     public void test3SetEventArchiveFlag() throws Exception {
         System.out.println("setEventArchiveFlag");
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
         int expResult = 1;
         int result = instance.setEventArchiveFlag(eventId, true);
         WaveformFilter filter = new WaveformFilter(Arrays.asList(eventId), null, null, null, null, null, null);
@@ -215,12 +215,12 @@ public class WaveformServiceTest {
 
     /**
      * Test of the addEventList, getEventList, and deleteEventList method of
-     * class WaveformService.
+ class EventService.
      */
     @Test
     public void test5AddGetDeleteEventList() throws Exception {
         System.out.println("addGetDeleteEventList");
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
         WaveformFilter filter = new WaveformFilter(null, now, end, "rf", "test", null, null);
 
         System.out.println("  addEventList");
@@ -252,7 +252,7 @@ public class WaveformServiceTest {
     @Test
     public void test6DeleteEvents() throws Exception {
         System.out.println("Deleting Test Events");
-        WaveformService instance = new WaveformService();
+        EventService instance = new EventService();
         instance.deleteEvent(eventId, true);
         for(long id : eventIds) {
             instance.deleteEvent(id, true);
