@@ -48,6 +48,7 @@ CREATE TABLE waveforms.event (
  * 8 cavities * 8000 datapoints/waveform * ~10 waveforms = 640,000 points per event.  Since we're sizing for 10^15 events,
 * 640,000 * 10^15 = 6.4 * 10^20.  Just go with 10^20 since 10^15 is already outlandishly large for what we're doing.
  */
+/*  This table is no longer used since all of the data is stored on disk.
 CREATE TABLE waveforms.data (
     data_id BIGINT NOT NULL AUTO_INCREMENT,
     event_id BIGINT NOT NULL,
@@ -59,6 +60,54 @@ CREATE TABLE waveforms.data (
         REFERENCES waveforms.event (event_id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
+*/
+
+/*
+ * This set of tables holds the rules for looking up event series data by a name to pattern matching routine.
+ */
+/* This holds the patterns that are used to match a generic series name "GMES" to a specific series 'R1N1WFSGMES' */
+CREATE TABLE waveforms.series_patterns (
+pattern_id BIGINT NOT NULL AUTO_INCREMENT,
+system_id INT(2) NOT NULL,
+pattern VARCHAR(255) NOT NULL,
+series_name VARCHAR(127) NOT NULL,
+UNIQUE KEY `series_name` (series_name),
+INDEX i_series_name(series_name),
+PRIMARY KEY (pattern_id),
+FOREIGN KEY fk_system_id (system_id)
+    REFERENCES waveforms.system_type (system_id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+/* This holds the list of named sets of series that a client may want to view together. */
+CREATE TABLE waveforms.series_sets (
+set_id BIGINT NOT NULL AUTO_INCREMENT,
+system_id INT(2) NOT NULL,
+set_name VARCHAR(127) NOT NULL,
+comment VARCHAR(2047) DEFAULT NULL,
+UNIQUE KEY `set_name` (set_name),
+INDEX i_set_name (set_name),
+PRIMARY KEY (set_id),
+FOREIGN KEY fk_system_id (system_id)
+    REFERENCES waveforms.system_type (system_id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+/* This is the lookup table of which named series are in a given series set. */
+CREATE TABLE waveforms.series_set_contents (
+content_id BIGINT NOT NULL AUTO_INCREMENT,
+pattern_id BIGINT NOT NULL,
+set_id BIGINT NOT NULL,
+INDEX i_set_id (set_id),
+PRIMARY KEY (content_id),
+FOREIGN KEY fk_pattern_id (pattern_id)
+    REFERENCES waveforms.series_patterns (pattern_id)
+    ON DELETE CASCADE,
+FOREIGN KEY fk_set_id (set_id)
+    REFERENCES waveforms.series_sets (set_id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 
 /*
  * Create the usual three user setup for this app wfb_owner, wfb_writer, wfb_reader, (unlimited, read/write, and read only users)
