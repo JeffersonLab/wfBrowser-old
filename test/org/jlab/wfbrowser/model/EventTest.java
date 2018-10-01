@@ -8,7 +8,6 @@ package org.jlab.wfbrowser.model;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +24,7 @@ public class EventTest {
     
     private final Event e1, e1a, e2, e3, e4;
     public EventTest() {
-                // Construct an example event for use in tests
+        // Construct an example event for use in tests
         List<Double> time1 = Arrays.asList(1.1, 2.1, 3.1);
         List<Double> vals1 = Arrays.asList(1.5, 2.5, 0.5);
         List<Double> time2 = Arrays.asList(100.1, 200.5, 300.3);
@@ -91,6 +90,20 @@ public class EventTest {
         assertEquals(expResult, result);
     }
 
+    @Test
+    public void testToCsv() {
+        System.out.println("toCsv");
+        String expResult = "time_offset,test1,test2\n"
+                + "1.1,1.5,\n"
+                + "2.1,2.5,\n"
+                + "3.1,0.5,\n"
+                + "100.1,,1.15\n"
+                + "200.5,,32.5\n"
+                + "300.3,,10.5\n";
+        String result = e2.toCsv();
+        assertEquals(expResult, result);
+    }
+    
     /**
      * Test of getEventTimeString method, of class Event.
      */
