@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+    <context-param>
+        <param-name>appName</param-name>
+        <param-value>Waveform Browser</param-value>
+    </context-param>
+    <context-param>
+        <param-name>appShortName</param-name>
+        <param-value>WFB</param-value>
+    </context-param>
+    <context-param>
+        <param-name>resourceVersionNumber</param-name>
+        <param-value>1</param-value>
+    </context-param>
+    <context-param>
+        <param-name>releaseNumber</param-name>
+        <param-value>0.1</param-value>
+    </context-param>
+    <context-param>
+        <param-name>releaseDate</param-name>
+        <param-value>26 Sep 2018</param-value>
+    </context-param>
+    <context-param>
+        <param-name>contentContact</param-name>
+        <param-value>Adam Carpenter (adamc)</param-value>
+    </context-param>
+    <context-param>
+        <param-name>technicalContact</param-name>
+        <param-value>Adam Carpenter (adamc)</param-value>
+    </context-param>
+    <context-param>
+        <param-name>documentationUrl</param-name>
+        <param-value>https://devweb.acc.jlab.org/twiki/bin/view/SWDocs</param-value>
+    </context-param>
+    <filter>
+        <filter-name>UrlRewriteFilter</filter-name>
+        <filter-class>org.tuckey.web.filters.urlrewrite.UrlRewriteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>UrlRewriteFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>FORWARD</dispatcher>
+    </filter-mapping>
+    <error-page>
+        <error-code>500</error-code>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <exception-type>java.lang.Throwable</exception-type>
+        <location>/error</location>
+    </error-page>
+    <session-config>
+        <session-timeout>480</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+            <secure>true</secure>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
+    <welcome-file-list>
+        <welcome-file>overview</welcome-file>
+    </welcome-file-list>
+    <security-constraint>
+        <display-name>Enforce SSL on login</display-name>
+        <web-resource-collection>
+            <web-resource-name>Secure Login</web-resource-name>
+            <description/>
+            <url-pattern>/login</url-pattern>
+            <url-pattern>/login/*</url-pattern>
+        </web-resource-collection>
+        <user-data-constraint>
+            <description/>
+            <transport-guarantee>CONFIDENTIAL</transport-guarantee>
+        </user-data-constraint>
+    </security-constraint>
+    <security-constraint>
+        <display-name>Enforce Admin on setup pages</display-name>
+        <web-resource-collection>
+            <web-resource-name>Setup Pages</web-resource-name>
+            <description/>
+            <url-pattern>/setup/*</url-pattern>
+        </web-resource-collection>
+        <auth-constraint>
+            <description/>
+            <role-name>ADMIN</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <login-config>
+        <auth-method>FORM</auth-method>
+        <realm-name>aceRealm</realm-name>
+        <form-login-config>
+            <form-login-page>/login</form-login-page>
+            <form-error-page>/login</form-error-page>
+        </form-login-config>
+    </login-config>
+    <security-role>
+        <description/>
+        <role-name>ADMIN</role-name>
+    </security-role>
+</web-app>

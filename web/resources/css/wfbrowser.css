@@ -1,0 +1,7 @@
+#page-header-logo {
+ background:url(../img/logo32x32.png) 0 0;
+ display:inline-block;
+ height:32px;
+ width:32px;
+ vertical-align:bottom
+}
