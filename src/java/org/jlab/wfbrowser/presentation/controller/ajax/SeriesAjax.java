@@ -9,10 +9,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -93,6 +90,7 @@ public class SeriesAjax extends HttpServlet {
         String system = request.getParameter("system");
         String name = request.getParameter("name");
         String pattern = request.getParameter("pattern");
+        String comment = request.getParameter("comment");
 
         String error = "";
         if (system == null || system.isEmpty()) {
@@ -114,7 +112,7 @@ public class SeriesAjax extends HttpServlet {
 
         SeriesService ss = new SeriesService();
         try {
-            ss.addSeries(name, pattern, system);
+            ss.addSeries(name, pattern, system, comment);
         } catch (SQLException e) {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
