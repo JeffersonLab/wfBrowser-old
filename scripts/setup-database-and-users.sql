@@ -66,8 +66,8 @@ CREATE TABLE waveforms.data (
  * This set of tables holds the rules for looking up event series data by a name to pattern matching routine.
  */
 /* This holds the patterns that are used to match a generic series name "GMES" to a specific series 'R1N1WFSGMES' */
-CREATE TABLE waveforms.series_patterns (
-pattern_id BIGINT NOT NULL AUTO_INCREMENT,
+CREATE TABLE waveforms.series (
+series_id BIGINT NOT NULL AUTO_INCREMENT,
 system_id INT(2) NOT NULL,
 pattern VARCHAR(255) NOT NULL,
 series_name VARCHAR(127) NOT NULL,
@@ -102,7 +102,7 @@ set_id BIGINT NOT NULL,
 INDEX i_set_id (set_id),
 PRIMARY KEY (content_id),
 FOREIGN KEY fk_pattern_id (pattern_id)
-    REFERENCES waveforms.series_patterns (pattern_id)
+    REFERENCES waveforms.series (series_id)
     ON DELETE CASCADE,
 FOREIGN KEY fk_set_id (set_id)
     REFERENCES waveforms.series_sets (set_id)
