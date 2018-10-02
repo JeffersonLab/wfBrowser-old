@@ -74,7 +74,7 @@ series_name VARCHAR(127) NOT NULL,
 description varchar(2047)  DEFAULT NULL,
 UNIQUE KEY `series_name` (series_name),
 INDEX i_series_name(series_name),
-PRIMARY KEY (pattern_id),
+PRIMARY KEY (series_id),
 FOREIGN KEY fk_system_id (system_id)
     REFERENCES waveforms.system_type (system_id)
     ON DELETE CASCADE
@@ -97,11 +97,11 @@ FOREIGN KEY fk_system_id (system_id)
 /* This is the lookup table of which named series are in a given series set. */
 CREATE TABLE waveforms.series_set_contents (
 content_id BIGINT NOT NULL AUTO_INCREMENT,
-pattern_id BIGINT NOT NULL,
+series_id BIGINT NOT NULL,
 set_id BIGINT NOT NULL,
 INDEX i_set_id (set_id),
 PRIMARY KEY (content_id),
-FOREIGN KEY fk_pattern_id (pattern_id)
+FOREIGN KEY fk_series_id (series_id)
     REFERENCES waveforms.series (series_id)
     ON DELETE CASCADE,
 FOREIGN KEY fk_set_id (set_id)
