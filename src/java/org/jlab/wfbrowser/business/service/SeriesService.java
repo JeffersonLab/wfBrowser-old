@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jlab.wfbrowser.business.filter.SeriesFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
@@ -26,74 +27,57 @@ public class SeriesService {
 
     public List<Series> getSeries(SeriesFilter filter) throws SQLException {
         List<Series> seriesList = new ArrayList<>();
-        
-        String sql = "SELECT pattern_id, system_name, pattern, series_name, comment"
+
+        String sql = "SELECT series_id, system_name, pattern, series_name, description"
                 + " FROM waveforms.series_patterns"
                 + " JOIN waveforms.system_type"
                 + " ON system_type.system_id = series_patterns.system_id";
         sql += filter.getWhereClause();
-        
+
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
-        
+
         try {
             conn = SqlUtil.getConnection();
             pstmt = conn.prepareStatement(sql);
             filter.assignParameterValues(pstmt);
             rs = pstmt.executeQuery();
-            
-            String name, system, pattern, comment;
+
+            String name, system, pattern, description;
             int id;
-            while(rs.next()) {
-                id = rs.getInt("pattern_id");
+            while (rs.next()) {
+                id = rs.getInt("series_id");
                 name = rs.getString("series_name");
                 system = rs.getString("system_name");
                 pattern = rs.getString("pattern");
-                comment = rs.getString("comment");
-                seriesList.add(new Series(name, id, pattern, system, comment));
+                description = rs.getString("description");
+                seriesList.add(new Series(name, id, pattern, system, description));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
         }
-        
+
         return seriesList;
     }
-    
+
     /**
      * Add a named series lookup pattern to the database
      *
      * @param name The name of the series to lookup. Must be unique.
      * @param pattern The SQL "like" pattern to be used to match a series
      * @param system The system for which the pattern is intended
-     * @param comment A user created comment for the series
+     * @param description A user created description for the series
      * @throws java.sql.SQLException
      */
-    public void addSeries(String name, String pattern, String system, String comment) throws SQLException {
+    public void addSeries(String name, String pattern, String system, String description) throws SQLException {
+        SystemService ss = new SystemService();
+        int systemId = ss.getSystemId(system);
 
-        String systemSql = "SELECT system_id FROM waveforms.system_type WHERE system_name = ?";
         Connection conn = null;
         PreparedStatement pstmt = null;
-        ResultSet rs = null;
 
-        int systemId = -1; // -1 shouldn't match any system in the database.
-        try {
-            conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(systemSql);
-            pstmt.setString(1, system);
-            rs = pstmt.executeQuery();
-            while (rs.next()) {
-                systemId = rs.getInt("system_id");
-                if (!rs.isAfterLast()) {
-                    // A system name should be unique.  If it isn't, then throw an error.
-                    throw new SQLException("System name matched more than one system ID");
-                }
-            }
-        } finally {
-            SqlUtil.close(rs, pstmt, conn);
-        }
-
-        String sql = "INSERT INTO waveforms.series_patterns (pattern, series_name, system_id, comment) VALUES (?,?,?,?)";
+        String sql = "INSERT INTO waveforms.series_patterns (pattern, series_name, system_id, description) VALUES (?,?,?,?)";
         try {
             conn = SqlUtil.getConnection();
             conn.setAutoCommit(false);
@@ -101,7 +85,7 @@ public class SeriesService {
             pstmt.setString(1, pattern);
             pstmt.setString(2, name);
             pstmt.setInt(3, systemId);
-            pstmt.setString(4, comment);
+            pstmt.setString(4, description);
             int n = pstmt.executeUpdate();
             if (n < 1) {
                 throw new SQLException("Error adding series to database.  No change made");
@@ -112,6 +96,69 @@ public class SeriesService {
         } finally {
             SqlUtil.close(pstmt, conn);
         }
+    }
 
+    public void updateSeries(int seriesId, String name, String pattern, String description, String system) throws SQLException {
+        SystemService ss = new SystemService();
+        int systemId = ss.getSystemId(system);
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        String sql = "UPDATE waveforms.series_patterns (pattern, series_name, system_id, description) VALUES (?,?,?,?) "
+                + "WHERE series_id = ?";
+        try {
+            conn = SqlUtil.getConnection();
+            conn.setAutoCommit(false);
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, pattern);
+            pstmt.setString(2, name);
+            pstmt.setInt(3, systemId);
+            pstmt.setString(4, description);
+            pstmt.setInt(5, seriesId);
+            int n = pstmt.executeUpdate();
+            if (n < 1) {
+                conn.rollback();
+                String msg = "Error adding series to database.  No change made.";
+                LOGGER.log(Level.WARNING, msg);
+                throw new SQLException("msg");
+            } else if (n > 1) {
+                conn.rollback();
+                String msg = "Error adding series to database.  More than one row would be updated.  No changes made.";
+                LOGGER.log(Level.WARNING, msg);
+                throw new SQLException(msg);
+            }
+        } finally {
+            SqlUtil.close(pstmt, conn);
+        }
+    }
+
+    public void deleteSeries(int seriesId) throws SQLException {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        String sql = "DELETE FROM waveforms.series_patterns WHERE series_id = ?";
+
+        try {
+            conn = SqlUtil.getConnection();
+            conn.setAutoCommit(false);
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, seriesId);
+            int numUpdates = pstmt.executeUpdate();
+            if (numUpdates < 1) {
+                conn.rollback();
+                String msg = "Error deleting series.  No series were deleted.  No changes made.";
+                LOGGER.log(Level.WARNING, msg);
+                throw new SQLException(msg);
+            }
+            if (numUpdates > 1) {
+                conn.rollback();
+                String msg = "Error deleting series.  More than one series would have been deleted. No changes made.";
+                LOGGER.log(Level.WARNING, msg);
+                throw new SQLException(msg);
+            }
+        } finally {
+            SqlUtil.close(pstmt, conn);
+        }
     }
 }
