@@ -90,7 +90,7 @@ public class SeriesAjax extends HttpServlet {
         String system = request.getParameter("system");
         String name = request.getParameter("name");
         String pattern = request.getParameter("pattern");
-        String comment = request.getParameter("comment");
+        String description = request.getParameter("description");
 
         String error = "";
         if (system == null || system.isEmpty()) {
@@ -112,7 +112,7 @@ public class SeriesAjax extends HttpServlet {
 
         SeriesService ss = new SeriesService();
         try {
-            ss.addSeries(name, pattern, system, comment);
+            ss.addSeries(name, pattern, system, description);
         } catch (SQLException e) {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
