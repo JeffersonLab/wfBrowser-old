@@ -166,13 +166,14 @@ public class EventService {
      * database.
      *
      * @param e The Event to add to the database
-     * @param force Add to the database even if the data cannot be found on disk
+     * @param force Add to the database even if the data cannot be found on
+     * disk. Mostly to make testing easier.
      * @return The eventId of the new entry in the database corresponding to the
      * row in the event table.
      * @throws FileNotFoundException
      * @throws SQLException
      */
-    public long addEvent(Event e, boolean force) throws FileNotFoundException, SQLException {
+    public long addEvent(Event e, boolean force) throws FileNotFoundException, SQLException, IOException {
         if (force == false) {
             Path eventDir = dataDir.resolve(e.getRelativeFilePath());
             Path eventArchive = dataDir.resolve(e.getRelativeArchivePath());
@@ -181,6 +182,9 @@ public class EventService {
                         + eventDir.toString() + "' or '" + eventArchive.toString() + "' not found.");
             }
         }
+
+        List<Waveform> waveformList = getWaveformsFromDisk(e, force);
+
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -241,6 +245,21 @@ public class EventService {
                 throw new RuntimeException("Error querying database for last inserted event_id");
             }
 
+            // In testing mode (force/ignoreErrors == true), waveformList could be null.
+            if (waveformList != null) {
+                String seriesSql = "INSERT INTO event_series (event_id, waveform_name) VALUES(?,?)";
+                pstmt = conn.prepareStatement(seriesSql);
+                for (Waveform w : waveformList) {
+                    pstmt.setLong(1, eventId);
+                    pstmt.setString(2, w.getSeriesName());
+                    int numUpdated = pstmt.executeUpdate();
+                    if (numUpdated != 1) {
+                        conn.rollback();
+                        throw new SQLException("Error adding waveform metadata to database.");
+                    }
+                    pstmt.clearParameters();
+                }
+            }
             conn.commit();
         } finally {
             SqlUtil.close(rs, pstmt, conn);
@@ -249,8 +268,40 @@ public class EventService {
     }
 
     /**
+     * Method for reading parsing on disk event data into a list of event
+     * waveform objects
+     *
+     * @param event The event for which we are parsing data
+     * @param ignoreErrors Whether or not to throw exception and log data if the
+     * files cannot be found.
+     * @return The event data as a list of waveforms
+     * @throws IOException
+     */
+    private List<Waveform> getWaveformsFromDisk(Event event, boolean ignoreErrors) throws IOException {
+        List<Waveform> waveformList = null;
+
+        if (event == null) {
+            return null;
+        }
+
+        Path eventDir = dataDir.resolve(event.getRelativeFilePath());
+        Path eventArchive = dataDir.resolve(event.getRelativeArchivePath());
+        LOGGER.log(Level.FINEST, "Looking for data at {0}, {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
+        if (Files.exists(eventDir)) {
+            waveformList = parseWaveformData(eventDir);
+        } else if (Files.exists(eventArchive)) {
+            waveformList = parseCompressedWaveformData(eventArchive);
+        } else if (!ignoreErrors) {
+            LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
+            throw new FileNotFoundException("Could not locate data files for requested event");
+        }
+
+        return waveformList;
+    }
+
+    /**
      * Returns the event object mapping to the event records with eventId from
-     * the database.
+     * the database. Simple wrapper that does not ignore errors.
      *
      * @param filter
      * @return
@@ -258,6 +309,21 @@ public class EventService {
      * @throws java.io.IOException
      */
     public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
+        return getEventList(filter, false);
+    }
+
+    /**
+     * Returns the event object mapping to the event records with eventId from
+     * the database.
+     *
+     * @param filter
+     * @param ignoreErrors Whether or not to ignore errors when parsing waveform
+     * data on disk. Used for testing only.
+     * @return
+     * @throws SQLException
+     * @throws java.io.IOException
+     */
+    public List<Event> getEventList(EventFilter filter, boolean ignoreErrors) throws SQLException, IOException {
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -283,7 +349,7 @@ public class EventService {
                 system = rs.getString("system_name");
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
-                
+
                 if (eventId == null || location == null || system == null || archive == null) {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
@@ -293,19 +359,7 @@ public class EventService {
             }
 
             for (Event e : eventList) {
-                Path eventDir = dataDir.resolve(e.getRelativeFilePath());
-                Path eventArchive = dataDir.resolve(e.getRelativeArchivePath());
-                LOGGER.log(Level.FINEST, "Looking for data at {0}, {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
-                List<Waveform> waveformList;
-                if (Files.exists(eventDir)) {
-                    waveformList = parseWaveformData(eventDir);
-                } else if (Files.exists(eventArchive)) {
-                    waveformList = parseCompressedWaveformData(eventArchive);
-                } else {
-                    LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
-                    throw new FileNotFoundException("Could not locate data files for requested event");
-                }
-                e.getWaveforms().addAll(waveformList);
+                e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors));
             }
         } finally {
             SqlUtil.close(pstmt, conn, rs);
@@ -413,7 +467,7 @@ public class EventService {
      * @throws SQLException
      * @throws java.io.FileNotFoundException
      */
-    public int addEventList(List<Event> eventList, boolean force) throws SQLException, FileNotFoundException {
+    public int addEventList(List<Event> eventList, boolean force) throws SQLException, FileNotFoundException, IOException {
         long eventId;
         int numAdded = 0;
         for (Event e : eventList) {
