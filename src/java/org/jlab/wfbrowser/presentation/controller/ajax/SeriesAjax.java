@@ -91,7 +91,7 @@ public class SeriesAjax extends HttpServlet {
         String name = request.getParameter("name");
         String pattern = request.getParameter("pattern");
         String description = request.getParameter("description");
-
+System.out.println(description);
         String error = "";
         if (system == null || system.isEmpty()) {
             error += " system";

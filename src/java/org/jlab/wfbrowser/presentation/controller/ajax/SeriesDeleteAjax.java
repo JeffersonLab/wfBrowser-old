@@ -21,10 +21,10 @@ import org.jlab.wfbrowser.business.service.SeriesService;
  *
  * @author adamc
  */
-@WebServlet(name = "SeriesAddAjax", urlPatterns = {"/ajax/series-update"})
-public class SeriesUpdateAjax extends HttpServlet {
+@WebServlet(name = "SeriesDeleteAjax", urlPatterns = {"/ajax/series-delete"})
+public class SeriesDeleteAjax extends HttpServlet {
 
-    private static final Logger LOGGER = Logger.getLogger(SeriesUpdateAjax.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(SeriesDeleteAjax.class.getName());
 
     /**
      * Handles the HTTP <code>POST</code> method.
@@ -38,17 +38,12 @@ public class SeriesUpdateAjax extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String id = request.getParameter("id");
-        String system = request.getParameter("system");
-        String name = request.getParameter("name");
-        String pattern = request.getParameter("pattern");
-        String description = request.getParameter("description");
 
-        if (id == null || system == null || system.isEmpty() || name == null || name.isEmpty() || pattern == null || pattern.isEmpty()
-                || description == null || description.isEmpty()) {
+        if (id == null || id.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType("application/json");
             try (PrintWriter pw = response.getWriter()) {
-                pw.write("{\"error\":\"Missing required parameters - id, system, name, pattern, or description\"}");
+                pw.write("{\"error\":\"Missing required parameter - id\"}");
             }
             return;
         }
@@ -67,10 +62,10 @@ public class SeriesUpdateAjax extends HttpServlet {
 
         SeriesService ss = new SeriesService();
         try {
-            ss.updateSeries(seriesId, name, pattern, description, system);
+            ss.deleteSeries(seriesId);
         } catch (SQLException ex) {
             String msg = "Error udpating database - " + ex.getMessage();
-            LOGGER.log(Level.WARNING, ex.toString());
+            LOGGER.log(Level.WARNING, msg);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.setContentType("application/json");
             try (PrintWriter pw = response.getWriter()) {
@@ -80,18 +75,8 @@ public class SeriesUpdateAjax extends HttpServlet {
         }
         
         try (PrintWriter pw = response.getWriter()) {
-            pw.print("{\"message\":\"Successful update\"}");
+            pw.print("{\"message\":\"Successful deletion\"}");
         }
     }
-
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
 
 }
