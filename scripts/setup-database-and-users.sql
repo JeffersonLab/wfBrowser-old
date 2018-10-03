@@ -63,6 +63,21 @@ CREATE TABLE waveforms.data (
 */
 
 /*
+ * This table is used to track which waveforms an event contains.  Enables easy per series lookup for UI.
+ */
+Create Table: CREATE TABLE `event_series` (
+  `es_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `event_id` bigint(20) NOT NULL,
+  `waveform_name` varchar(47) COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`es_id`),
+  UNIQUE KEY `waveform_name` (`event_id`,`waveform_name`),
+  FOREIGN KEY fk_event_id (event_id)
+    REFERENCES waveforms.event (`event_id`) 
+    ON DELETE CASCADE
+) ENGINE=InnoDB
+
+
+/*
  * This set of tables holds the rules for looking up event series data by a name to pattern matching routine.
  */
 /* This holds the patterns that are used to match a generic series name "GMES" to a specific series 'R1N1WFSGMES' */
