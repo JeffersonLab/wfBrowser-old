@@ -54,20 +54,6 @@
                         <li${'/help' eq currentPath ? ' class="current-primary"' : ''}>
                             <a href="${pageContext.request.contextPath}/help">Help</a>
                         </li>
-                        <!--<li${fn:startsWith(currentPath, '/features') ? ' class="current-primary"' : ''}>-->
-                            <!--<a href="${pageContext.request.contextPath}/features/multiselect-datatable">Features</a>-->
-                        <!--</li>-->                        
-                        <!--<li${fn:startsWith(currentPath, '/breadcrumbs') ? ' class="current-primary"' : ''}>-->
-                            <!--<a href="${pageContext.request.contextPath}/breadcrumbs/crumb-one">Breadcrumbs</a>-->
-                        <!--</li>-->                        
-                        <!--<li${fn:startsWith(currentPath, '/reports') ? ' class="current-primary"' : ''}>-->
-                            <!--<a href="${pageContext.request.contextPath}/reports/report-one">Reports</a>-->
-                        <!--</li>-->                    
-                        <%--<c:if test="${pageContext.request.isUserInRole('ADMIN')}">--%>
-                            <!--<li${fn:startsWith(currentPath, '/setup') ? ' class="current-primary"' : ''}>-->
-                                <!--<a href="${pageContext.request.contextPath}/setup/setup-one">Setup</a>-->
-                            <!--</li>-->            
-                        <%--</c:if>--%>
                     </ul>
                 </nav>                
             </header>
