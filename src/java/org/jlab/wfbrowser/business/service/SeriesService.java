@@ -29,9 +29,9 @@ public class SeriesService {
         List<Series> seriesList = new ArrayList<>();
 
         String sql = "SELECT series_id, system_name, pattern, series_name, description"
-                + " FROM waveforms.series_patterns"
+                + " FROM waveforms.series"
                 + " JOIN waveforms.system_type"
-                + " ON system_type.system_id = series_patterns.system_id";
+                + " ON system_type.system_id = series.system_id";
         sql += filter.getWhereClause();
 
         Connection conn = null;
@@ -77,7 +77,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "INSERT INTO waveforms.series_patterns (pattern, series_name, system_id, description) VALUES (?,?,?,?)";
+        String sql = "INSERT INTO waveforms.series (pattern, series_name, system_id, description) VALUES (?,?,?,?)";
         try {
             conn = SqlUtil.getConnection();
             conn.setAutoCommit(false);
@@ -105,7 +105,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "UPDATE waveforms.series_patterns (pattern, series_name, system_id, description) VALUES (?,?,?,?) "
+        String sql = "UPDATE waveforms.series set pattern = ?, series_name = ?, system_id = ?, description = ? "
                 + "WHERE series_id = ?";
         try {
             conn = SqlUtil.getConnection();
@@ -137,7 +137,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "DELETE FROM waveforms.series_patterns WHERE series_id = ?";
+        String sql = "DELETE FROM waveforms.series WHERE series_id = ?";
 
         try {
             conn = SqlUtil.getConnection();
