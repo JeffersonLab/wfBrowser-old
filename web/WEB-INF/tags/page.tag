@@ -67,10 +67,10 @@
         <script type="text/javascript" src="//cdn.acc.jlab.org/jquery-ui/1.10.3/jquery-ui.min.js"></script>  
         <script type="text/javascript" src="//cdn.acc.jlab.org/uri/uri-1.14.1.min.js"></script>        
         <script type="text/javascript" src="//cdn.acc.jlab.org/jlab-theme/smoothness/1.6/js/smoothness.min.js"></script>        
-        <script type="text/javascript" src="${pageContext.request.contextPath}/resources/js/wfbrowser.js"/>
         <script type="text/javascript">
-            jlab.contextPath = '${pageContext.request.contextPath}';
+            jlab.contextPath = "${pageContext.request.contextPath}";
         </script>
+        <script type="text/javascript" src="${pageContext.request.contextPath}/resources/js/wfbrowser.js"/>
         <jsp:invoke fragment="scripts"/>        
     </body>
 </html>
