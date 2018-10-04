@@ -67,11 +67,34 @@ public class TimeUtil {
         return out;
     }
 
+    /**
+     * Return an instant from a datetime string. Expects format of "yyyy-MM-dd
+     * HH:mm:ss.S"
+     *
+     * @param datetime The string containing the date and time to convert.
+     * @return The Instant based on interpreting the string using the system
+     * default ZoneId.
+     */
     public static Instant getInstantFromDateTimeString(String datetime) {
         if (datetime == null) {
             return null;
         }
         Instant t = LocalDateTime.parse(datetime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S")).atZone(ZoneId.systemDefault()).toInstant();
+        return t;
+    }
+
+    /**
+     * Return an instant from a datetime string. Expects format of "yyyy-MM-dd".
+     *
+     * @param date The string containing the date to convert.
+     * @return The Instant based on interpreting the string using the system
+     * default ZoneId.
+     */
+    public static Instant getInstantFromDateString(String date) {
+        if (date == null) {
+            return null;
+        }
+        Instant t = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atZone(ZoneId.systemDefault()).toInstant();
         return t;
     }
 }
