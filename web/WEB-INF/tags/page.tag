@@ -70,7 +70,7 @@
         <script type="text/javascript">
             jlab.contextPath = "${pageContext.request.contextPath}";
         </script>
-        <script type="text/javascript" src="${pageContext.request.contextPath}/resources/js/wfbrowser.js"/>
+        <script type="text/javascript" src="${pageContext.request.contextPath}/resources/js/wfbrowser.js"></script>
         <jsp:invoke fragment="scripts"/>        
     </body>
 </html>
