@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -105,7 +106,7 @@ public class TimeUtil {
      */
     public static void validateDateString(String date) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        LocalDateTime t = LocalDateTime.parse(date, dtf);
+        LocalDate t = LocalDate.parse(date, dtf);
         String d = dtf.format(t);
         if (!d.equals(date)) {
             throw new RuntimeException("Unexpected date format");
