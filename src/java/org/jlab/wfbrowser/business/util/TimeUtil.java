@@ -97,4 +97,18 @@ public class TimeUtil {
         Instant t = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atZone(ZoneId.systemDefault()).toInstant();
         return t;
     }
+    
+    /**
+     * Performs a simple validation of a date string of format "yyyy-MM-dd" by converting it to a LocalDateTime and back.  If
+     * the two strings are equal and no exceptions where thrown then all is probably good.  If not, an exception will be thrown.
+     * @param date The date string to validate
+     */
+    public static void validateDateString(String date) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDateTime t = LocalDateTime.parse(date, dtf);
+        String d = dtf.format(t);
+        if (!d.equals(date)) {
+            throw new RuntimeException("Unexpected date format");
+        }
+    }
 }
