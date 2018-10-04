@@ -268,6 +268,53 @@ public class EventService {
     }
 
     /**
+     * This method returns a List of named series that were recorded for the specified List of events
+     * @param eventIdList A list of event IDs for which we want the recorded named series
+     * @return A list of the names of the series that are available for the specified events
+     * @throws SQLException 
+     */
+    public List<String> getSeriesNames(List<Long> eventIdList) throws SQLException {
+        List<String> out = new ArrayList<>();
+        if (eventIdList == null || eventIdList.isEmpty()) {
+            return out;
+        }
+        
+        // This is a little complex.  Perform a subquery / derived table on the event IDs to cut down on the amount of data we process.
+        // Then join on the series and event_series tables where the waveform name (PV) matches the specified pattern.  This should
+        // only return rowns where we had a non-zero number of matches.
+        String sql = "SELECT series_name, COUNT(*) FROM"
+                + " (SELECT * FROM event_series WHERE event_id IN (?";
+        for (int i = 1; i < eventIdList.size(); i++) {
+            sql += ",?";
+        }
+        sql += ")) derived_table"
+                + " JOIN series ON derived_table.waveform_name LIKE series.pattern"
+                + " GROUP BY series_name"
+                + " ORDER BY series_name ";
+        
+        Connection conn = null;
+        PreparedStatement pstmt=  null;
+        ResultSet rs = null;
+        
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            for(int i = 1; i <= eventIdList.size(); i ++) {
+                // prepared statement parameters are 1-indexed, but lists are 0-indexed
+                pstmt.setLong(i, eventIdList.get(i-1));
+            }
+            rs = pstmt.executeQuery();
+            while(rs.next()) {
+                out.add(rs.getString("series_name"));
+            }
+        } finally {
+            SqlUtil.close(rs, pstmt, conn);
+        }
+        
+        return out;
+    }
+
+    /**
      * Method for reading parsing on disk event data into a list of event
      * waveform objects
      *
