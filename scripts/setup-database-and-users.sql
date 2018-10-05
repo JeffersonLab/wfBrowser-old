@@ -71,6 +71,7 @@ Create Table: CREATE TABLE `event_series` (
   `waveform_name` varchar(47) NOT NULL,
   PRIMARY KEY (`es_id`),
   UNIQUE KEY `waveform_name` (`event_id`,`waveform_name`),
+  INDEX i_waveform_name (waveform_name),
   FOREIGN KEY fk_event_id (event_id)
     REFERENCES waveforms.event (`event_id`) 
     ON DELETE CASCADE

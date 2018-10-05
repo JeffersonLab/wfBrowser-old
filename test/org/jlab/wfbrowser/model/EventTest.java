@@ -30,7 +30,9 @@ public class EventTest {
         List<Double> time2 = Arrays.asList(100.1, 200.5, 300.3);
         List<Double> vals2 = Arrays.asList(1.15, 32.5, 10.5);
         Waveform w1 = new Waveform("test1", time1, vals1);
+        w1.addSeriesName("test1");
         Waveform w2 = new Waveform("test2", time2, vals2);
+        w2.addSeriesName("test2");
         List<Waveform> waveforms = new ArrayList<>();
         waveforms.add(w1);
         waveforms.add(w2);
@@ -100,7 +102,8 @@ public class EventTest {
                 + "100.1,,1.15\n"
                 + "200.5,,32.5\n"
                 + "300.3,,10.5\n";
-        String result = e2.toCsv();
+//        String result = e2.toCsv(Arrays.asList(new String[]{"test1","test2"}));
+        String result = e2.toCsv(null);
         assertEquals(expResult, result);
     }
     

@@ -23,7 +23,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -251,7 +253,7 @@ public class EventService {
                 pstmt = conn.prepareStatement(seriesSql);
                 for (Waveform w : waveformList) {
                     pstmt.setLong(1, eventId);
-                    pstmt.setString(2, w.getSeriesName());
+                    pstmt.setString(2, w.getWaveformName());
                     int numUpdated = pstmt.executeUpdate();
                     if (numUpdated != 1) {
                         conn.rollback();
@@ -268,17 +270,21 @@ public class EventService {
     }
 
     /**
-     * This method returns a List of named series that were recorded for the specified List of events
-     * @param eventIdList A list of event IDs for which we want the recorded named series
-     * @return A list of the names of the series that are available for the specified events
-     * @throws SQLException 
+     * This method returns a List of named series that were recorded for the
+     * specified List of events
+     *
+     * @param eventIdList A list of event IDs for which we want the recorded
+     * named series
+     * @return A list of the names of the series that are available for the
+     * specified events
+     * @throws SQLException
      */
     public List<String> getSeriesNames(List<Long> eventIdList) throws SQLException {
         List<String> out = new ArrayList<>();
         if (eventIdList == null || eventIdList.isEmpty()) {
             return out;
         }
-        
+
         // This is a little complex.  Perform a subquery / derived table on the event IDs to cut down on the amount of data we process.
         // Then join on the series and event_series tables where the waveform name (PV) matches the specified pattern.  This should
         // only return rowns where we had a non-zero number of matches.
@@ -291,26 +297,26 @@ public class EventService {
                 + " JOIN series ON derived_table.waveform_name LIKE series.pattern"
                 + " GROUP BY series_name"
                 + " ORDER BY series_name ";
-        
+
         Connection conn = null;
-        PreparedStatement pstmt=  null;
+        PreparedStatement pstmt = null;
         ResultSet rs = null;
-        
+
         try {
             conn = SqlUtil.getConnection();
             pstmt = conn.prepareStatement(sql);
-            for(int i = 1; i <= eventIdList.size(); i ++) {
+            for (int i = 1; i <= eventIdList.size(); i++) {
                 // prepared statement parameters are 1-indexed, but lists are 0-indexed
-                pstmt.setLong(i, eventIdList.get(i-1));
+                pstmt.setLong(i, eventIdList.get(i - 1));
             }
             rs = pstmt.executeQuery();
-            while(rs.next()) {
+            while (rs.next()) {
                 out.add(rs.getString("series_name"));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
         }
-        
+
         return out;
     }
 
@@ -360,6 +366,39 @@ public class EventService {
     }
 
     /**
+     * Returns a map of waveform names to common series names for a given event.
+     *
+     * @param eventId
+     * @return
+     */
+    public Map<String, String> getWaveformToSeriesMap(long eventId) throws SQLException {
+        Map<String, String> waveformToSeries = new HashMap<>();
+        String sql = "SELECT waveform_name, series_name"
+                + " FROM event_series"
+                + " JOIN series ON event_series.waveform_name LIKE series.pattern"
+                + " WHERE event_id = ?";
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setLong(1, eventId);
+            rs = pstmt.executeQuery();
+            while (rs.next()) {
+                String waveformName = rs.getString("waveform_name");
+                String seriesName = rs.getString("series_name");
+                waveformToSeries.put(waveformName, seriesName);
+            }
+        } finally {
+            SqlUtil.close(rs, pstmt, conn);
+        }
+        return waveformToSeries;
+    }
+
+    /**
      * Returns the event object mapping to the event records with eventId from
      * the database.
      *
@@ -405,8 +444,31 @@ public class EventService {
                 }
             }
 
+            // Get the set of waveform to series name mappings and apply them to the 
+            String mapSql = "SELECT waveform_name, series_name"
+                    + " FROM event_series"
+                    + " JOIN series ON event_series.waveform_name LIKE series.pattern"
+                    + " WHERE event_id = ?";
+            pstmt = conn.prepareStatement(mapSql);
+
             for (Event e : eventList) {
                 e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors));
+
+                // Get the mapping
+                Map<String, List<String>> waveformToSeries = new HashMap<>();
+                pstmt.setLong(1, e.getEventId());
+                rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    String waveformName = rs.getString("waveform_name");
+                    String seriesName = rs.getString("series_name");
+                    if (waveformToSeries.get(waveformName) == null) {
+                        waveformToSeries.put(waveformName, new ArrayList<>());
+                    }
+                    waveformToSeries.get(waveformName).add(seriesName);
+                }
+                for(Waveform w : e.getWaveforms()) {
+                    w.applyWaveformToSeriesMappings(waveformToSeries);
+                }
             }
         } finally {
             SqlUtil.close(pstmt, conn, rs);

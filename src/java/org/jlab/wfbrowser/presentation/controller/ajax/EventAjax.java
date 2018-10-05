@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,7 +50,6 @@ public class EventAjax extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        System.out.println("HERE");
         String[] eArray = request.getParameterValues("id");
         List<Long> eventIdList = null;
         if (eArray != null) {
@@ -71,8 +71,13 @@ public class EventAjax extends HttpServlet {
         String del = request.getParameter("toDelete");
         Boolean delete = (del == null) ? null : del.equals("true");
         Boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
-        String out = request.getParameter("out");
+        String[] series = request.getParameterValues("series");
+        List<String> seriesList = null;
+        if (series != null) {
+            seriesList = Arrays.asList(series);
+        }
 
+        String out = request.getParameter("out");
         String output = "json";
         if (out != null) {
             switch (out) {
@@ -104,7 +109,6 @@ public class EventAjax extends HttpServlet {
         // the no data case.
         List<Event> eventList;
         if (output.equals("json")) {
-            System.out.println("json");
             JsonObjectBuilder job = null;
             try {
                 if (includeData) {
@@ -115,7 +119,7 @@ public class EventAjax extends HttpServlet {
                 job = Json.createObjectBuilder();
                 JsonArrayBuilder jab = Json.createArrayBuilder();
                 for (Event e : eventList) {
-                    jab.add(e.toJsonObject());
+                    jab.add(e.toJsonObject(seriesList));
                 }
                 job.add("events", jab.build());
 
@@ -154,8 +158,8 @@ public class EventAjax extends HttpServlet {
                 // for now.  Only used to send over a single event to a dygraph chart widget.
                 try (PrintWriter pw = response.getWriter()) {
                     for (Event e : eventList) {
-                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty()))  {
-                            pw.write(e.toCsv());
+                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+                            pw.write(e.toCsv(seriesList));
                         } else {
                             pw.write("No data requested");
                         }

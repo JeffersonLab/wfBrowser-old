@@ -145,15 +145,27 @@ public class Event {
     }
 
     /**
+     * Generate a json object representing an event. Simple wrapper on
+     * toJsonObject(List &;lt seriesList &;gt) that does no series filtering.
+     *
+     * @return
+     */
+    public JsonObject toJsonObject() {
+        return toJsonObject(null);
+    }
+
+    /**
      * Generate a json object representing an event. Only include a waveforms
      * parameter/array if the waveforms list isn't null. Only use this method if
      * you're returning a Event that came from the data or has an associated
      * database event_id value, since it doesn't make any sense to hand out
      * "unofficial" data through one of our data API end points.
      *
+     * @param seriesList If not null, only include waveforms who's listed
+     * seriesNames includes at least of the series in the list.
      * @return
      */
-    public JsonObject toJsonObject() {
+    public JsonObject toJsonObject(List<String> seriesList) {
         JsonObjectBuilder job = Json.createObjectBuilder();
         if (eventId != null) {
             job.add("id", eventId)
@@ -165,7 +177,16 @@ public class Event {
                 // Don't add a waveforms parameter if it's null.  That indicates that the waveforms were requested
                 JsonArrayBuilder jab = Json.createArrayBuilder();
                 for (Waveform w : waveforms) {
-                    jab.add(w.toJsonObject());
+                    if (seriesList != null) {
+                        for (String series : seriesList) {
+                            if (w.getSeriesNames().contains(series)) {
+                                jab.add(w.toJsonObject());
+                                break;
+                            }
+                        }
+                    } else {
+                        jab.add(w.toJsonObject());
+                    }
                 }
                 job.add("waveforms", jab.build());
             }
@@ -184,10 +205,11 @@ public class Event {
     /**
      * Generate the contents of a CSV file that represents the waveform event
      *
+     * @param seriesList A list of the named series that should be included
      * @return A string representation of a CSV file representing the waveform
      * event.
      */
-    public String toCsv() {
+    public String toCsv(List<String> seriesList) {
 
         if (waveforms == null || waveforms.isEmpty()) {
             return null;
@@ -195,19 +217,37 @@ public class Event {
 
         String csvOut;
 
+        List<Waveform> wfList = new ArrayList<>();
+        for (Waveform waveform : waveforms) {
+            if (seriesList != null) {
+                for (String series : seriesList) {
+                    if (waveform.getSeriesNames().contains(series)) {
+                        wfList.add(waveform);
+                        break;
+                    }
+                }
+            } else {
+                wfList = waveforms;
+                break;
+            }
+        }
+        if (wfList.isEmpty()) {
+            return "no data";
+        }
+
         if (areWaveformsConsistent) {
             // 2D array for hold csv content - [rows][columns]
             // +1 rows because of the header, +1 columns because of the time_offset column
-            String[][] csvData = new String[waveforms.get(0).getTimeOffsets().size() + 1][waveforms.size() + 1];
+            String[][] csvData = new String[wfList.get(0).getTimeOffsets().size() + 1][wfList.size() + 1];
 
             // Setup the header row
             csvData[0][0] = "time_offset";
             for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
-                csvData[0][j] = waveforms.get(j - 1).getSeriesName(); // j-1 since j-index includes the "time_offset" series
+                csvData[0][j] = wfList.get(j - 1).getWaveformName(); // j-1 since j-index includes the "time_offset" series
             }
 
             // Set up the time offset column
-            List<Double> tos = new ArrayList<>(waveforms.get(0).getTimeOffsets());
+            List<Double> tos = new ArrayList<>(wfList.get(0).getTimeOffsets());
             for (int i = 1, iMax = csvData.length; i < iMax; i++) {
                 csvData[i][0] = tos.get(i - 1).toString();
             }
@@ -215,7 +255,7 @@ public class Event {
             // Add in all of the waveform series information
             for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
                 int i = 1;
-                Iterator<Double> it = waveforms.get(j - 1).getValues().iterator();
+                Iterator<Double> it = wfList.get(j - 1).getValues().iterator();
                 while (it.hasNext()) {
                     csvData[i][j] = it.next().toString();
                     i++;
@@ -229,11 +269,17 @@ public class Event {
             }
             csvOut = String.join("\n", csvRows);
             csvOut += "\n";
-        } else {  // The waveforms are not consistent.  Uses a slower general method involving "lookups" for compiling the CSV
+        } else {
+            // The waveforms are not consistent in that they do not all have the same set of time offsets.  Instead of just grabbing
+            // the timeoffsets from one waveform and pulling the values from all in order, we need to compile the full set of time
+            // offsets from all of the waveforms.  Then for each offset, see what the value would have been for a waveform at that
+            // point using a slightly smart method based on NavigableMap's floorKey method that interpolates, but not extrapolates.
 
-            System.out.println("Using generic approach");
+            // Get all of the time offset value from all of the waveforms and put them in a sorted set.  Manually convert the set to
+            // a list to ensure the order is maintained (SortedSet returns value in sorted order, and ArrayList maintains insertion
+            // order.
             SortedSet<Double> timeOffsetSet = new TreeSet<>();
-            for (Waveform w : waveforms) {
+            for (Waveform w : wfList) {
                 timeOffsetSet.addAll(w.getTimeOffsets());
             }
             List<Double> timeOffsets = new ArrayList<>();
@@ -243,30 +289,24 @@ public class Event {
 
             // 2D array for hold csv content - [rows][columns]
             // +1 rows because of the header, +1 columns because of the time_offset column
-            String[][] csvData = new String[timeOffsets.size() + 1][waveforms.size() + 1];
+            String[][] csvData = new String[timeOffsets.size() + 1][wfList.size() + 1];
 
             // Setup the header row
             csvData[0][0] = "time_offset";
             for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
-                csvData[0][j] = waveforms.get(j - 1).getSeriesName(); // j-1 since j-index includes the "time_offset" series
+                csvData[0][j] = wfList.get(j - 1).getWaveformName(); // j-1 since j-index includes the "time_offset" series
             }
 
             // Set up the time offset column
-            List<Double> tos = new ArrayList<>(waveforms.get(0).getTimeOffsets());
             for (int i = 1, iMax = csvData.length; i < iMax; i++) {
-                csvData[i][0] = tos.get(i - 1).toString();
+                csvData[i][0] = timeOffsets.get(i - 1).toString();
             }
 
             // Add in all of the waveform series information
             for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
                 for (int i = 1, iMax = csvData.length; i < iMax; i++) {
-                    csvData[i][j] = waveforms.get(j-1).getValueAtOffset(timeOffsets.get(i-1)).toString();
-                }
-                int i = 1;
-                Iterator<Double> it = waveforms.get(j - 1).getValues().iterator();
-                while (it.hasNext()) {
-                    csvData[i][j] = it.next().toString();
-                    i++;
+                    Double value = wfList.get(j - 1).getValueAtOffset(timeOffsets.get(i - 1));
+                    csvData[i][j] = value == null ? "" : value.toString();
                 }
             }
 

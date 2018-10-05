@@ -7,11 +7,18 @@ package org.jlab.wfbrowser.presentation.controller.admin;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.jlab.wfbrowser.business.filter.SeriesFilter;
+import org.jlab.wfbrowser.business.service.SeriesService;
+import org.jlab.wfbrowser.model.Series;
 
 /**
  *
@@ -32,6 +39,17 @@ public class SeriesAdmin extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("WEB-INF/views/admin/series.jsp").forward(request, response);
+        
+        SeriesFilter filter = new SeriesFilter(null, null, null);
+        SeriesService ss = new SeriesService();
+        List<Series> seriesList;
+        try {
+            seriesList = ss.getSeries(filter);
+        } catch (SQLException ex) {
+            Logger.getLogger(SeriesAdmin.class.getName()).log(Level.SEVERE, null, ex);
+            throw new ServletException(ex);
+        }
+        request.setAttribute("seriesList", seriesList);
+        request.getRequestDispatcher("/WEB-INF/views/admin/series.jsp").forward(request, response);
     }
 }
