@@ -31,7 +31,8 @@ public class SeriesService {
         String sql = "SELECT series_id, system_name, pattern, series_name, description"
                 + " FROM waveforms.series"
                 + " JOIN waveforms.system_type"
-                + " ON system_type.system_id = series.system_id";
+                + " ON system_type.system_id = series.system_id"
+                + " ORDER BY series_name";
         sql += filter.getWhereClause();
 
         Connection conn = null;
