@@ -48,9 +48,12 @@
                 </div>
                 <nav id="primary-nav">
                     <ul>
-                        <li${'/overview' eq currentPath ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/overview">Overview</a>
+                        <li${'/graph' eq currentPath ? ' class="current-primary"' : ''}>
+                            <a href="${pageContext.request.contextPath}/graph">Graph</a>
                         </li>  
+                        <li${'/admin' eq currentPath ? ' class="current-primary"' : ''}>
+                            <a href="${pageContext.request.contextPath}/admin/series">Admin</a>
+                        </li>
                         <li${'/help' eq currentPath ? ' class="current-primary"' : ''}>
                             <a href="${pageContext.request.contextPath}/help">Help</a>
                         </li>
