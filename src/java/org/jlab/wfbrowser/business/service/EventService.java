@@ -270,6 +270,65 @@ public class EventService {
     }
 
     /**
+     * Get the most recent event in the database given the applied filter
+     * @param filter
+     * @return
+     * @throws SQLException 
+     */
+    public long getMostRecentEventId(EventFilter filter) throws SQLException {
+        long out;
+        String sql = "SELECT event_id FROM waveforms.event";
+        if (filter != null) {
+            sql += filter.getWhereClause();
+        }
+        sql += " ORDER BY event_time_utc DESC LIMIT 1";
+        
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            if (filter != null) {
+                filter.assignParameterValues(pstmt);
+            }
+            rs = pstmt.executeQuery();
+            rs.next();
+            out = rs.getLong("event_id");
+        } finally {
+            SqlUtil.close(rs, pstmt, conn);
+        }
+        return out;
+    }
+
+    /**
+     * Query the database for the List of unique location names
+     *
+     * @return A list of the unique location names
+     * @throws SQLException
+     */
+    public List<String> getLocationNames() throws SQLException {
+        List<String> out = new ArrayList<>();
+        String sql = "SELECT DISTINCT location FROM waveforms.event ORDER BY location";
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            rs = pstmt.executeQuery();
+            while (rs.next()) {
+                out.add(rs.getString("location"));
+            }
+        } finally {
+            SqlUtil.close(rs, pstmt, conn);
+        }
+
+        return out;
+    }
+
+    /**
      * This method returns a List of named series that were recorded for the
      * specified List of events
      *
@@ -466,7 +525,7 @@ public class EventService {
                     }
                     waveformToSeries.get(waveformName).add(seriesName);
                 }
-                for(Waveform w : e.getWaveforms()) {
+                for (Waveform w : e.getWaveforms()) {
                     w.applyWaveformToSeriesMappings(waveformToSeries);
                 }
             }
