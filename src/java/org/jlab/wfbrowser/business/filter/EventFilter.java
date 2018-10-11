@@ -23,8 +23,9 @@ import org.jlab.wfbrowser.business.util.TimeUtil;
 public class EventFilter {
 
     private final List<Long> eventIdList;
+    private final List<String> locationList;
     private final Instant begin, end;
-    private final String system, location;
+    private final String system;
     private final Boolean archive;
     private final Boolean delete;
 
@@ -36,17 +37,17 @@ public class EventFilter {
      * @param begin
      * @param end
      * @param system
-     * @param location
+     * @param locationList
      * @param archive
      * @param delete
      */
-    public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, String location, Boolean archive,
+    public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, List<String> locationList, Boolean archive,
             Boolean delete) {
         this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
         this.system = system;
-        this.location = location;
+        this.locationList = locationList;
         this.archive = archive;
         this.delete = delete;
     }
@@ -78,8 +79,13 @@ public class EventFilter {
         if (system != null) {
             filters.add("system_name = ?");
         }
-        if (location != null) {
-            filters.add("location = ?");
+        if (locationList != null && !locationList.isEmpty()) {
+            String locationFilter = "location IN (?";
+            for (int i = 1; i < locationList.size(); i++) {
+                locationFilter += ",?";
+            }
+            locationFilter += ")";
+            filters.add(locationFilter);
         }
         if (archive != null) {
             filters.add("archive = ?");
@@ -123,8 +129,10 @@ public class EventFilter {
         if (system != null) {
             stmt.setString(i++, system);
         }
-        if (location != null) {
-            stmt.setString(i++, location);
+        if (locationList != null && !locationList.isEmpty()) {
+            for (String location : locationList) {
+                stmt.setString(i++, location);
+            }
         }
         if (archive != null) {
             stmt.setInt(i++, archive ? 1 : 0);

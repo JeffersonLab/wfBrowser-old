@@ -221,7 +221,7 @@ public class EventServiceTest {
     public void test5AddGetDeleteEventList() throws Exception {
         System.out.println("addGetDeleteEventList");
         EventService instance = new EventService();
-        EventFilter filter = new EventFilter(null, now, end, "rf", "test", null, null);
+        EventFilter filter = new EventFilter(null, now, end, "rf", Arrays.asList("test"), null, null);
 
         System.out.println("  addEventList");
         instance.addEventList(eventList, true);
@@ -239,7 +239,7 @@ public class EventServiceTest {
         System.out.println("  deleteEventList");
         instance.setEventDeleteFlag(eventIds, true);
         // Filter on to_be_deleted flag is set
-        result = instance.getEventListWithoutData(new EventFilter(null, now, end, "rf", "test", null, true));
+        result = instance.getEventListWithoutData(new EventFilter(null, now, end, "rf", Arrays.asList("test"), null, true));
         // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
         // Set them to null so that the match the expected results / the list we added
         for (Event event : result) {
