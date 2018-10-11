@@ -71,7 +71,7 @@ public class EventTest {
     public void testToJsonObject() {
         System.out.println("toJsonObject");
         String expResult = "{\"id\":2,"
-                + "\"datetime_utc\":\"2018-01-01 10:00:00.500000\","
+                + "\"datetime_utc\":\"2018-01-01 10:00:00.5\","
                 + "\"location\":\"loc1\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
