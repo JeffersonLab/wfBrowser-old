@@ -29,17 +29,13 @@ public class TimeUtil {
 
     /**
      * Utility function for generating a date string formatted to match MySQL's
-     * DateTime class. Used in SQL queries, etc..
+     * DateTime class. Used in SQL queries, etc..  Same as getDateTimeString with ZoneOffset.UTC supplied.
      *
      * @param i The Instant to format
      * @return A date string formatted to match MySQL's DateTime class.
      */
     public static String getDateTimeString(Instant i) {
-        if (i == null) {
-            return null;
-        }
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").withZone(ZoneOffset.UTC);
-        return formatter.format(i);
+        return getDateTimeString(i, ZoneId.of("Z"));
     }
 
     /**
@@ -98,10 +94,13 @@ public class TimeUtil {
         Instant t = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atZone(ZoneId.systemDefault()).toInstant();
         return t;
     }
-    
+
     /**
-     * Performs a simple validation of a date string of format "yyyy-MM-dd" by converting it to a LocalDateTime and back.  If
-     * the two strings are equal and no exceptions where thrown then all is probably good.  If not, an exception will be thrown.
+     * Performs a simple validation of a date string of format "yyyy-MM-dd" by
+     * converting it to a LocalDateTime and back. If the two strings are equal
+     * and no exceptions where thrown then all is probably good. If not, an
+     * exception will be thrown.
+     *
      * @param date The date string to validate
      */
     public static void validateDateString(String date) {
@@ -111,5 +110,21 @@ public class TimeUtil {
         if (!d.equals(date)) {
             throw new RuntimeException("Unexpected date format");
         }
+    }
+
+    /**
+     * Convenience function for converting an Instant to a string representing
+     * the system's default date time. Note: format is "yyyy-MM-dd HH:mm:ss.S".
+     *
+     * @param i The instant to format
+     * @param zone The ZoneId to for which the string applies
+     * @return The string representation
+     */
+    public static String getDateTimeString(Instant i, ZoneId zone) {
+        if (i == null ) {
+            return null;
+        }
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").withZone(zone);
+        return dtf.format(i);
     }
 }
