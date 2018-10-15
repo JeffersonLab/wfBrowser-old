@@ -99,7 +99,7 @@ public class EventFilter {
 
             if (filters.size() > 1) {
                 for (int i = 1; i < filters.size(); i++) {
-                    filter = filter + "AND " + filters.get(i);
+                    filter = filter + " AND " + filters.get(i);
                 }
             }
         }
