@@ -77,7 +77,14 @@ public class TimeUtil {
         if (datetime == null) {
             return null;
         }
-        Instant t = LocalDateTime.parse(datetime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S")).atZone(ZoneId.systemDefault()).toInstant();
+        
+        DateTimeFormatter dtf;
+        if ( datetime.contains(".")) {
+            dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+        } else {
+            dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        }
+        Instant t = LocalDateTime.parse(datetime, dtf).atZone(ZoneId.systemDefault()).toInstant();
         return t;
     }
 
