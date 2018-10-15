@@ -29,7 +29,8 @@ public class TimeUtil {
 
     /**
      * Utility function for generating a date string formatted to match MySQL's
-     * DateTime class. Used in SQL queries, etc..  Same as getDateTimeString with ZoneOffset.UTC supplied.
+     * DateTime class. Used in SQL queries, etc.. Same as getDateTimeString with
+     * ZoneOffset.UTC supplied.
      *
      * @param i The Instant to format
      * @return A date string formatted to match MySQL's DateTime class.
@@ -113,6 +114,20 @@ public class TimeUtil {
     }
 
     /**
+     * Verifies that the date string is of format "yyyy-MM-dd HH:mm:ss.S".  Throws an exception if not
+     * @param date A datetime string of format "yyyy-MM-dd HH:mm:ss.S" to be validated.
+     */
+    public static void validateDateTimeString(String date) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+        LocalDateTime t = LocalDateTime.parse(date, dtf);
+        String d = dtf.format(t);
+        if (!d.equals(date)) {
+            throw new RuntimeException("Unexpected date format");
+        }
+    }
+
+    
+    /**
      * Convenience function for converting an Instant to a string representing
      * the system's default date time. Note: format is "yyyy-MM-dd HH:mm:ss.S".
      *
@@ -121,7 +136,7 @@ public class TimeUtil {
      * @return The string representation
      */
     public static String getDateTimeString(Instant i, ZoneId zone) {
-        if (i == null ) {
+        if (i == null) {
             return null;
         }
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").withZone(zone);
