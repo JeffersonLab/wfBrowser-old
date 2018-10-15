@@ -32,13 +32,14 @@ public class SeriesService {
                 + " FROM waveforms.series"
                 + " JOIN waveforms.system_type"
                 + " ON system_type.system_id = series.system_id"
+                + filter.getWhereClause()
                 + " ORDER BY series_name";
-        sql += filter.getWhereClause();
 
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
+        System.out.println(sql);
         try {
             conn = SqlUtil.getConnection();
             pstmt = conn.prepareStatement(sql);
