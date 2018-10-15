@@ -12,10 +12,10 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <title><c:out value="${initParam.appShortName}"/> - ${title}</title>
         <link rel="shortcut icon" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/img/logo16x16.png"/>
-        <link rel="stylesheet" type="text/css" href="//cdn.acc.jlab.org/jquery-ui/1.10.3/theme/smoothness/jquery-ui.min.css"/>
-        <link rel="stylesheet" type="text/css" href="${cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.css"/>         
-        <link rel="stylesheet" type="text/css" href="${cdnContextPath}/jquery-plugins/select2/3.5.2/select2.css"/>        
-        <link rel="stylesheet" type="text/css" href="//cdn.acc.jlab.org/jlab-theme/smoothness/1.6/css/smoothness.min.css"/>        
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-ui/1.10.3/theme/smoothness/jquery-ui.min.css"/>
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.css"/>         
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-plugins/select2/3.5.2/select2.css"/>        
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jlab-theme/smoothness/1.6/css/smoothness.min.css"/>        
         <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/css/wfbrowser.css"/>        
         <jsp:invoke fragment="stylesheets"/>
     </head>
@@ -68,12 +68,12 @@
                 </div>
             </div>
         </div>
-        <script type="text/javascript" src="//cdn.acc.jlab.org/jquery/1.10.2.min.js"></script>
-        <script type="text/javascript" src="//cdn.acc.jlab.org/jquery-ui/1.10.3/jquery-ui.min.js"></script>  
-        <script type="text/javascript" src="//cdn.acc.jlab.org/uri/uri-1.14.1.min.js"></script>
-        <script type="text/javascript" src="//cdn.acc.jlab.org/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.js"></script>          
-        <script type="text/javascript" src="//cdn.acc.jlab.org/jquery-plugins/select2/3.5.2/select2.min.js"></script>        
-        <script type="text/javascript" src="//cdn.acc.jlab.org/jlab-theme/smoothness/1.6/js/smoothness.min.js"></script>        
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery/1.10.2.min.js"></script>
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-ui/1.10.3/jquery-ui.min.js"></script>  
+        <script type="text/javascript" src="${initParam.cdnContextPath}/uri/uri-1.14.1.min.js"></script>
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.js"></script>          
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-plugins/select2/3.5.2/select2.min.js"></script>        
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jlab-theme/smoothness/1.6/js/smoothness.min.js"></script>        
         <script type="text/javascript">
             jlab.contextPath = "${pageContext.request.contextPath}";
         </script>
