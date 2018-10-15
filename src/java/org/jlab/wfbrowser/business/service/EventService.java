@@ -271,18 +271,19 @@ public class EventService {
 
     /**
      * Get the most recent event in the database given the applied filter
+     *
      * @param filter
      * @return
-     * @throws SQLException 
+     * @throws SQLException
      */
-    public long getMostRecentEventId(EventFilter filter) throws SQLException {
-        long out;
-        String sql = "SELECT event_id FROM waveforms.event";
+    public Long getMostRecentEventId(EventFilter filter) throws SQLException {
+        Long out = null;
+        String sql = "SELECT event_id FROM waveforms.event JOIN system_type ON event.system_id = system_type.system_id";
         if (filter != null) {
             sql += filter.getWhereClause();
         }
         sql += " ORDER BY event_time_utc DESC LIMIT 1";
-        
+
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -293,8 +294,9 @@ public class EventService {
                 filter.assignParameterValues(pstmt);
             }
             rs = pstmt.executeQuery();
-            rs.next();
-            out = rs.getLong("event_id");
+            if (rs.next()) {
+                out = rs.getLong("event_id");
+            }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
         }
@@ -483,9 +485,15 @@ public class EventService {
             conn = SqlUtil.getConnection();
 
             String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted FROM waveforms.event"
-                    + " JOIN waveforms.system_type USING(system_id) " + filter.getWhereClause();
+                    + " JOIN waveforms.system_type USING(system_id) ";
+            if (filter != null) {
+                getEventSql += filter.getWhereClause();
+            }
             pstmt = conn.prepareStatement(getEventSql);
-            filter.assignParameterValues(pstmt);
+
+            if (filter != null) {
+                filter.assignParameterValues(pstmt);
+            }
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
