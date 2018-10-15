@@ -114,11 +114,16 @@ public class TimeUtil {
     }
 
     /**
-     * Verifies that the date string is of format "yyyy-MM-dd HH:mm:ss.S".  Throws an exception if not
-     * @param date A datetime string of format "yyyy-MM-dd HH:mm:ss.S" to be validated.
+     * Verifies that the date string is of format "yyyy-MM-dd HH:mm:ss[.S]".  Throws an exception if not
+     * @param date A datetime string of format "yyyy-MM-dd HH:mm:ss[.S]" to be validated.
      */
     public static void validateDateTimeString(String date) {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+        DateTimeFormatter dtf;
+        if (date.contains(".") ) {
+            dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S");
+        } else {
+            dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");            
+        }
         LocalDateTime t = LocalDateTime.parse(date, dtf);
         String d = dtf.format(t);
         if (!d.equals(date)) {
