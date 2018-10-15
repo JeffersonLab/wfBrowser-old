@@ -245,7 +245,6 @@ public class EventAjax extends HttpServlet {
             }
             return;
         }
-        System.out.println("id=" + id + " eventId=" + eventId);
 
         if (arch == null && del == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
