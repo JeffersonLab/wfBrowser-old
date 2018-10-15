@@ -16,9 +16,9 @@ import java.util.List;
  */
 public class SeriesFilter {
 
-    private String name;
-    private String system;
-    private List<Integer> idList;
+    private final String name;
+    private final String system;
+    private final List<Integer> idList;
 
     public SeriesFilter(String name, String system, List<Integer> idList) {
         this.name = name;
