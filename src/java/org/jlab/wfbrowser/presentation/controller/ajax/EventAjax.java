@@ -61,21 +61,27 @@ public class EventAjax extends HttpServlet {
             }
         }
 
-        Instant begin = TimeUtil.getInstantFromDateTimeString(request.getParameter("begin"));
-        Instant end = TimeUtil.getInstantFromDateTimeString(request.getParameter("end"));
+        String beginString = request.getParameter("begin");
+        Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
+        String endString = request.getParameter("end");
+        Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
         String system = request.getParameter("system");
         system = system == null ? "rf" : system;
-        List<String> locationList = Arrays.asList(request.getParameter("location"));
+        String[] locArray = request.getParameterValues("location");
+        List<String> locationList = locArray == null ? null : Arrays.asList(locArray);
+        String[] serArray = request.getParameterValues("series");
+        List<String> seriesList = serArray == null ? null : Arrays.asList(serArray);
+
         String arch = request.getParameter("archive");
         Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
         Boolean delete = (del == null) ? null : del.equals("true");
         Boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
-        String[] series = request.getParameterValues("series");
-        List<String> seriesList = null;
-        if (series != null) {
-            seriesList = Arrays.asList(series);
-        }
+//        String[] series = request.getParameterValues("series");
+//        List<String> seriesList = null;
+//        if (series != null) {
+//            seriesList = Arrays.asList(series);
+//        }
 
         String out = request.getParameter("out");
         String output = "json";
