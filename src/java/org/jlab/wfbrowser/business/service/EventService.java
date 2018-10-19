@@ -57,6 +57,16 @@ public class EventService {
         dataDir = Paths.get(props.getProperty("dataDir", "/usr/opsdata/waveforms"));
     }
 
+    /** Simple wrapper on parseCompressedWaveformData(Path eventArchive, boolean includeData) that always sets
+     * includeData to true.
+     * @param eventArchive
+     * @return
+     * @throws IOException 
+     */
+        private List<Waveform> parseCompressedWaveformData(Path eventArchive) throws IOException {
+            return parseCompressedWaveformData(eventArchive, true);
+        }
+    
     /**
      * This method uncompresses a compressed waveform event directory and parses
      * it using the same parseWaveformInputStream method as parseWaveformData.
@@ -64,10 +74,11 @@ public class EventService {
      * set of txt files.
      *
      * @param eventArchive
+     * @param includeData boolean for whether or not the waveforms should include their data
      * @return
      * @throws IOException
      */
-    private List<Waveform> parseCompressedWaveformData(Path eventArchive) throws IOException {
+    private List<Waveform> parseCompressedWaveformData(Path eventArchive, boolean includeData) throws IOException {
         List<Waveform> waveformList = new ArrayList<>();
         boolean foundParentDir = false;
         try (TarArchiveInputStream ais = new TarArchiveInputStream(
@@ -90,7 +101,7 @@ public class EventService {
                         //  2^32 bytes or ~4GB.  For now, the tar files contain ~20MB of data.
                         byte[] content = new byte[(int) entry.getSize()];
                         ais.read(content);
-                        waveformList.addAll(parseWaveformInputStream(new ByteArrayInputStream(content)));
+                        waveformList.addAll(parseWaveformInputStream(new ByteArrayInputStream(content), includeData));
                     }
                 }
             }
@@ -99,6 +110,15 @@ public class EventService {
     }
 
     /**
+     * Wrapper on parseWaveformInputStream(InputStream, boolean) that always sets includeData to true)
+     * @param wis 
+     * @return 
+     */
+    private List<Waveform> parseWaveformInputStream(InputStream wis) {
+        return parseWaveformInputStream(wis, true);
+    }
+    
+    /**
      * The method parses an InputStream representing one of the waveform
      * datafiles. These files are formatted as TSVs, with the first column being
      * the time offset and every other column representing a series of waveform
@@ -106,9 +126,10 @@ public class EventService {
      * as each Waveform object stores its own time/value data.
      *
      * @param wis
+     * @param includeData flag for whether or not the data and not just headers should be parsed
      * @return The list of waveforms that were contained in the input stream.
      */
-    private List<Waveform> parseWaveformInputStream(InputStream wis) {
+    private List<Waveform> parseWaveformInputStream(InputStream wis, boolean includeData) {
         TsvParserSettings settings = new TsvParserSettings();
         settings.getFormat().setLineSeparator("\n");
         TsvParser parser = new TsvParser(settings);
@@ -125,7 +146,7 @@ public class EventService {
                     // first entry should be time offset header value
                     waveformList.add(new Waveform(row[i]));
                 }
-            } else {
+            } else if(includeData) {
                 Double timeOffset = Double.valueOf(row[0]);
                 for (int i = 1; i < row.length; i++) {
                     // first entry should be the timeoffset, the rest will be waveform values
@@ -133,6 +154,8 @@ public class EventService {
                     // Waveforms index are one less than the row value since we skip time column
                     waveformList.get(i - 1).addPoint(timeOffset, value);
                 }
+            } else {
+                break;
             }
         }
         return waveformList;
@@ -142,11 +165,12 @@ public class EventService {
      * Parses all of the data files in the specified event directory
      *
      * @param eventDir
+     * @param includeData Should the waveform objects include the data points or only the header information
      * @return A List of Waveform objects representing the contents of the data
      * files in the supplied event directory
      * @throws IOException
      */
-    private List<Waveform> parseWaveformData(Path eventDir) throws IOException {
+    private List<Waveform> parseWaveformData(Path eventDir, boolean includeData) throws IOException {
         TsvParserSettings settings = new TsvParserSettings();
         settings.getFormat().setLineSeparator("\n");
         TsvParser parser = new TsvParser(settings);
@@ -155,7 +179,7 @@ public class EventService {
 
         try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(eventDir)) {
             for (Path path : directoryStream) {
-                waveformList.addAll(parseWaveformInputStream(Files.newInputStream(path)));
+                waveformList.addAll(parseWaveformInputStream(Files.newInputStream(path), includeData));
             }
         }
 
@@ -185,7 +209,9 @@ public class EventService {
             }
         }
 
-        List<Waveform> waveformList = getWaveformsFromDisk(e, force);
+        // We need to read the waveform data files from disk, but we don't need the actual data.  Parsing the 20MB of data
+        // takes a while when adding en masse.
+        List<Waveform> waveformList = getWaveformsFromDisk(e, force, false);
 
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -388,10 +414,11 @@ public class EventService {
      * @param event The event for which we are parsing data
      * @param ignoreErrors Whether or not to throw exception and log data if the
      * files cannot be found.
+     * @param includeData Whether or not to include the waveform data or just header information
      * @return The event data as a list of waveforms
      * @throws IOException
      */
-    private List<Waveform> getWaveformsFromDisk(Event event, boolean ignoreErrors) throws IOException {
+    private List<Waveform> getWaveformsFromDisk(Event event, boolean ignoreErrors, boolean includeData) throws IOException {
         List<Waveform> waveformList = null;
 
         if (event == null) {
@@ -400,11 +427,11 @@ public class EventService {
 
         Path eventDir = dataDir.resolve(event.getRelativeFilePath());
         Path eventArchive = dataDir.resolve(event.getRelativeArchivePath());
-        LOGGER.log(Level.FINEST, "Looking for data at {0}, {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
+        LOGGER.log(Level.FINEST, "Looking for data at {0}, {1} for event {2}", new Object[]{eventDir.toString(), eventArchive.toString(), event.getEventId()});
         if (Files.exists(eventDir)) {
-            waveformList = parseWaveformData(eventDir);
+            waveformList = parseWaveformData(eventDir, includeData);
         } else if (Files.exists(eventArchive)) {
-            waveformList = parseCompressedWaveformData(eventArchive);
+            waveformList = parseCompressedWaveformData(eventArchive, includeData);
         } else if (!ignoreErrors) {
             LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
             throw new FileNotFoundException("Could not locate data files for requested event");
@@ -519,7 +546,7 @@ public class EventService {
             pstmt = conn.prepareStatement(mapSql);
 
             for (Event e : eventList) {
-                e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors));
+                e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors, true)); // We want the actual waveform data
 
                 // Get the mapping
                 Map<String, List<String>> waveformToSeries = new HashMap<>();
