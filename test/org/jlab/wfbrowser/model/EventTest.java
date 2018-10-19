@@ -77,12 +77,14 @@ public class EventTest {
                 + "\"archive\":false,"
                 + "\"waveforms\":["
                 +   "{"
-                +     "\"series\":\"test1\","
+                +     "\"waveformName\":\"test1\","
+                +     "\"seriesNames\":[\"test1\"],"
                 +     "\"timeOffsets\":[1.1,2.1,3.1],"
                 +     "\"values\":[1.5,2.5,0.5]"
                 +   "},"
                 +   "{"
-                +     "\"series\":\"test2\","
+                +     "\"waveformName\":\"test2\","
+                +     "\"seriesNames\":[\"test2\"],"
                 +     "\"timeOffsets\":[100.1,200.5,300.3],"
                 +     "\"values\":[1.15,32.5,10.5]"
                 +    "}"
@@ -113,7 +115,7 @@ public class EventTest {
     @Test
     public void testGetEventTimeString() {
         System.out.println("getEventTimeString");
-        String expResult = "2018-01-01 10:00:00.500000";
+        String expResult = "2018-01-01 10:00:00.5";
         String result = e4.getEventTimeString();
         assertEquals(expResult, result);
     }
