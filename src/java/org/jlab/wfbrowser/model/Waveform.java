@@ -115,7 +115,13 @@ public class Waveform {
      */
     @Override
     public String toString() {
-        String out = "seriesName: " + waveformName + "\npoints: {";
+        String out = "waveformName: " + waveformName 
+                + "\nseriesNames: [";
+                for(String series : seriesNames) {
+                    out += series + ",";
+                }
+                out += "]\n";
+                out += "points: {";
         for (Double t : points.keySet()) {
             out += "[" + t + "," + points.get(t) + "]";
         }
