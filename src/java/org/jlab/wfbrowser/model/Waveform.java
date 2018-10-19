@@ -53,7 +53,7 @@ public class Waveform {
     public boolean addSeriesName(String seriesName) {
         return seriesNames.add(seriesName);
     }
-    
+
     public List<String> getSeriesNames() {
         return seriesNames;
     }
@@ -125,7 +125,12 @@ public class Waveform {
 
     public JsonObject toJsonObject() {
         JsonObjectBuilder job = Json.createObjectBuilder()
-                .add("series", waveformName);
+                .add("waveformName", waveformName);
+        JsonArrayBuilder sjab = Json.createArrayBuilder();
+        for (String name : seriesNames) {
+            sjab.add(name);
+        }
+        job.add("seriesNames", sjab.build());
         JsonArrayBuilder tjab = Json.createArrayBuilder();
         JsonArrayBuilder vjab = Json.createArrayBuilder();
         for (Double t : points.keySet()) {
