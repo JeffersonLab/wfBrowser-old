@@ -93,6 +93,9 @@ public class EventAjax extends HttpServlet {
                 case "csv":
                     output = "csv";
                     break;
+                case "dygraph":
+                    output = "dygraph";
+                    break;
                 default:
                     output = "json";
             }
@@ -114,7 +117,7 @@ public class EventAjax extends HttpServlet {
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.
         List<Event> eventList;
-        if (output.equals("json")) {
+        if (output.equals("json") || output.equals("dygraph")) {
             JsonObjectBuilder job = null;
             try {
                 if (includeData) {
@@ -125,7 +128,12 @@ public class EventAjax extends HttpServlet {
                 job = Json.createObjectBuilder();
                 JsonArrayBuilder jab = Json.createArrayBuilder();
                 for (Event e : eventList) {
-                    jab.add(e.toJsonObject(seriesList));
+                    if (output.equals("json")) {
+                        jab.add(e.toJsonObject(seriesList));
+                    } else if (output.equals("dygraph")) {
+                        System.out.println("using dygraph");
+                        jab.add(e.toDyGraphJsonObject(seriesList));
+                    }
                 }
                 job.add("events", jab.build());
 
