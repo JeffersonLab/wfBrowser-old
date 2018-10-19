@@ -370,9 +370,10 @@ public class Event {
 
     @Override
     public String toString() {
-        String wData = "null";
+        String wData = null;
         String wSize = "null";
         if (waveforms != null) {
+            wData = "";
             wSize = "" + waveforms.size();
             for (Waveform w : waveforms) {
                 wData = wData + w.toString() + "\n";
