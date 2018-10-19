@@ -95,6 +95,14 @@ public class EventTest {
     }
 
     @Test
+    public void testToDyGraphJsonObject() {
+        System.out.println("toDyGraphJsonObject");
+        String expResult = "{\"id\":2,\"datetime_utc\":\"2018-01-01 10:00:00.5\",\"location\":\"loc1\",\"system\":\"test\",\"archive\":false,\"timeOffsets\":[\"1.1\",\"2.1\",\"3.1\",\"100.1\",\"200.5\"],\"waveforms\":[{\"waveformName\":\"test1\",\"dygraphLabel\":\"test\",\"dygraphId\":\"t\",\"seriesNames\":[\"test1\"],\"dataPoints\":[\"1.5\",\"2.5\",\"0.5\",\"\",\"\",\"\"]},{\"waveformName\":\"test2\",\"dygraphLabel\":\"test\",\"dygraphId\":\"t\",\"seriesNames\":[\"test2\"],\"dataPoints\":[\"\",\"\",\"\",\"1.15\",\"32.5\",\"10.5\"]}]}";
+        String result = e4.toDyGraphJsonObject(null).toString();
+        assertEquals(expResult, result);
+    }
+    
+    @Test
     public void testToCsv() {
         System.out.println("toCsv");
         String expResult = "time_offset,test1,test2\n"
