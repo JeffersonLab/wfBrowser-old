@@ -5,3 +5,15 @@
  width:32px;
  vertical-align:bottom
 }
+
+.date-field {
+    width: 10em;
+}
+
+.date-time-field {
+    width: 12em;
+}
+
+#page {
+    max-width: unset;
+}
