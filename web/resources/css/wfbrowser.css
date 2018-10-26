@@ -1,9 +1,9 @@
 #page-header-logo {
- background:url(../img/logo32x32.png) 0 0;
- display:inline-block;
- height:32px;
- width:32px;
- vertical-align:bottom
+    background:url(../img/logo32x32.png) 0 0;
+    display:inline-block;
+    height:32px;
+    width:32px;
+    vertical-align:bottom
 }
 
 .date-field {
@@ -16,4 +16,43 @@
 
 #page {
     max-width: unset;
+}
+
+/* Styling used in the graphing page */
+#timeline-container {
+    border: 2px solid;
+    padding: 1px;
+}
+#graph-panel {
+    text-align: center;
+}
+.graph-panel-title {
+    font-weight: bold;
+    font-size: xx-large;
+}
+.graph-panel-subtitle {
+    font-weight: bold;
+    font-size: medium;
+}
+.graph-container {
+    display: inline-block;
+    border: 1px solid;
+    padding: 2px;
+    margin: 2px;
+    height: 250px;
+    width: 550px;
+}
+.graph-chart {
+    float: left;
+    height: 100%;
+    width:74%;
+}
+.graph-legend {
+    float:right;
+    height: 100%;
+    width: 25%;
+    text-align: left;
+}
+.graph-legend > span.highlight {
+    border: 1px solid grey;
 }
