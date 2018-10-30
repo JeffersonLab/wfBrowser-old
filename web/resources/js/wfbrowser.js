@@ -6,6 +6,13 @@
 
 var jlab = jlab || {};
 
+jlab.UtcDateTimeStringToDate = function(date) {
+    date.replace(" ", "T");
+    date = date + "Z";
+    console.log(new Date(date));
+    return(new Date(date));
+};
+
 jlab.dateToDateString = function (x) {
     var year = x.getFullYear(),
             month = x.getMonth() + 1,

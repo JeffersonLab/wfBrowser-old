@@ -6,13 +6,11 @@ var $endPicker = $("#end-date-picker");
 var $seriesSelector = $("#series-selector");
 var $zoneSelector = $("#zone-selector");
 var $graphPanel = $("#graph-panel");
+var timeline;
 var firstUpdate = true;
 
-jlab.wfb.convertUTCDateStringToLocalDate = function (dateString) {
-    var date = new Date(dateString);
-    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(),
-            date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
-};
+// These get set by updateZoneSelector, and used by updateEventSelector
+var begin, end;
 
 jlab.wfb.locationToGroupMap = new Map([
     ["0L04", 0],
@@ -28,6 +26,12 @@ jlab.wfb.locationToGroupMap = new Map([
     ["2L26", 10]
 ]);
 
+jlab.wfb.convertUTCDateStringToLocalDate = function (dateString) {
+    var date = new Date(dateString);
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(),
+            date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
+};
+
 // This takes an event JSON object (from ajax/event ajax query) and converts it to a form that is expected by visjs DataSet
 jlab.wfb.eventToItem = function (event) {
     var date = jlab.wfb.convertUTCDateStringToLocalDate(event.datetime_utc);
@@ -35,14 +39,124 @@ jlab.wfb.eventToItem = function (event) {
         id: event.id,
         content: "",
         start: jlab.dateToDateTimeString(date),
-        group: jlab.wfb.locationToGroupMap.get(event.location)
+        group: jlab.wfb.locationToGroupMap.get(event.location),
+        location: event.location,
+        date: new Date(date)
     };
     return item;
 };
 
 
-// These get set by updateZoneSelector, and used by updateEventSelector
-var begin, end;
+
+
+// Setup the groups for the timeline
+var groupArray = new Array(jlab.wfb.locationSelections.length);
+for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
+    groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
+}
+var groups = new vis.DataSet(groupArray);
+
+// Setup the items for the timeline
+var itemArray = new Array(jlab.wfb.eventArray.length);
+for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
+    itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
+}
+var items = new vis.DataSet(itemArray);
+
+
+
+
+
+// Get the previous item from the same group
+jlab.wfb.getPrevItem = function (items, id) {
+    var curr = items.get(id);
+    var subset = items.get({
+        filter: function (item) {
+            return(item.group == curr.group);
+        }
+    });
+
+    var prev = null;
+    for (var i = 0; i < subset.length; i++) {
+        if (prev === null) {
+            if (curr.date > subset[i].date) {
+                prev = subset[i];
+            }
+        } else {
+            if (prev.date < subset[i].date && curr.date > subset[i].date) {
+                prev = subset[i];
+            }
+        }
+    }
+    return prev;
+};
+
+jlab.wfb.getNextItem = function (items, id) {
+    var curr = items.get(id);
+    var subset = items.get({
+        filter: function (item) {
+            return(item.group == curr.group);
+        }
+    });
+
+    var next = null;
+    for (var i = 0; i < subset.length; i++) {
+        if (next === null) {
+            if (curr.date < subset[i].date) {
+                next = subset[i];
+            }
+        } else {
+            if (next.date > subset[i].date && curr.date < subset[i].date) {
+                next = subset[i];
+            }
+        }
+    }
+    return next;
+};
+
+jlab.wfb.getFirstItem = function (items, id) {
+    var curr = items.get(id);
+    var subset = items.get({
+        filter: function (item) {
+            return(item.group == curr.group);
+        }
+    });
+
+    var first = null;
+    for (var i = 0; i < subset.length; i++) {
+        if (first === null) {
+            first = subset[i];
+        } else {
+            if (first.date > subset[i].date) {
+                first = subset[i];
+            }
+        }
+    }
+    return first;
+};
+
+jlab.wfb.getLastItem = function (items, id) {
+    var curr = items.get(id);
+    var subset = items.get({
+        filter: function (item) {
+            return(item.group == curr.group);
+        }
+    });
+
+    var last = null;
+    for (var i = 0; i < subset.length; i++) {
+        if (last === null) {
+            last = subset[i];
+        } else {
+            if (last.date < subset[i].date) {
+                last = subset[i];
+            }
+        }
+    }
+    return last;
+};
+
+
 
 /* 
  * eventId - The waveform eventId to query information for
@@ -116,6 +230,38 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     return g;
 };
 
+jlab.wfb.updateBrowserUrlAndControls = function () {
+    $startPicker.val(jlab.wfb.begin);
+    $endPicker.val(jlab.wfb.end);
+
+    // Update the URL so someone could navigate back to or bookmark or copy paste the URL 
+    var url = jlab.contextPath + "/graph"
+            + "?begin=" + jlab.wfb.begin.replace(/ /, '+').encodeXml()
+            + "&end=" + jlab.wfb.end.replace(/ /, '+').encodeXml()
+            + "&eventId=" + jlab.wfb.eventId;
+    for (var i = 0; i < jlab.wfb.seriesSelections.length; i++) {
+        url += "&series=" + jlab.wfb.seriesSelections[i];
+    }
+    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
+        url += "&location=" + jlab.wfb.locationSelections[i];
+    }
+    window.history.replaceState(null, null, url);
+};
+
+// Make a new graph.  Looks up the jlab.wfb.eventId global variable amongst others
+jlab.wfb.loadNewGraphs = function () {
+    jlab.wfb.updateBrowserUrlAndControls();
+
+    var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: jlab.wfb.eventId, out: "dygraph", includeData: true});
+    $graphPanel.css({opacity: 0.5});
+    promise.done(function (json) {
+        jlab.wfb.currentEvent = json.events[0];
+        $graphPanel.empty();
+        $graphPanel.css({opacity: 1});
+        jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesSelections);
+    });
+};
+
 /*
  * Make all of the request waveform graphs.  One chart per series.
  * @param long eventId - The ID of the waveform event to graph
@@ -130,10 +276,71 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
         return;
     }
 
+    var date = jlab.wfb.convertUTCDateStringToLocalDate(event.datetime_utc);
+    var headerHtml = "<div class='graph-panel-header'>" +
+            "<div class='graph-panel-title-wrapper'><div class='graph-panel-title'></div><div class='graph-panel-controls'></div></div>" +
+            "<div class='graph-panel-date-wrapper'><span class='graph-panel-prev-controls'></span><span class='graph-panel-date'></span><span class='graph-panel-next-controls'></div></div>" +
+            "</span>";
+    $graphPanel.prepend(headerHtml);
+    $("#graph-panel .graph-panel-title").prepend(event.location);
+    $("#graph-panel .graph-panel-date").prepend(jlab.dateToDateTimeString(date));
+    console.log("" + event);
+    var firstItem = jlab.wfb.getFirstItem(items, event.id);
+    var prevItem = jlab.wfb.getPrevItem(items, event.id);
+    var nextItem = jlab.wfb.getNextItem(items, event.id);
+    var lastItem = jlab.wfb.getLastItem(items, event.id);
+
+    console.log("firstItem", firstItem);
+    console.log("prevItem", prevItem);
+    console.log("nextItem", nextItem);
+    console.log("lastItem", lastItem);
+    console.log("event", event);
+    if (firstItem !== null && firstItem.id !== event.id) {
+        $("#graph-panel .graph-panel-prev-controls").append("<button id='first-button' data-event-id='" + firstItem.id + "'>First</button>");
+        $("#first-button").on("click", function () {
+            jlab.wfb.eventId = $(this).data("event-id");
+            timeline.setSelection(jlab.wfb.eventId);
+            jlab.wfb.loadNewGraphs();
+        });
+    } else {
+        $("#graph-panel .graph-panel-prev-controls").append("<button id='first-button' disabled>First</button>");
+    }
+    if (prevItem !== null) {
+        $("#graph-panel .graph-panel-prev-controls").append("<button id='prev-button' data-event-id='" + prevItem.id + "'>Prev</button>");
+        $("#prev-button").on("click", function () {
+            jlab.wfb.eventId = $(this).data("event-id");
+            timeline.setSelection(jlab.wfb.eventId);
+            jlab.wfb.loadNewGraphs();
+        });
+    } else {
+        $("#graph-panel .graph-panel-prev-controls").append("<button id='prev-button' disabled>Prev</button>");
+    }
+    if (nextItem !== null) {
+        $("#graph-panel .graph-panel-next-controls").append("<button id='next-button' data-event-id='" + nextItem.id + "'>Next</button>");
+        $("#next-button").on("click", function () {
+            jlab.wfb.eventId = $(this).data("event-id");
+            timeline.setSelection(jlab.wfb.eventId);
+            jlab.wfb.loadNewGraphs();
+        });
+    } else {
+        $("#graph-panel .graph-panel-next-controls").append("<button id='next-button' disabled>Next</button>");
+    }
+
+    if (lastItem !== null && lastItem.id !== event.id) {
+        $("#graph-panel .graph-panel-next-controls").append("<button id='last-button' data-event-id='" + lastItem.id + "'>Last</button>");
+        $("#last-button").on("click", function () {
+            jlab.wfb.eventId = $(this).data("event-id");
+            timeline.setSelection(jlab.wfb.eventId);
+            jlab.wfb.loadNewGraphs();
+        });
+    } else {
+        $("#graph-panel .graph-panel-next-controls").append("<button id='last-button' disabled>Last</button>");
+    }
+
     // Set the title for the panel based on the event being displayed
-    var titleHtml = "<div class='graph-panel-title-wrapper'><div class='graph-panel-title'>" + event.location +
-            "</div><div class='graph-panel-subtitle'>" + event.datetime_utc + "</div></div>";
-    $graphPanel.prepend(titleHtml);
+//    var titleHtml = "<div class='graph-panel-title-wrapper'><div class='graph-panel-title'>" + event.location +
+//            "</div><div class='graph-panel-subtitle'>" + event.datetime_utc + "</div></div>";
+//    $graphPanel.prepend(titleHtml);
 
     var graphOptions = {
         legend: "always",
@@ -157,24 +364,6 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     }
 };
 
-jlab.wfb.updateBrowserUrlAndControls = function () {
-    $startPicker.val(jlab.wfb.begin);
-    $endPicker.val(jlab.wfb.end);
-
-    // Update the URL so someone could navigate back to or bookmark or copy paste the URL 
-    var url = "${pageContext.request.contextPath}/graph"
-            + "?begin=" + jlab.wfb.begin.replace(/ /, '+').encodeXml()
-            + "&end=" + jlab.wfb.end.replace(/ /, '+').encodeXml()
-            + "&eventId=" + jlab.wfb.eventId;
-    for (var i = 0; i < jlab.wfb.seriesSelections.length; i++) {
-        url += "&series=" + jlab.wfb.seriesSelections[i];
-    }
-    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
-        url += "&location=" + jlab.wfb.locationSelections[i];
-    }
-    window.history.replaceState(null, null, url);
-};
-
 /*
  * Setup the timeline widget
  * begin  - starting datetime string of the timeline
@@ -183,20 +372,24 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
  * events - array of events to be drawn
  */
 //            jlab.wfb.makeTimeline = function (container, begin, end, zones, events, eventId) {
-jlab.wfb.makeTimeline = function (container, zones, events) {
+//jlab.wfb.makeTimeline = function (container, zones, events) {
 
-    var groupArray = new Array(zones.length);
-    for (var i = 0; i < zones.length; i++) {
-        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(zones[i]), content: zones[i]};
-    }
-    var groups = new vis.DataSet(groupArray);
 
-    var itemArray = new Array(events.length);
-    for (var i = 0; i < events.length; i++) {
-        itemArray[i] = jlab.wfb.eventToItem(events[i]);
-    }
-    var items = new vis.DataSet(itemArray);
+//
+//    var groupArray = new Array(zones.length);
+//    for (var i = 0; i < zones.length; i++) {
+//        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(zones[i]), content: zones[i]};
+//    }
+//    var groups = new vis.DataSet(groupArray);
+//
+//    var itemArray = new Array(events.length);
+//    for (var i = 0; i < events.length; i++) {
+//        itemArray[i] = jlab.wfb.eventToItem(events[i]);
+//    }
+//    var items = new vis.DataSet(itemArray);
 
+//
+jlab.wfb.makeTimeline = function (container, groups, items) {
     var options = {
         start: jlab.wfb.begin,
         end: jlab.wfb.end,
@@ -207,7 +400,7 @@ jlab.wfb.makeTimeline = function (container, zones, events) {
         max: jlab.wfb.end
     };
 
-    var timeline = new vis.Timeline(container, items, groups, options);
+    timeline = new vis.Timeline(container, items, groups, options);
     if (typeof jlab.wfb.eventId !== "undefined" && jlab.wfb.eventId !== null) {
         timeline.setSelection(jlab.wfb.eventId);
     }
@@ -289,16 +482,17 @@ jlab.wfb.makeTimeline = function (container, zones, events) {
 
     timeline.on("select", function (params) {
         jlab.wfb.eventId = params.items[0];
-        jlab.wfb.updateBrowserUrlAndControls();
-        console.log($graphPanel.html());
-
-        var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: jlab.wfb.eventId, out: "dygraph", includeData: true});
-        promise.done(function (json) {
-            jlab.wfb.currentEvent = json.events[0];
-            console.log("jlab.wfb.currentEvent in select handler", jlab.wfb.currentEvent);
-            $graphPanel.html("");
-            jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesSelections);
-        });
+        jlab.wfb.loadNewGraphs();
+//        jlab.wfb.updateBrowserUrlAndControls();
+//
+//        var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: jlab.wfb.eventId, out: "dygraph", includeData: true});
+//        $graphPanel.css({opacity: 0.5});
+//        promise.done(function (json) {
+//            jlab.wfb.currentEvent = json.events[0];
+//            $graphPanel.empty();
+//            $graphPanel.css({opacity: 1});
+//            jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesSelections);
+//        });
 
     });
 };
@@ -316,7 +510,8 @@ $(function () {
     });
 
     var timelineDiv = document.getElementById("timeline-container");
-    jlab.wfb.makeTimeline(timelineDiv, jlab.wfb.locationSelections, jlab.wfb.eventArray);
+//    jlab.wfb.makeTimeline(timelineDiv, jlab.wfb.locationSelections, jlab.wfb.eventArray);
+    jlab.wfb.makeTimeline(timelineDiv, groups, items);
 
     if (typeof jlab.wfb.eventId !== "undefined" && jlab.wfb.eventId !== null && jlab.wfb.eventId !== "") {
         jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesSelections);

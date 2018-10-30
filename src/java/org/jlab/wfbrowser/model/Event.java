@@ -5,8 +5,6 @@
  */
 package org.jlab.wfbrowser.model;
 
-import java.io.BufferedOutputStream;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -21,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -351,8 +348,12 @@ public class Event {
 
                 // Get the timeOffsets
                 JsonArrayBuilder tjab = Json.createArrayBuilder();
-                for (int i = 1; i < data.length - 1; i++) {
-                    tjab.add(data[i][0]);
+                for (int i = 1; i < data.length; i++) {
+                    if (data[i][0] == null || data[i][0].isEmpty()) {
+                        tjab.add(Double.NaN);
+                    } else {
+                        tjab.add(Double.parseDouble(data[i][0]));
+                    }
                 }
                 job.add("timeOffsets", tjab.build());
 
@@ -380,7 +381,11 @@ public class Event {
                             djab = Json.createArrayBuilder();
                             for (int j = 1; j < data.length; j++) {
                                 // Since waveformNames is the first row, it's index matches up with the columns of data;
-                                djab.add(data[j][i]);
+                                if (data[j][i] == null || data[j][i].isEmpty()) {
+                                    djab.add(Double.NaN);
+                                } else {
+                                    djab.add(Double.parseDouble(data[j][i]));
+                                }
                             }
                             wjob.add("dataPoints", djab.build());
                             wjab.add(wjob.build());
