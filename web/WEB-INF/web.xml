@@ -5,7 +5,7 @@
     </welcome-file-list>
     <context-param>
         <param-name>cdnContextPath</param-name>
-        <param-value>http://cdn.acc.jlab.org</param-value>
+        <param-value>https://cdn.acc.jlab.org</param-value>
     </context-param>
     <context-param>
         <param-name>appName</param-name>
@@ -29,7 +29,7 @@
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
-        <param-value>Adam Carpenter (adamc)</param-value>
+        <param-value>Anna Solopova (shabalin)</param-value>
     </context-param>
     <context-param>
         <param-name>technicalContact</param-name>
@@ -86,7 +86,7 @@
         <web-resource-collection>
             <web-resource-name>Setup Pages</web-resource-name>
             <description/>
-            <url-pattern>/setup/*</url-pattern>
+            <url-pattern>/admin/*</url-pattern>
         </web-resource-collection>
         <auth-constraint>
             <description/>
