@@ -534,7 +534,7 @@ public class EventService {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, new ArrayList<>()));
+                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, new ArrayList<Waveform>()));
                 }
             }
 
@@ -556,7 +556,7 @@ public class EventService {
                     String waveformName = rs.getString("waveform_name");
                     String seriesName = rs.getString("series_name");
                     if (waveformToSeries.get(waveformName) == null) {
-                        waveformToSeries.put(waveformName, new ArrayList<>());
+                        waveformToSeries.put(waveformName, new ArrayList<String>());
                     }
                     waveformToSeries.get(waveformName).add(seriesName);
                 }

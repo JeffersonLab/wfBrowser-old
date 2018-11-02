@@ -35,7 +35,7 @@ import org.jlab.wfbrowser.model.Series;
  *
  * @author ryans
  */
-@WebServlet(name = "GraphTimeLine", urlPatterns = {"/graph"})
+@WebServlet(name = "Graph", urlPatterns = {"/graph"})
 public class Graph extends HttpServlet {
 
     private static final Logger LOGGER = Logger.getLogger(Graph.class.getName());
@@ -55,8 +55,8 @@ public class Graph extends HttpServlet {
         String endString = request.getParameter("end");
         String[] locSel = request.getParameterValues("location");
         String[] serSel = request.getParameterValues("series");
-        List<String> locationSelections = locSel == null ? new ArrayList<>() : Arrays.asList(locSel);
-        List<String> seriesSelections = serSel == null ? new ArrayList<>() : Arrays.asList(serSel);
+        List<String> locationSelections = locSel == null ? new ArrayList<String>() : Arrays.asList(locSel);
+        List<String> seriesSelections = serSel == null ? new ArrayList<String>() : Arrays.asList(serSel);
         String eventId = request.getParameter("eventId");
 
         // Process the begin/end parameters
