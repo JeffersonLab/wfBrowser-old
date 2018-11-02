@@ -11,8 +11,9 @@
 CREATE DATABASE waveforms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 /*
- * Keep a list of systems that are allowed to store waveforms.  For now, there is just RF, but this system will likely grow to
- * include others.  Also, makes it easy to track which systems are storing waveform data here.
+ Keep a list of systems that are allowed to store waveforms.  For now, there
+ is just RF, but this system will likely grow to include others.  Also, makes
+ it easy to track which systems are storing waveform data here.
  */
 CREATE TABLE waveforms.system_type (
     system_id int(2) NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -20,9 +21,12 @@ CREATE TABLE waveforms.system_type (
 ) ENGINE=InnoDB;
 
 /*
- * This table keeps track of the high level "save waveform" trigger events.  Individual waveforms may be grouped together within
- * a single event.  Each event is currently defined to occur within a single system.  The location field offers a simple way to
- * group events, and can be used flexibly.  In the case of RF it will be the zone, but other systems may have different location schemes.
+ This table keeps track of the high level "save waveform" trigger events.
+ Individual waveforms may be grouped together within a single event.  
+ Each event is currently defined to occur within a single system.  The 
+ location field offers a simple way to group events, and can be used flexibly.
+ In the case of RF it will be the zone, but other systems may have different 
+ location schemes.
  */
 CREATE TABLE waveforms.event (
     event_id BIGINT NOT NULL AUTO_INCREMENT,
@@ -34,16 +38,17 @@ CREATE TABLE waveforms.event (
     PRIMARY KEY (event_id),
     UNIQUE KEY `event_time_utc` (`event_time_utc`,`location`,`system_id`),
     INDEX i_location(location),
-    INDEX i_event_time(event_time),
+    INDEX i_event_time(event_time_utc),
     FOREIGN KEY fk_system_id (system_id) 
       REFERENCES waveforms.system_type (system_id)
       ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 /*
- * This table is used to track which waveforms an event contains.  Enables easy per series lookup for UI.
+ This table is used to track which waveforms an event contains.  Enables easy per 
+ series lookup for UI.
  */
-Create Table: CREATE TABLE `event_series` (
+CREATE TABLE waveforms.event_series (
   `es_id` bigint(20) NOT NULL AUTO_INCREMENT,
   `event_id` bigint(20) NOT NULL,
   `waveform_name` varchar(47) NOT NULL,
@@ -53,13 +58,14 @@ Create Table: CREATE TABLE `event_series` (
   FOREIGN KEY fk_event_id (event_id)
     REFERENCES waveforms.event (`event_id`) 
     ON DELETE CASCADE
-) ENGINE=InnoDB
+) ENGINE=InnoDB;
 
 
 /*
- * This set of tables holds the rules for looking up event series data by a name to pattern matching routine.
+ This set of tables holds the rules for looking up event series data by a name to 
+ pattern matching routine.  This holds the patterns that are used to match a generic
+ series name "GMES" to a specific series 'R1N1WFSGMES'
  */
-/* This holds the patterns that are used to match a generic series name "GMES" to a specific series 'R1N1WFSGMES' */
 CREATE TABLE waveforms.series (
 series_id BIGINT NOT NULL AUTO_INCREMENT,
 system_id INT(2) NOT NULL,
@@ -105,12 +111,13 @@ FOREIGN KEY fk_set_id (set_id)
 
 
 /*
- * Create the usual three user setup for this app waveforms_owner, waveforms_writer, waveforms_reader, (unlimited, read/write, and read only users)
+ * Create the usual three user setup for this app wfb_owner, wfb_writer,
+ * wfb_reader, (unlimited, read/write, and read only users)
  * Please change passwords.
  */
 CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
-CREATE USER 'waveforms_writer' IDENTIFIED BY 'password';
+CREATE USER 'waveforms_writer' IDENTIFIED BY 'passowrd';
 GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'waveforms_writer';
 CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
 GRANT SELECT ON waveforms.* TO 'waveforms_reader';
