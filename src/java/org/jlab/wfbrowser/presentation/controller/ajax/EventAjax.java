@@ -230,8 +230,12 @@ public class EventAjax extends HttpServlet {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");
             }
+        } catch (IOException e) {
+            try (PrintWriter pw = response.getWriter()) {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                pw.write("{\"error\": \"Problem adding event - " + e.toString() + "\"}");
+            }
         }
-
     }
 
     @Override

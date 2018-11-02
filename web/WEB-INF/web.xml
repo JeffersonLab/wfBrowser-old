@@ -21,11 +21,11 @@
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
-        <param-value>0.4</param-value>
+        <param-value>0.5</param-value>
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>Nov 2 2018</param-value>
+        <param-value>TBD</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
