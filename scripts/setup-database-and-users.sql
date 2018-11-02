@@ -41,28 +41,6 @@ CREATE TABLE waveforms.event (
 ) ENGINE=InnoDB;
 
 /*
- * This is the main data table.  Each waveform is made up of many (currently 8000) points defined by a value and an time offset
- * from the save waveform trigger.  Currently (Aug 2018) these offsets are only synchronized within an RF zone, but that may change
- *
- * Currently the only events we have to size against are RF which dumps a zone's worth of waveform data.  This is around
- * 8 cavities * 8000 datapoints/waveform * ~10 waveforms = 640,000 points per event.  Since we're sizing for 10^15 events,
-* 640,000 * 10^15 = 6.4 * 10^20.  Just go with 10^20 since 10^15 is already outlandishly large for what we're doing.
- */
-/*  This table is no longer used since all of the data is stored on disk.
-CREATE TABLE waveforms.data (
-    data_id BIGINT NOT NULL AUTO_INCREMENT,
-    event_id BIGINT NOT NULL,
-    series_name varchar(24) NOT NULL,
-    time_offset double NOT NULL,
-    val double NOT NULL,
-    PRIMARY KEY (data_id),
-    FOREIGN KEY fk_event_id (event_id)
-        REFERENCES waveforms.event (event_id)
-        ON DELETE CASCADE
-) ENGINE=InnoDB;
-*/
-
-/*
  * This table is used to track which waveforms an event contains.  Enables easy per series lookup for UI.
  */
 Create Table: CREATE TABLE `event_series` (
@@ -127,12 +105,12 @@ FOREIGN KEY fk_set_id (set_id)
 
 
 /*
- * Create the usual three user setup for this app wfb_owner, wfb_writer, wfb_reader, (unlimited, read/write, and read only users)
+ * Create the usual three user setup for this app waveforms_owner, waveforms_writer, waveforms_reader, (unlimited, read/write, and read only users)
  * Please change passwords.
  */
-CREATE USER 'wfb_owner' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON waveforms.* TO 'wfb_owner';
-CREATE USER wfb_writer IDENTIFIED BY 'password';
-GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'wfb_writer';
-CREATE USER wfb_reader IDENTIFIED BY 'password';
-GRANT SELECT ON waveforms.* TO 'wfb_reader';
+CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
+CREATE USER 'waveforms_writer' IDENTIFIED BY 'password';
+GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'waveforms_writer';
+CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
+GRANT SELECT ON waveforms.* TO 'waveforms_reader';
