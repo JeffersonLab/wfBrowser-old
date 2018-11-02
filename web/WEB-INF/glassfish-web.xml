@@ -6,6 +6,11 @@
     <principal-name>adamc</principal-name>
     <principal-name>shabalin</principal-name>
   </security-role-mapping>
+    <security-role-mapping>
+    <role-name>EVENTPOST</role-name>
+    <principal-name>waveformstest</principal-name>
+  </security-role-mapping>
+  
   <context-root>/wfbrowser</context-root>
   <class-loader delegate="true"/>
   <jsp-config>
