@@ -10,8 +10,7 @@ event_url="https://${server}${event_query}"
 
 curl -c $COOKIE_JAR -X POST -d username=waveformstest -d password='abAB12!@' -d requester='login' "$login_url"
 
-#for location in 1L22 1L23 1L24 1L25 1L26
-for location in 0L04
+for location in 0L04 1L22 1L23 1L24 1L25 1L26 2L22 2L23 2L24 2L25 2L26
 do
     for date in $(ls $data_dir/$location)
     do
