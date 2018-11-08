@@ -36,6 +36,7 @@ import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
+import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.Waveform;
 
 /**
@@ -275,7 +276,7 @@ public class EventService {
 
             // In testing mode (force/ignoreErrors == true), waveformList could be null.
             if (waveformList != null) {
-                String seriesSql = "INSERT INTO event_series (event_id, waveform_name) VALUES(?,?)";
+                String seriesSql = "INSERT INTO event_waveforms (event_id, waveform_name) VALUES(?,?)";
                 pstmt = conn.prepareStatement(seriesSql);
                 for (Waveform w : waveformList) {
                     pstmt.setLong(1, eventId);
@@ -366,22 +367,23 @@ public class EventService {
      * specified events
      * @throws SQLException
      */
-    public List<String> getSeriesNames(List<Long> eventIdList) throws SQLException {
-        List<String> out = new ArrayList<>();
+    public List<Series> getSeries(List<Long> eventIdList) throws SQLException {
+        List<Series> out = new ArrayList<>();
         if (eventIdList == null || eventIdList.isEmpty()) {
             return out;
         }
 
         // This is a little complex.  Perform a subquery / derived table on the event IDs to cut down on the amount of data we process.
-        // Then join on the series and event_series tables where the waveform name (PV) matches the specified pattern.  This should
+        // Then join on the series and event_waveforms tables where the waveform name (PV) matches the specified pattern.  This should
         // only return rowns where we had a non-zero number of matches.
-        String sql = "SELECT series_name, COUNT(*) FROM"
-                + " (SELECT * FROM event_series WHERE event_id IN (?";
+        String sql = "SELECT series_name, series_id, system_name, pattern, description, units, COUNT(*) FROM"
+                + " (SELECT * FROM event_waveforms WHERE event_id IN (?";
         for (int i = 1; i < eventIdList.size(); i++) {
             sql += ",?";
         }
         sql += ")) derived_table"
                 + " JOIN series ON derived_table.waveform_name LIKE series.pattern"
+                + " JOIN system_type ON series.system_id = system_type.system_id"
                 + " GROUP BY series_name"
                 + " ORDER BY series_name ";
 
@@ -398,7 +400,13 @@ public class EventService {
             }
             rs = pstmt.executeQuery();
             while (rs.next()) {
-                out.add(rs.getString("series_name"));
+                String seriesName = rs.getString("series_name");
+                int id = rs.getInt("series_id");
+                String pattern = rs.getString("pattern");
+                String systemName = rs.getString("system_name");
+                String description = rs.getString("description");
+                String units = rs.getString("units");
+                out.add(new Series(seriesName, id, pattern, systemName, description, units));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
@@ -462,8 +470,8 @@ public class EventService {
     public Map<String, String> getWaveformToSeriesMap(long eventId) throws SQLException {
         Map<String, String> waveformToSeries = new HashMap<>();
         String sql = "SELECT waveform_name, series_name"
-                + " FROM event_series"
-                + " JOIN series ON event_series.waveform_name LIKE series.pattern"
+                + " FROM event_waveforms"
+                + " JOIN series ON event_waveforms.waveform_name LIKE series.pattern"
                 + " WHERE event_id = ?";
 
         Connection conn = null;
@@ -539,26 +547,40 @@ public class EventService {
             }
 
             // Get the set of waveform to series name mappings and apply them to the 
-            String mapSql = "SELECT waveform_name, series_name"
-                    + " FROM event_series"
-                    + " JOIN series ON event_series.waveform_name LIKE series.pattern"
-                    + " WHERE event_id = ?";
+//            String mapSql = "SELECT waveform_name, series_name"
+//                    + " FROM event_waveforms"
+//                    + " JOIN series ON event_waveforms.waveform_name LIKE series.pattern"
+//                    + " WHERE event_id = ?";
+//            
+            String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
+                    + " FROM event_waveforms"
+                    + " JOIN series ON waveform_name LIKE series.pattern"
+                    + " JOIN system_type ON series.system_id = system_type.system_id"
+                    + " WHERE event_id = ?"
+                    + " GROUP BY waveform_name"
+                    + " ORDER BY waveform_name";
+            
             pstmt = conn.prepareStatement(mapSql);
-
+            
             for (Event e : eventList) {
                 e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors, true)); // We want the actual waveform data
 
                 // Get the mapping
-                Map<String, List<String>> waveformToSeries = new HashMap<>();
+                Map<String, List<Series>> waveformToSeries = new HashMap<>();
                 pstmt.setLong(1, e.getEventId());
                 rs = pstmt.executeQuery();
                 while (rs.next()) {
                     String waveformName = rs.getString("waveform_name");
                     String seriesName = rs.getString("series_name");
+                    int seriesId = rs.getInt("series_id");
+                    String pattern = rs.getString("pattern");
+                    String systemName = rs.getString("system_name");
+                    String description = rs.getString("description");
+                    String units = rs.getString("units");
                     if (waveformToSeries.get(waveformName) == null) {
-                        waveformToSeries.put(waveformName, new ArrayList<String>());
+                        waveformToSeries.put(waveformName, new ArrayList<Series>());
                     }
-                    waveformToSeries.get(waveformName).add(seriesName);
+                    waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                 }
                 for (Waveform w : e.getWaveforms()) {
                     w.applyWaveformToSeriesMappings(waveformToSeries);

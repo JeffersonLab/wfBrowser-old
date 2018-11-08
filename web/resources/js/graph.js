@@ -177,19 +177,22 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     }
 
     // Get the data, labels, etc. needed for this chart out of the currentEvent object
-    var labels = ["time"];
+    var labels = [];
+    var ylabel = "";
     var dygraphIds = [0];
     var data = [];
     data.push(event.timeOffsets);
     for (var i = 0; i < event.waveforms.length; i++) {
-        for (var j = 0; j < event.waveforms[i].seriesNames.length; j++) {
-            if (event.waveforms[i].seriesNames[j] === series) {
+        for (var j = 0; j < event.waveforms[i].series.length; j++) {
+            if (event.waveforms[i].series[j].name === series) {
                 data.push(event.waveforms[i].dataPoints);
                 labels.push(event.waveforms[i].dygraphLabel);
                 dygraphIds.push(event.waveforms[i].dygraphId);
+                ylabel = event.waveforms[i].series[j].units;
             }
         }
     }
+    labels = ["time"].concat(labels.sort());
 
     // We have to transpose the data array here since dygraphs wants it as though it was the rows a of a CSV file.
     var tempData = new Array(data[0].length);
@@ -206,6 +209,7 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
 
     graphOptions.title = series;
     graphOptions.labels = labels;
+    graphOptions.ylabel = ylabel;
     $graphPanel.append("<div class=graph-container><div id=graph-chart-" + chartId + " class='graph-chart'></div>"
             + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div></div>");
     graphOptions.labelsDiv = document.getElementById("graph-legend-" + chartId);
@@ -290,11 +294,6 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     var nextItem = jlab.wfb.getNextItem(items, event.id);
     var lastItem = jlab.wfb.getLastItem(items, event.id);
 
-    console.log("firstItem", firstItem);
-    console.log("prevItem", prevItem);
-    console.log("nextItem", nextItem);
-    console.log("lastItem", lastItem);
-    console.log("event", event);
     if (firstItem !== null && firstItem.id !== event.id) {
         $("#graph-panel .graph-panel-prev-controls").append("<button id='first-button' data-event-id='" + firstItem.id + "'>First</button>");
         $("#first-button").on("click", function () {
@@ -336,11 +335,6 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     } else {
         $("#graph-panel .graph-panel-next-controls").append("<button id='last-button' disabled>Last</button>");
     }
-
-    // Set the title for the panel based on the event being displayed
-//    var titleHtml = "<div class='graph-panel-title-wrapper'><div class='graph-panel-title'>" + event.location +
-//            "</div><div class='graph-panel-subtitle'>" + event.datetime_utc + "</div></div>";
-//    $graphPanel.prepend(titleHtml);
 
     var graphOptions = {
         legend: "always",

@@ -5,6 +5,7 @@
  */
 package org.jlab.wfbrowser.model;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -24,6 +25,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import javax.json.JsonNumber;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 
 /**
@@ -176,10 +178,12 @@ public class Event {
                 JsonArrayBuilder jab = Json.createArrayBuilder();
                 for (Waveform w : waveforms) {
                     if (seriesList != null) {
-                        for (String series : seriesList) {
-                            if (w.getSeriesNames().contains(series)) {
-                                jab.add(w.toJsonObject());
-                                break;
+                        for (String seriesName : seriesList) {
+                            for (Series series : w.getSeries()) {
+                                if (series.getName().equals(seriesName)) {
+                                    jab.add(w.toJsonObject());
+                                    break;
+                                }
                             }
                         }
                     } else {
@@ -223,10 +227,12 @@ public class Event {
         List<Waveform> wfList = new ArrayList<>();
         for (Waveform waveform : waveforms) {
             if (seriesList != null) {
-                for (String series : seriesList) {
-                    if (waveform.getSeriesNames().contains(series)) {
-                        wfList.add(waveform);
-                        break;
+                for (String seriesName : seriesList) {
+                    for (Series series : waveform.getSeries()) {
+                        if (series.getName().equals(seriesName)) {
+                            wfList.add(waveform);
+                            break;
+                        }
                     }
                 }
             } else {
@@ -372,17 +378,19 @@ public class Event {
 
                             // Get the series names for the waveform and add them
                             sjab = Json.createArrayBuilder();
-                            for (String s : w.getSeriesNames()) {
-                                sjab.add(s);
+                            for (Series series : w.getSeries()) {
+                                sjab.add(series.toJsonObject());
+//                                sjab.add(series.getName());
                             }
-                            wjob.add("seriesNames", sjab.build());
+//                            wjob.add("seriesNames", sjab.build());
+                            wjob.add("series", sjab.build());
 
                             // Add the data points for the series.  Can't query the waveform directly in case the waveforms aren't consistent
                             djab = Json.createArrayBuilder();
                             for (int j = 1; j < data.length; j++) {
                                 // Since waveformNames is the first row, it's index matches up with the columns of data;
                                 if (data[j][i] == null || data[j][i].isEmpty()) {
-                                    djab.add(Double.NaN);
+                                    djab.add(JsonNumber.NULL);
                                 } else {
                                     djab.add(Double.parseDouble(data[j][i]));
                                 }

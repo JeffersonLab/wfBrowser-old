@@ -31,35 +31,36 @@ import javax.json.JsonObjectBuilder;
 public class Waveform {
 
     private final String waveformName;
-    private final List<String> seriesNames = new ArrayList<>();
+    private final List<Series> seriesList = new ArrayList<>();
+//    private final List<String> seriesNames = new ArrayList<>();
     private final NavigableMap<Double, Double> points = new TreeMap<>();
 
-    public Waveform(String seriesName, List<Double> timeOffsets, List<Double> values) {
+    public Waveform(String waveformName, List<Double> timeOffsets, List<Double> values) {
         if (timeOffsets.size() != values.size()) {
             throw new IllegalArgumentException("time and value arrays are of unequal length");
         }
-        this.waveformName = seriesName;
+        this.waveformName = waveformName;
         for (int i = 0; i < timeOffsets.size(); i++) {
             points.put(timeOffsets.get(i), values.get(i));
         }
     }
 
-    public void applyWaveformToSeriesMappings(Map<String, List<String>> mapping) {
+    public void applyWaveformToSeriesMappings(Map<String, List<Series>> mapping) {
         if (mapping.get(waveformName) != null) {
-            seriesNames.addAll(mapping.get(waveformName));
+            seriesList.addAll(mapping.get(waveformName));
         }
     }
 
-    public boolean addSeriesName(String seriesName) {
-        return seriesNames.add(seriesName);
+    public boolean addSeries(Series series) {
+        return seriesList.add(series);
     }
 
-    public List<String> getSeriesNames() {
-        return seriesNames;
+    public List<Series> getSeries() {
+        return seriesList;
     }
 
-    public Waveform(String seriesName) {
-        this.waveformName = seriesName;
+    public Waveform(String waveformName) {
+        this.waveformName = waveformName;
     }
 
     public String getWaveformName() {
@@ -115,12 +116,13 @@ public class Waveform {
      */
     @Override
     public String toString() {
+        List<String> seriesJson = new ArrayList<>();
+        for(Series series : seriesList) {
+            seriesJson.add(series.toJsonObject().toString());
+        }
+        
         String out = "waveformName: " + waveformName 
-                + "\nseriesNames: [";
-                for(String series : seriesNames) {
-                    out += series + ",";
-                }
-                out += "]\n";
+                + "\nseries: [" + String.join(",", seriesJson) +"]\n";
                 out += "points: {";
         for (Double t : points.keySet()) {
             out += "[" + t + "," + points.get(t) + "]";
@@ -133,10 +135,10 @@ public class Waveform {
         JsonObjectBuilder job = Json.createObjectBuilder()
                 .add("waveformName", waveformName);
         JsonArrayBuilder sjab = Json.createArrayBuilder();
-        for (String name : seriesNames) {
-            sjab.add(name);
+        for (Series series : seriesList) {
+            sjab.add(series.toJsonObject());
         }
-        job.add("seriesNames", sjab.build());
+        job.add("series", sjab.build());
         JsonArrayBuilder tjab = Json.createArrayBuilder();
         JsonArrayBuilder vjab = Json.createArrayBuilder();
         for (Double t : points.keySet()) {

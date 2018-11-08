@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.jlab.wfbrowser.business.service.EventService;
+import org.jlab.wfbrowser.model.Series;
 
 /**
  *
@@ -37,7 +38,6 @@ public class EventSeriesAjax extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String[] ids = request.getParameterValues("id");
-        System.out.println("ids" + ids);
         if (ids == null || ids.length == 0) {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -62,10 +62,10 @@ public class EventSeriesAjax extends HttpServlet {
         }
 
         EventService es = new EventService();
-        List<String> seriesNames;
+        List<Series> seriesList;
 
         try {
-            seriesNames = es.getSeriesNames(eventIdList);
+            seriesList = es.getSeries(eventIdList);
         } catch (SQLException e) {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -78,9 +78,13 @@ public class EventSeriesAjax extends HttpServlet {
         response.setContentType("application/json");
         try (PrintWriter pw = response.getWriter()) {
             pw.write("{\"series\":[");
-            if (seriesNames != null && !seriesNames.isEmpty()) {
+            if (seriesList != null && !seriesList.isEmpty()) {
                 pw.write("\"");
-                pw.write(String.join("\",\"", seriesNames));
+                List<String> names = new ArrayList<>();
+                for (Series series : seriesList) {
+                    names.add(series.getName());
+                }
+                pw.write(String.join("\",\"", names));
                 pw.write("\"");
             }
             pw.write("]}");

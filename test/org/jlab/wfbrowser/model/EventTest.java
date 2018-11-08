@@ -30,9 +30,9 @@ public class EventTest {
         List<Double> time2 = Arrays.asList(100.1, 200.5, 300.3);
         List<Double> vals2 = Arrays.asList(1.15, 32.5, 10.5);
         Waveform w1 = new Waveform("test1", time1, vals1);
-        w1.addSeriesName("test1");
+        w1.addSeries(new Series("test1", 1, "pattern1", "rf", "descript1", "units1"));
         Waveform w2 = new Waveform("test2", time2, vals2);
-        w2.addSeriesName("test2");
+        w2.addSeries(new Series("test2", 2, "pattern2", "rf", "descript2", "units2"));
         List<Waveform> waveforms = new ArrayList<>();
         waveforms.add(w1);
         waveforms.add(w2);
@@ -78,13 +78,13 @@ public class EventTest {
                 + "\"waveforms\":["
                 +   "{"
                 +     "\"waveformName\":\"test1\","
-                +     "\"seriesNames\":[\"test1\"],"
+                +     "\"series\":[{\"name\":\"test1\",\"seriesId\":1,\"pattern\":\"pattern1\",\"system\":\"rf\",\"units\":\"units1\",\"description\":\"descript1\"}],"
                 +     "\"timeOffsets\":[1.1,2.1,3.1],"
                 +     "\"values\":[1.5,2.5,0.5]"
                 +   "},"
                 +   "{"
                 +     "\"waveformName\":\"test2\","
-                +     "\"seriesNames\":[\"test2\"],"
+                +     "\"series\":[{\"name\":\"test2\",\"seriesId\":2,\"pattern\":\"pattern2\",\"system\":\"rf\",\"units\":\"units2\",\"description\":\"descript2\"}],"
                 +     "\"timeOffsets\":[100.1,200.5,300.3],"
                 +     "\"values\":[1.15,32.5,10.5]"
                 +    "}"
@@ -97,7 +97,27 @@ public class EventTest {
     @Test
     public void testToDyGraphJsonObject() {
         System.out.println("toDyGraphJsonObject");
-        String expResult = "{\"id\":2,\"datetime_utc\":\"2018-01-01 10:00:00.5\",\"location\":\"loc1\",\"system\":\"test\",\"archive\":false,\"timeOffsets\":[\"1.1\",\"2.1\",\"3.1\",\"100.1\",\"200.5\"],\"waveforms\":[{\"waveformName\":\"test1\",\"dygraphLabel\":\"test\",\"dygraphId\":\"t\",\"seriesNames\":[\"test1\"],\"dataPoints\":[\"1.5\",\"2.5\",\"0.5\",\"\",\"\",\"\"]},{\"waveformName\":\"test2\",\"dygraphLabel\":\"test\",\"dygraphId\":\"t\",\"seriesNames\":[\"test2\"],\"dataPoints\":[\"\",\"\",\"\",\"1.15\",\"32.5\",\"10.5\"]}]}";
+        String expResult = "{\"id\":2,"
+                + "\"datetime_utc\":\"2018-01-01 10:00:00.5\","
+                + "\"location\":\"loc1\","
+                + "\"system\":\"test\","
+                + "\"archive\":false,"
+                + "\"timeOffsets\":[1.1,2.1,3.1,100.1,200.5,300.3],"
+                + "\"waveforms\":["
+                +   "{\"waveformName\":\"test1\","
+                +    "\"dygraphLabel\":\"test\","
+                +    "\"dygraphId\":\"t\","
+                +    "\"series\":[{\"name\":\"test1\",\"seriesId\":1,\"pattern\":\"pattern1\",\"system\":\"rf\",\"units\":\"units1\",\"description\":\"descript1\"}]"
+                +   ",\"dataPoints\":[1.5,2.5,0.5,null,null,null]"
+                +  "},"
+                +  "{\"waveformName\":\"test2\","
+                +   "\"dygraphLabel\":\"test\","
+                +   "\"dygraphId\":\"t\","
+                +   "\"series\":[{\"name\":\"test2\",\"seriesId\":2,\"pattern\":\"pattern2\",\"system\":\"rf\",\"units\":\"units2\",\"description\":\"descript2\"}],"
+                +   "\"dataPoints\":[null,null,null,1.15,32.5,10.5]"
+                +  "}"
+                + "]"
+                + "}";
         String result = e4.toDyGraphJsonObject(null).toString();
         assertEquals(expResult, result);
     }
