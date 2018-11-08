@@ -93,7 +93,7 @@ jlab.wfb.addRow = function () {
 
 $(document).on("click", "#remove-row-button", function () {
     jlab.wfb.deleteRow();
-})
+});
 
 $(document).on("click", "#open-edit-row-dialog-button", function () {
     var $selectedRow = $(".editable-row-table tbody tr.selected-row");
