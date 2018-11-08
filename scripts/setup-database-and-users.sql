@@ -48,7 +48,7 @@ CREATE TABLE waveforms.event (
  This table is used to track which waveforms an event contains.  Enables easy per 
  series lookup for UI.
  */
-CREATE TABLE waveforms.event_series (
+CREATE TABLE waveforms.event_waveforms (
   `es_id` bigint(20) NOT NULL AUTO_INCREMENT,
   `event_id` bigint(20) NOT NULL,
   `waveform_name` varchar(47) NOT NULL,
