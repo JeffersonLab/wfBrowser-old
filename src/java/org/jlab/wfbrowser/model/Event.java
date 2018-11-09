@@ -1,11 +1,5 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.jlab.wfbrowser.model;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -380,9 +374,7 @@ public class Event {
                             sjab = Json.createArrayBuilder();
                             for (Series series : w.getSeries()) {
                                 sjab.add(series.toJsonObject());
-//                                sjab.add(series.getName());
                             }
-//                            wjob.add("seriesNames", sjab.build());
                             wjob.add("series", sjab.build());
 
                             // Add the data points for the series.  Can't query the waveform directly in case the waveforms aren't consistent
@@ -419,8 +411,7 @@ public class Event {
      * @return
      */
     @Override
-    public boolean equals(Object o
-    ) {
+    public boolean equals(Object o) {
         if (o == this) {
             return true;
         }
