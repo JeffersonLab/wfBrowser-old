@@ -66,4 +66,24 @@ public class Series {
                 .add("description", description)
                 .build();
     }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof Series)) {
+            return false;
+        }
+
+        Series s = (Series) o;
+        return id == s.getId();
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 97 * hash + this.id;
+        return hash;
+    }
 }
