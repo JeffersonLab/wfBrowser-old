@@ -13,6 +13,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.json.Json;
@@ -24,9 +26,13 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.jlab.wfbrowser.business.filter.EventFilter;
+import org.jlab.wfbrowser.business.filter.SeriesSetFilter;
 import org.jlab.wfbrowser.business.service.EventService;
+import org.jlab.wfbrowser.business.service.SeriesService;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
+import org.jlab.wfbrowser.model.Series;
+import org.jlab.wfbrowser.model.SeriesSet;
 
 /**
  *
@@ -71,17 +77,14 @@ public class EventAjax extends HttpServlet {
         List<String> locationList = locArray == null ? null : Arrays.asList(locArray);
         String[] serArray = request.getParameterValues("series");
         List<String> seriesList = serArray == null ? null : Arrays.asList(serArray);
+        String[] serSetArray = request.getParameterValues("seriesSet");
+        List<String> seriesSetList = serSetArray == null ? null : Arrays.asList(serSetArray);
 
         String arch = request.getParameter("archive");
         Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
         Boolean delete = (del == null) ? null : del.equals("true");
         Boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
-//        String[] series = request.getParameterValues("series");
-//        List<String> seriesList = null;
-//        if (series != null) {
-//            seriesList = Arrays.asList(series);
-//        }
 
         String out = request.getParameter("out");
         String output = "json";
@@ -110,6 +113,44 @@ public class EventAjax extends HttpServlet {
             return;
         }
 
+        // The Event objects can filter the data the return based on a Set of series names.  Since we take Series and SeriesSet
+        // names as parameters to this endpoint, we need to combine them into a single set of Series names, i.e., a master set
+        Set<String> seriesMasterSet = null;
+
+        // Add any series from the seriesSets.
+        if (seriesSetList != null) {
+            if (seriesMasterSet == null) {
+                seriesMasterSet = new TreeSet<>();
+            }
+
+            // Setup the query by the SeriesSets by names
+            SeriesService ss = new SeriesService();
+            SeriesSetFilter sfilter = new SeriesSetFilter(null, null, seriesSetList);
+            try {
+                // For each SeriesSet return, add the names of it's contained series to the master set
+                List<SeriesSet> seriesSets = ss.getSeriesSets(sfilter);
+                for (SeriesSet set : seriesSets) {
+                    for (Series series : set.getSet()) {
+                        System.out.println(series.getName());
+                        seriesMasterSet.add(series.getName()); // Not null
+                    }
+                }
+            } catch (SQLException ex) {
+                LOGGER.log(Level.SEVERE, "Error querying database for series sets information");
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                try (PrintWriter pw = response.getWriter()) {
+                    pw.print("{\"error\": \"error querying database - " + ex.getMessage() + "\"}");
+                }
+            }
+        }
+        if (seriesList != null) {
+            if (seriesMasterSet == null) {
+                seriesMasterSet = new TreeSet<>();
+            }
+            seriesMasterSet.addAll(seriesList);
+        }
+
         EventService wfs = new EventService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
         EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, archive, delete);
@@ -129,10 +170,9 @@ public class EventAjax extends HttpServlet {
                 JsonArrayBuilder jab = Json.createArrayBuilder();
                 for (Event e : eventList) {
                     if (output.equals("json")) {
-                        jab.add(e.toJsonObject(seriesList));
+                        jab.add(e.toJsonObject(seriesMasterSet));
                     } else if (output.equals("dygraph")) {
-                        System.out.println("using dygraph");
-                        jab.add(e.toDyGraphJsonObject(seriesList));
+                        jab.add(e.toDyGraphJsonObject(seriesMasterSet));
                     }
                 }
                 job.add("events", jab.build());
@@ -173,7 +213,7 @@ public class EventAjax extends HttpServlet {
                 try (PrintWriter pw = response.getWriter()) {
                     for (Event e : eventList) {
                         if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
-                            pw.write(e.toCsv(seriesList));
+                            pw.write(e.toCsv(seriesMasterSet));
                         } else {
                             pw.write("No data requested");
                         }

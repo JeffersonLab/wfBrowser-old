@@ -4,6 +4,7 @@ jlab.wfb = jlab.wfb || {};
 var $startPicker = $("#start-date-picker");
 var $endPicker = $("#end-date-picker");
 var $seriesSelector = $("#series-selector");
+var $seriesSetSelector = $("#series-set-selector");
 var $zoneSelector = $("#zone-selector");
 var $graphPanel = $("#graph-panel");
 var timeline;
@@ -262,7 +263,7 @@ jlab.wfb.loadNewGraphs = function () {
         jlab.wfb.currentEvent = json.events[0];
         $graphPanel.empty();
         $graphPanel.css({opacity: 1});
-        jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesSelections);
+        jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesMasterSet);
     });
 };
 
@@ -494,6 +495,7 @@ jlab.wfb.makeTimeline = function (container, groups, items) {
 
 $(function () {
     $seriesSelector.select2();
+    $seriesSetSelector.select2();
     $zoneSelector.select2();
     $startPicker.val(jlab.wfb.begin);
     $endPicker.val(jlab.wfb.end);
@@ -508,6 +510,6 @@ $(function () {
     jlab.wfb.makeTimeline(timelineDiv, groups, items);
 
     if (typeof jlab.wfb.eventId !== "undefined" && jlab.wfb.eventId !== null && jlab.wfb.eventId !== "") {
-        jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesSelections);
+        jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesMasterSet);
     }
 });

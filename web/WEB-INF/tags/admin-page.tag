@@ -18,7 +18,7 @@
                     <nav id="secondary-nav">
                         <ul>
                             <li${'/admin/series' eq currentPath ? ' class="current-secondary"' : ''}><a href="${pageContext.request.contextPath}/admin/series">Series</a></li>
-                            <li${'/admin/series-sets' eq currentPath ? ' class="current-secondary"' : ''}><a href="${pageContext.request.contextPath}/admin/series">Series Sets</a></li>
+                            <li${'/admin/series-sets' eq currentPath ? ' class="current-secondary"' : ''}><a href="${pageContext.request.contextPath}/admin/series-sets">Series Sets</a></li>
                         </ul>
                     </nav>
                 </section>

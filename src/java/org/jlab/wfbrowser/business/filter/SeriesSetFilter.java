@@ -15,20 +15,21 @@ import java.util.List;
  * @author adamc
  */
 public class SeriesSetFilter {
+
     private final List<Long> idList;
     private final String systemName;
-    private final String setName;
-    
-    public SeriesSetFilter(List<Long> idList, String systemName, String setName) {
+    private final List<String> nameList;
+
+    public SeriesSetFilter(List<Long> idList, String systemName, List<String> nameList) {
         this.idList = idList;
         this.systemName = systemName;
-        this.setName = setName;
+        this.nameList = nameList;
     }
-    
+
     public String getWhereClause() {
         String filter = "";
         List<String> filterList = new ArrayList<>();
-        
+
         if (idList != null && !idList.isEmpty()) {
             String idFilter = "set_id IN (?";
             for (int i = 1; i < idList.size(); i++) {
@@ -37,39 +38,41 @@ public class SeriesSetFilter {
             idFilter += ")";
             filterList.add(idFilter);
         }
-        
+
         if (systemName != null) {
             filterList.add("system_name = ?");
         }
-        
-        if (setName != null) {
+
+        if (nameList != null) {
             filterList.add("set_name = ?");
         }
-        
+
         if (!filterList.isEmpty()) {
             filter = " WHERE " + filterList.get(0);
-            for(int i = 1; i < filterList.size(); i++) {
+            for (int i = 1; i < filterList.size(); i++) {
                 filter += " AND " + filterList.get(i);
             }
         }
-        
+
         return filter;
     }
-    
+
     public void assignParameterValues(PreparedStatement stmt) throws SQLException {
         int i = 1;
-        
+
         if (idList != null && !idList.isEmpty()) {
-            for(Long id : idList) {
+            for (Long id : idList) {
                 stmt.setLong(i++, id);
             }
         }
         if (systemName != null) {
             stmt.setString(i++, systemName);
         }
-        
-        if (setName != null) {
-            stmt.setString(i++, setName);
-        }        
+
+        if (nameList != null && !nameList.isEmpty()) {
+            for (String name : nameList) {
+                stmt.setString(i++, name);
+            }
+        }
     }
 }

@@ -155,11 +155,11 @@ public class Event {
      * database event_id value, since it doesn't make any sense to hand out
      * "unofficial" data through one of our data API end points.
      *
-     * @param seriesList If not null, only include waveforms who's listed
+     * @param seriesSet If not null, only include waveforms who's listed
      * seriesNames includes at least of the series in the list.
      * @return
      */
-    public JsonObject toJsonObject(List<String> seriesList) {
+    public JsonObject toJsonObject(Set<String> seriesSet) {
         JsonObjectBuilder job = Json.createObjectBuilder();
         if (eventId != null) {
             job.add("id", eventId)
@@ -171,8 +171,8 @@ public class Event {
                 // Don't add a waveforms parameter if it's null.  That indicates that the waveforms were requested
                 JsonArrayBuilder jab = Json.createArrayBuilder();
                 for (Waveform w : waveforms) {
-                    if (seriesList != null) {
-                        for (String seriesName : seriesList) {
+                    if (seriesSet != null) {
+                        for (String seriesName : seriesSet) {
                             for (Series series : w.getSeries()) {
                                 if (series.getName().equals(seriesName)) {
                                     jab.add(w.toJsonObject());
@@ -209,10 +209,10 @@ public class Event {
      * in for each waveform via step-wise interpolation. Optionally, a list of
      * specific series can be requested by supplying a non-null list of strings.
      *
-     * @param seriesList A list of series to include. Include all if null.
+     * @param seriesSet A set of series to include. Include all if null.
      * @return
      */
-    private String[][] getWaveformDataAsArray(List<String> seriesList) {
+    private String[][] getWaveformDataAsArray(Set<String> seriesSet) {
         String[][] data;
         if (waveforms == null || waveforms.isEmpty()) {
             return null;
@@ -220,8 +220,8 @@ public class Event {
 
         List<Waveform> wfList = new ArrayList<>();
         for (Waveform waveform : waveforms) {
-            if (seriesList != null) {
-                for (String seriesName : seriesList) {
+            if (seriesSet != null) {
+                for (String seriesName : seriesSet) {
                     for (Series series : waveform.getSeries()) {
                         if (series.getName().equals(seriesName)) {
                             wfList.add(waveform);
@@ -312,12 +312,12 @@ public class Event {
     /**
      * Generate the contents of a CSV file that represents the waveform event
      *
-     * @param seriesList A list of the named series that should be included
+     * @param seriesSet A set of the named series that should be included
      * @return A string representation of a CSV file representing the waveform
      * event.
      */
-    public String toCsv(List<String> seriesList) {
-        String[][] csvData = getWaveformDataAsArray(seriesList);
+    public String toCsv(Set<String> seriesSet) {
+        String[][] csvData = getWaveformDataAsArray(seriesSet);
 
         String csvOut;
 
@@ -332,7 +332,7 @@ public class Event {
         return csvOut;
     }
 
-    public JsonObject toDyGraphJsonObject(List<String> seriesList) {
+    public JsonObject toDyGraphJsonObject(Set<String> seriesSet) {
 
         JsonObjectBuilder job = Json.createObjectBuilder();
         if (eventId != null) {
@@ -342,7 +342,7 @@ public class Event {
                     .add("system", system)
                     .add("archive", archive);
             if (waveforms != null) {
-                String[][] data = getWaveformDataAsArray(seriesList);
+                String[][] data = getWaveformDataAsArray(seriesSet);
 
                 String[] waveformNames = data[0];
 

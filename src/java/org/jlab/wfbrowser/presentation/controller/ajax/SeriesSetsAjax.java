@@ -61,7 +61,7 @@ public class SeriesSetsAjax extends HttpServlet {
             }
         }
 
-        SeriesSetFilter filter = new SeriesSetFilter(idList, "rf", name);
+        SeriesSetFilter filter = new SeriesSetFilter(idList, "rf", Arrays.asList(name));
         SeriesService ss = new SeriesService();
         try {
             List<SeriesSet> seriesSetList = ss.getSeriesSets(filter);

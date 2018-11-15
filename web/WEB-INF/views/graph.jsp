@@ -49,6 +49,16 @@
                             </select>
                         </div>
                     </li>
+                    <li>
+                        <div class="li-key"><label class="required-field" for="series-sets">Series Sets</label></div>
+                        <div class="li-value">
+                            <select id="series-set-selector" name="seriesSet" multiple>
+                                <c:forEach var="seriesSet" items="${requestScope.seriesSetMap}">
+                                    <option value="${seriesSet.key}" label="${seriesSet.key}" <c:if test="${seriesSet.value}">selected</c:if>>${seriesSet.key}</option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                    </li>
                 </ul>
                 <input type="submit"/>
             </form>
@@ -66,6 +76,8 @@
             jlab.wfb.currentEvent = ${requestScope.currentEvent} || {}
             ;
                     jlab.wfb.seriesSelections = [<c:forEach var="series" items="${seriesSelections}" varStatus="status">'${series}'<c:if test="${!status.last}">,</c:if></c:forEach>];
+                    jlab.wfb.seriesSetSelections = [<c:forEach var="series" items="${seriesSetSelections}" varStatus="status">'${seriesSet}'<c:if test="${!status.last}">,</c:if></c:forEach>];
+                    jlab.wfb.seriesMasterSet = [<c:forEach var="series" items="${seriesMasterSet}" varStatus="status">'${series}'<c:if test="${!status.last}">,</c:if></c:forEach>];
                 </script>
 
     </jsp:body>  
