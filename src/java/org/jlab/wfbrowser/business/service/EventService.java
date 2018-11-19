@@ -297,7 +297,7 @@ public class EventService {
     }
 
     /**
-     * Get the most recent event in the database given the applied filter
+     * Get the most recent event ID in the database given the applied filter
      *
      * @param filter
      * @return
@@ -326,6 +326,23 @@ public class EventService {
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
+        }
+        return out;
+    }
+
+    /**
+     * Get the most recent event in the database given the applied filter
+     *
+     * @param filter
+     * @return
+     * @throws SQLException
+     * @throws java.io.IOException
+     */
+    public Event getMostRecentEvent(EventFilter filter) throws SQLException, IOException {
+        List<Event> eventList = getEventList(filter, false, 1l);
+        Event out = null;
+        if (!eventList.isEmpty()) {
+            out = eventList.get(0);
         }
         return out;
     }
@@ -458,7 +475,7 @@ public class EventService {
      * @throws java.io.IOException
      */
     public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
-        return getEventList(filter, false);
+        return getEventList(filter, false, null);
     }
 
     /**
@@ -501,11 +518,12 @@ public class EventService {
      * @param filter
      * @param ignoreErrors Whether or not to ignore errors when parsing waveform
      * data on disk. Used for testing only.
+     * @param limit How many events to return.  Null for unlimited
      * @return
      * @throws SQLException
      * @throws java.io.IOException
      */
-    public List<Event> getEventList(EventFilter filter, boolean ignoreErrors) throws SQLException, IOException {
+    public List<Event> getEventList(EventFilter filter, boolean ignoreErrors, Long limit) throws SQLException, IOException {
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -523,6 +541,10 @@ public class EventService {
                     + " JOIN waveforms.system_type USING(system_id) ";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
+            }
+            getEventSql += " ORDER BY event_time_utc DESC";
+            if (limit != null)  {
+                getEventSql += " LIMIT " + limit;
             }
             pstmt = conn.prepareStatement(getEventSql);
 
@@ -546,12 +568,6 @@ public class EventService {
                 }
             }
 
-            // Get the set of waveform to series name mappings and apply them to the 
-//            String mapSql = "SELECT waveform_name, series_name"
-//                    + " FROM event_waveforms"
-//                    + " JOIN series ON event_waveforms.waveform_name LIKE series.pattern"
-//                    + " WHERE event_id = ?";
-//            
             String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
                     + " FROM event_waveforms"
                     + " JOIN series ON waveform_name LIKE series.pattern"
