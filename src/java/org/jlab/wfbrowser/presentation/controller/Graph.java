@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.filter.SeriesFilter;
 import org.jlab.wfbrowser.business.filter.SeriesSetFilter;
@@ -61,14 +63,20 @@ public class Graph extends HttpServlet {
         String[] locSel = request.getParameterValues("location");
         String[] serSel = request.getParameterValues("series");
         String[] serSetSel = request.getParameterValues("seriesSet");
-        List<String> locationSelections = locSel == null ? new ArrayList<String>() : Arrays.asList(locSel);
-        List<String> seriesSetSelections = serSetSel == null ? new ArrayList<String>() : Arrays.asList(serSetSel);
         String eventId = request.getParameter("eventId");
 
-        Set<String> seriesSelections = new TreeSet<>();
-        if (serSel != null) {
-            for (String ser : serSel) {
-                seriesSelections.add(ser);
+        /* Basic strategy with these session attributes - if we get explicit request parameters, use them and update the session
+         * copies.  If we don't get reuqest params, but we have the needed session attributes, use them and redirect.  If we don't
+         * have request or session values, then use defaults, update the session, and redirect.
+         */
+        HttpSession session = request.getSession();
+        if (session.isNew()) {
+            System.out.println("New session");
+        } else {
+            System.out.println("Existing session");
+            Enumeration<String> names = session.getAttributeNames();
+            while (names.hasMoreElements()) {
+                System.out.println(names.nextElement());
             }
         }
 
@@ -80,8 +88,14 @@ public class Graph extends HttpServlet {
         if (beginString != null && !beginString.isEmpty()) {
             TimeUtil.validateDateTimeString(beginString);
             begin = TimeUtil.getInstantFromDateTimeString(beginString);
+            session.setAttribute("graphBegin", begin);
+        } else if (session.getAttribute("graphBegin") != null) {
+            begin = (Instant) session.getAttribute("graphBegin");
+            beginString = dtf.format(begin);
+            redirectNeeded = true;
         } else {
             begin = now.plus(-2, ChronoUnit.DAYS);
+            session.setAttribute("graphBegin", begin);
             beginString = dtf.format(begin);
             redirectNeeded = true;
         }
@@ -89,8 +103,14 @@ public class Graph extends HttpServlet {
         if (endString != null && !endString.isEmpty()) {
             TimeUtil.validateDateTimeString(endString);
             end = TimeUtil.getInstantFromDateTimeString(endString);
+            session.setAttribute("graphEnd", end);
+        } else if (session.getAttribute("graphEnd") != null) {
+            end = (Instant) session.getAttribute("graphEnd");
+            endString = dtf.format(end);
+            redirectNeeded = true;
         } else {
             end = now;
+            session.setAttribute("graphEnd", end);
             endString = dtf.format(end);
             redirectNeeded = true;
         }
@@ -109,29 +129,82 @@ public class Graph extends HttpServlet {
             throw new ServletException("Error querying database for series information.");
         }
 
-        // Process the series to see what was selected
-        Map<String, Boolean> seriesMap = new TreeMap<>();
-        boolean firstPass = true;
-        for (Series series : seriesOptions) {
-            // If the user didn't select a series, pick the first one for them and mark the request for redirection.
-            if (firstPass) {
-                if (seriesSelections.isEmpty()) {
-                    seriesSelections.add(series.getName()); // Add to this list so the redirect can pick it up.
-                    redirectNeeded = true;
+        // Process the requested series and series set selections.  This is a little more complicated than usual.  We have to have
+        // at least one series to graph, so that means either a series or series set must be specified at the end.  If the request
+        // doesn't have either specified, then use the session.  If the session doesn't have either specified, then set a single series
+        // as the default.
+        //
+        // Figure out what we're using - request, session, or default
+        String seriesCase;
+        if ((serSel != null && serSel.length != 0) || (serSetSel != null && serSetSel.length != 0)) {
+            seriesCase = "request";
+        } else if (session.getAttribute("graphSeriesSelections") != null || session.getAttribute("graphSeriesSetSelections") != null) {
+            seriesCase = "session";
+            redirectNeeded = true;
+        } else {
+            seriesCase = "default"; // maps to switch default
+            redirectNeeded = true;
+        }
+
+        Set<String> seriesSelections;
+        switch (seriesCase) {
+            case "request":
+                seriesSelections = new TreeSet<>();
+                for (String ser : serSel) {
+                    seriesSelections.add(ser);
                 }
-                firstPass = false;
-            }
+                session.setAttribute("graphSeriesSelections", seriesSelections);
+                break;
+            case "session":
+                if (session.getAttribute("graphSeriesSelections") != null) {
+                    seriesSelections = (Set<String>) session.getAttribute("graphSeriesSelections");
+                } else {
+                    seriesSelections = new TreeSet<>();
+                    session.setAttribute("graphSeriesSelections", seriesSelections);
+                }
+                break;
+            default:
+                seriesSelections = new TreeSet<>();
+                seriesSelections.add(seriesOptions.get(0).getName());
+                session.setAttribute("graphSeriesSelections", seriesSelections);
+                break;
+        }
+
+        // Process the series to see what was selected and what was not.  Save this for easy look up in the view.
+        Map<String, Boolean> seriesMap = new TreeMap<>();
+        for (Series series : seriesOptions) {
             seriesMap.put(series.getName(), seriesSelections.contains(series.getName()));
         }
 
         // Now process the series sets
+        List<String> seriesSetSelections;
+        switch (seriesCase) {
+            case "request":
+                seriesSetSelections = (serSetSel == null) ? new ArrayList<String>() : Arrays.asList(serSetSel);
+                session.setAttribute("graphSeriesSetSelections", seriesSetSelections);
+                break;
+            case "session":
+                if (session.getAttribute("graphSeriesSetSelections") == null) {
+                    seriesSetSelections = new ArrayList<>();
+                    session.setAttribute("graphSeriesSetSelections", seriesSetSelections);
+                } else {
+                    seriesSetSelections = (List<String>) session.getAttribute("graphSeriesSetSelections");
+                }
+                break;
+            default:
+                seriesSetSelections = new ArrayList<>();
+                break;
+        }
+
+        // Figure out which series sets were selected and which were not.  Save in a map for easy lookup in the view
         Map<String, Boolean> seriesSetMap = new TreeMap<>();
         for (SeriesSet seriesSet : seriesSetOptions) {
             // Don't force a series set to be selected like we did for the series.  We just need at least one series to display.
             seriesSetMap.put(seriesSet.getName(), seriesSetSelections.contains(seriesSet.getName()));
         }
 
-        // Create a map of the location options and whether or not the user selected them.
+        // Process the location selections.  Use the request version if given, the session if not, and all available options if we have nothing
+        // Get a list of the location options
         EventService es = new EventService();
         List<String> locationOptions;
         try {
@@ -142,39 +215,35 @@ public class Graph extends HttpServlet {
         }
         Map<String, Boolean> locationMap = new HashMap<>();
 
-        // If the user didn't pick a location, then pick them all and mark it for redirect
-        // Add the selections while processing the valid options.
-        boolean noLocationsSelected = false;
-        if (locationSelections.isEmpty()) {
-            noLocationsSelected = true;
+        List<String> locationSelections;
+        if (locSel != null && locSel.length != 0) {
+            // The user made a request so use it
+            locationSelections = Arrays.asList(locSel);
+            session.setAttribute("graphLocationSelections", locationSelections);
+        } else if (session.getAttribute("graphLocationSelections") != null) {
+            // The user did not make a request, but we have usable session info
+            locationSelections = (List<String>) session.getAttribute("graphLocationSelections");
+            redirectNeeded = true;
+        } else {
+            // The user did not make a request, and we do not have useable session info.  Select them all.
+            locationSelections = new ArrayList<>(locationOptions);
             redirectNeeded = true;
         }
 
+        // See which options were selected and which were not.  Save for easy lookup in the view.
         for (String location : locationOptions) {
-            if (noLocationsSelected) {
-                locationSelections.add(location);  // Add to this list so that the redirect will pick it up.
-            }
             locationMap.put(location, locationSelections.contains(location));
         }
 
+        // Process the eventId request parameter.  Use the id if in the request, then use the session version if present, or use
+        // the most recent event in time window specified as a default.  If the session event is not within the specified time range
+        // update it to the standard default value
         Event currentEvent;
         Long id;
-        List<Event> eventList;
-        EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
-        try {
-            eventList = es.getEventListWithoutData(eFilter);
-            if (eventId == null || eventId.isEmpty()) {
-                if (eventId == null) {
-                    redirectNeeded = true;
-                }
-                id = es.getMostRecentEventId(eFilter);
-            } else {
+        if (eventId != null && !eventId.isEmpty()) {
+            // We have a real request
+            try {
                 id = Long.parseLong(eventId);
-            }
-
-            if (id == null) {
-                currentEvent = null;
-            } else {
                 EventFilter currentFilter = new EventFilter(Arrays.asList(id), null, null, "rf", null, null, null);
                 List<Event> currentEventList = es.getEventList(currentFilter);
                 if (currentEventList == null || currentEventList.isEmpty()) {
@@ -182,7 +251,47 @@ public class Graph extends HttpServlet {
                 } else {
                     currentEvent = currentEventList.get(0);
                 }
+                session.setAttribute("graphCurrentEvent", currentEvent);
+            } catch (SQLException ex) {
+                LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
+                throw new ServletException("Error querying database for event information.");
             }
+        } else if (session.getAttribute("graphCurrentEvent") != null) {
+            // No request, but we have session data
+            currentEvent = (Event) session.getAttribute("graphCurrentEvent");
+            if (currentEvent.getEventTime().isBefore(begin) || currentEvent.getEventTime().isAfter(end)) {
+                // the event will not fall within the specified time range
+                try {
+                    EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
+                    currentEvent = es.getMostRecentEvent(eFilter);
+                } catch (SQLException ex) {
+                    LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
+                    throw new ServletException("Error querying database for event information.");
+                }
+            }
+            redirectNeeded = true;
+        } else {
+            // Use a default value of the most recent event within the specified time window
+            try {
+                EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
+                currentEvent = es.getMostRecentEvent(eFilter);
+                session.setAttribute("graphCurrentEvent", currentEvent);
+            } catch (SQLException ex) {
+                LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
+                throw new ServletException("Error querying database for event information.");
+            }
+        }
+        if (currentEvent == null) {
+            id = null;
+        } else {
+            id = currentEvent.getEventId();
+        }
+
+        // Get a list of events that are to be displayed in the timeline - should not be in session since this might change
+        List<Event> eventList;
+        try {
+            EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
+            eventList = es.getEventListWithoutData(eFilter);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
             throw new ServletException("Error querying database for event information.");
@@ -214,7 +323,6 @@ public class Graph extends HttpServlet {
         // they include.  We already have a full list of all SeriesSet objects in the series Set objects so just use that.
         Set<String> seriesMasterSet = new TreeSet<>();
         seriesMasterSet.addAll(seriesSelections);
-
         for (String sName : seriesSetSelections) {
             for (SeriesSet seriesSet : seriesSetOptions) {
                 if (seriesSet.getName().equals(sName)) {

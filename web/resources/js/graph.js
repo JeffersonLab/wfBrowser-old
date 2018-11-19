@@ -257,7 +257,7 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
 jlab.wfb.loadNewGraphs = function () {
     jlab.wfb.updateBrowserUrlAndControls();
 
-    var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: jlab.wfb.eventId, out: "dygraph", includeData: true});
+    var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: jlab.wfb.eventId, out: "dygraph", includeData: true, requester:"graph"});
     $graphPanel.css({opacity: 0.5});
     promise.done(function (json) {
         jlab.wfb.currentEvent = json.events[0];
@@ -386,6 +386,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
 //
 jlab.wfb.makeTimeline = function (container, groups, items) {
     var options = {
+        type: "point",
         start: jlab.wfb.begin,
         end: jlab.wfb.end,
         stack: false,
@@ -494,9 +495,12 @@ jlab.wfb.makeTimeline = function (container, groups, items) {
 
 
 $(function () {
-    $seriesSelector.select2();
-    $seriesSetSelector.select2();
-    $zoneSelector.select2();
+    var select2Options = {
+        width: "30em"
+    };
+    $seriesSelector.select2(select2Options);
+    $seriesSetSelector.select2(select2Options);
+    $zoneSelector.select2(select2Options);
     $startPicker.val(jlab.wfb.begin);
     $endPicker.val(jlab.wfb.end);
     $(".date-time-field").datetimepicker({

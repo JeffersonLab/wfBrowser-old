@@ -25,6 +25,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.filter.SeriesSetFilter;
 import org.jlab.wfbrowser.business.service.EventService;
@@ -79,6 +80,7 @@ public class EventAjax extends HttpServlet {
         List<String> seriesList = serArray == null ? null : Arrays.asList(serArray);
         String[] serSetArray = request.getParameterValues("seriesSet");
         List<String> seriesSetList = serSetArray == null ? null : Arrays.asList(serSetArray);
+        String requester = request.getParameter("requester");
 
         String arch = request.getParameter("archive");
         Boolean archive = (arch == null) ? null : arch.equals("true");
@@ -158,73 +160,70 @@ public class EventAjax extends HttpServlet {
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.
         List<Event> eventList;
-        if (output.equals("json") || output.equals("dygraph")) {
-            JsonObjectBuilder job = null;
-            try {
-                if (includeData) {
-                    eventList = wfs.getEventList(filter);
-                } else {
-                    eventList = wfs.getEventListWithoutData(filter);
-                }
-                job = Json.createObjectBuilder();
-                JsonArrayBuilder jab = Json.createArrayBuilder();
-                for (Event e : eventList) {
-                    if (output.equals("json")) {
-                        jab.add(e.toJsonObject(seriesMasterSet));
-                    } else if (output.equals("dygraph")) {
-                        jab.add(e.toDyGraphJsonObject(seriesMasterSet));
-                    }
-                }
-                job.add("events", jab.build());
+        try {
+            if (includeData) {
+                eventList = wfs.getEventList(filter);
+            } else {
+                eventList = wfs.getEventListWithoutData(filter);
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error querying database");
+            response.setContentType("application/json");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.print("{\"error\": \"error querying database - " + ex.getMessage() + "\"}");
+            }
+            return;
+        } catch (FileNotFoundException ex) {
+            LOGGER.log(Level.SEVERE, "Error querying data - {0}", ex.getMessage());
+            response.setContentType("application/json");
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.print("{\"error\": \"error querying data - " + ex.getMessage() + "\"}");
+            }
+            return;
+        }
 
-                response.setContentType("application/json");
-                try (PrintWriter pw = response.getWriter()) {
-                    if (job != null) {
-                        pw.print(job.build().toString());
-                    } else {
-                        pw.print("{\"error\":\"null response\"}");
-                    }
-                }
-            } catch (SQLException ex) {
-                LOGGER.log(Level.SEVERE, "Error querying database");
-                response.setContentType("application/json");
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                try (PrintWriter pw = response.getWriter()) {
-                    pw.print("{\"error\": \"error querying database - " + ex.getMessage() + "\"}");
-                }
-            } catch (FileNotFoundException ex) {
-                LOGGER.log(Level.SEVERE, "Error querying data - {0}", ex.getMessage());
-                response.setContentType("application/json");
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                try (PrintWriter pw = response.getWriter()) {
-                    pw.print("{\"error\": \"error querying data - " + ex.getMessage() + "\"}");
+        // The graph page uses AJAX calls to get data when a user clicks on the timeline or "next"/"prev" control buttons
+        if (requester != null && requester.equals("graph")) {
+            if (!eventList.isEmpty()) {
+                HttpSession session = request.getSession();
+                session.setAttribute("graphCurrentEvent",eventList.get(0));
+            }
+        }
+
+        if (output.equals("json") || output.equals("dygraph")) {
+            JsonObjectBuilder job = Json.createObjectBuilder();
+            JsonArrayBuilder jab = Json.createArrayBuilder();
+            for (Event e : eventList) {
+                if (output.equals("json")) {
+                    jab.add(e.toJsonObject(seriesMasterSet));
+                } else if (output.equals("dygraph")) {
+                    jab.add(e.toDyGraphJsonObject(seriesMasterSet));
                 }
             }
+            job.add("events", jab.build());
+
+            response.setContentType("application/json");
+            try (PrintWriter pw = response.getWriter()) {
+                pw.print(job.build().toString());
+            }
+            return;
         } else if (output.equals("csv")) {
-            try {
-                if (includeData) {
-                    eventList = wfs.getEventList(filter);
-                } else {
-                    eventList = wfs.getEventListWithoutData(filter);
-                }
-                response.setContentType("text/csv");
-                // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
-                // for now.  Only used to send over a single event to a dygraph chart widget.
-                try (PrintWriter pw = response.getWriter()) {
-                    for (Event e : eventList) {
-                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
-                            pw.write(e.toCsv(seriesMasterSet));
-                        } else {
-                            pw.write("No data requested");
-                        }
-                        break;
+            response.setContentType("text/csv");
+            // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
+            // for now.  Only used to send over a single event to a dygraph chart widget.
+            try (PrintWriter pw = response.getWriter()) {
+                for (Event e : eventList) {
+                    if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+                        pw.write(e.toCsv(seriesMasterSet));
+                    } else {
+                        pw.write("No data requested");
                     }
+                    break;
                 }
-            } catch (SQLException ex) {
-                LOGGER.log(Level.SEVERE, "Error querying database");
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                throw new ServletException("Error querying database");
             }
+            return;
         }
     }
 
