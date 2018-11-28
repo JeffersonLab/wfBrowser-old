@@ -236,15 +236,17 @@ public class Graph extends HttpServlet {
         }
 
         // Process the eventId request parameter.  Use the id if in the request, then use the session version if present, or use
-        // the most recent event in time window specified as a default.  If the session event is not within the specified time range
-        // update it to the standard default value
-        Event currentEvent;
+        // the most recent event in time window specified as a default.  If the session event is not within the specified time range,
+        // it will later be set to the standard default value for the other supplied parameters.
+        Event currentEvent = null;
         Long id;
         if (eventId != null && !eventId.isEmpty()) {
             // We have a real request
             try {
+                // Query the event id with the other constraints that were determined so far (location, start/end, etc.).  If we don't get
+                // anything, then get the default entry for that set of constrains minus the event Id
                 id = Long.parseLong(eventId);
-                EventFilter currentFilter = new EventFilter(Arrays.asList(id), null, null, "rf", null, null, null);
+                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, "rf", locationSelections, null, null);
                 List<Event> currentEventList = es.getEventList(currentFilter);
                 if (currentEventList == null || currentEventList.isEmpty()) {
                     currentEvent = null;
@@ -263,24 +265,33 @@ public class Graph extends HttpServlet {
                 // the event will not fall within the specified time range
                 try {
                     EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
-                    currentEvent = es.getMostRecentEvent(eFilter);
+                    currentEvent = es.getMostRecentEvent(eFilter); // null if no events
                 } catch (SQLException ex) {
                     LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
                     throw new ServletException("Error querying database for event information.");
                 }
             }
             redirectNeeded = true;
-        } else {
+        }
+
+        // If the eventId in the request or session was not in location or date range specified or was not specified at all;
+        if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
             try {
                 EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
                 currentEvent = es.getMostRecentEvent(eFilter);
                 session.setAttribute("graphCurrentEvent", currentEvent);
+                
+                // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
+                if (currentEvent != null) {
+                    redirectNeeded = true;
+                }
             } catch (SQLException ex) {
                 LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
                 throw new ServletException("Error querying database for event information.");
             }
         }
+
         if (currentEvent == null) {
             id = null;
         } else {

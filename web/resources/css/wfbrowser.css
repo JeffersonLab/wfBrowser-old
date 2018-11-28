@@ -11,7 +11,7 @@
 }
 
 .date-time-field {
-    width: 12em;
+    width: 10em;
 }
 
 #page {
@@ -25,6 +25,7 @@
 }
 #graph-panel {
     text-align: center;
+    margin-top: 3px;
 }
 .graph-panel-title {
     font-weight: bold;
@@ -36,23 +37,72 @@
 }
 .graph-container {
     display: inline-block;
+    position: relative;
     border: 1px solid;
     padding: 2px;
     margin: 2px;
     height: 250px;
-    width: 550px;
+    width: 100%;
+}
+.graph-panel-header {
+    position: relative;
+}
+.graph-panel-action-controls {
+    position: absolute;
+    right: 0px;
+}
+.graph-panel-visibility-controls fieldset {
+    padding: 2px;    
+}
+.graph-panel-visibility-controls {
+    position: absolute;
+    left: 0px;
+    bottom: 0px;
+    top: 0px;
+    font-size: 75%;
+    height: auto;
+}
+.graph-container-halfwidth {
+    width: 48%;
+}
+.graph-container-thirdwidth {
+    width: 32%;
 }
 .graph-chart {
-    float: left;
-    height: 100%;
-    width:74%;
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    right: 12em;
+    width: auto;
 }
 .graph-legend {
-    float:right;
+    position: absolute;
+    right: 0px;
+    padding: 1px 1px 1px 1px;
+    width: 10em;
+    /*float:right;*/
     height: 100%;
-    width: 25%;
     text-align: left;
 }
 .graph-legend > span.highlight {
     border: 1px solid grey;
+}
+
+.dygraph-axis-label {
+    font-size: 75%;
+}
+.graph-panel-action-controls {
+    float: right;
+}
+.select2-container-multi .select2-choices {
+    max-height: 3em;
+    height: 3em;
+    overflow-y: scroll;
+    font-size: 75%;
+}
+
+#page-controls-error {
+    color: red;
+    font-weight: bold;
 }
