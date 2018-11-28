@@ -150,8 +150,10 @@ public class Graph extends HttpServlet {
         switch (seriesCase) {
             case "request":
                 seriesSelections = new TreeSet<>();
-                for (String ser : serSel) {
-                    seriesSelections.add(ser);
+                if (serSel != null) {
+                    for (String ser : serSel) {
+                        seriesSelections.add(ser);
+                    }
                 }
                 session.setAttribute("graphSeriesSelections", seriesSelections);
                 break;
@@ -281,7 +283,7 @@ public class Graph extends HttpServlet {
                 EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
                 currentEvent = es.getMostRecentEvent(eFilter);
                 session.setAttribute("graphCurrentEvent", currentEvent);
-                
+
                 // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
                 if (currentEvent != null) {
                     redirectNeeded = true;
