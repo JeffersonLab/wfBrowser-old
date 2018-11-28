@@ -79,9 +79,9 @@
         <script type="text/javascript">
             jlab.contextPath = "${pageContext.request.contextPath}";
             // THIS VARIABLE SHOULD ONLY BE USED FOR UI PURPOSES AND NOT FOR ANY REAL SECURITY
-            jlab.userIsAdmin = false;
+            jlab.isUserAdmin = false;
             <c:if test='${pageContext.request.isUserInRole("ADMIN")}'>
-            jlab.userIsAdmin = true;
+            jlab.isUserAdmin = true;
             </c:if>
         </script>
         <script type="text/javascript" src="${pageContext.request.contextPath}/resources/js/wfbrowser.js"></script>
