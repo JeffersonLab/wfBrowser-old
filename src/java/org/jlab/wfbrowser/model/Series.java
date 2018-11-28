@@ -63,7 +63,7 @@ public class Series {
                 .add("pattern", pattern)
                 .add("system", system)
                 .add("units", (units == null) ? "" : units)
-                .add("description", (description == null) ? "" : units)
+                .add("description", (description == null) ? "" : description)
                 .build();
     }
     
