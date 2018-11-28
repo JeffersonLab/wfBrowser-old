@@ -62,8 +62,8 @@ public class Series {
                 .add("seriesId", id)
                 .add("pattern", pattern)
                 .add("system", system)
-                .add("units", units)
-                .add("description", description)
+                .add("units", (units == null) ? "" : units)
+                .add("description", (description == null) ? "" : units)
                 .build();
     }
     
