@@ -48,7 +48,7 @@ public class EventArchiveAjax extends HttpServlet {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
-                pw.write("{'error':'id parameter required'}");
+                pw.write("{\"error\":\"id parameter required\"}");
             }
             return;
         }
@@ -61,7 +61,7 @@ public class EventArchiveAjax extends HttpServlet {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
-                pw.write("{'error':'Error process id - " + e.getMessage() + "'}");
+                pw.write("{\"error\":\"Error process id - " + e.getMessage() + "\"}");
             }
             return;
         }
@@ -71,7 +71,7 @@ public class EventArchiveAjax extends HttpServlet {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
-                pw.write("{'error':'archive parameter required'}");
+                pw.write("{\"error\":\"archive parameter required\"}");
             }
             return;
         }
@@ -83,7 +83,7 @@ public class EventArchiveAjax extends HttpServlet {
                 response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 try (PrintWriter pw = response.getWriter()) {
-                    pw.write("{'error':'permission denied.  Only admins can unarchive an event'}");
+                    pw.write("{\"error\":\"permission denied.  Only admins can unarchive an event\"}");
                 }
                 return;
             }
@@ -98,14 +98,14 @@ public class EventArchiveAjax extends HttpServlet {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
-                pw.write("{'error':'Error setting archive flag in database - " + ex.getMessage() + "'}");
+                pw.write("{\"error\":\"Error setting archive flag in database - " + ex.getMessage() + "\"}");
             }
             return;
         }
 
         response.setContentType("application/json");
         try (PrintWriter pw = response.getWriter()) {
-            pw.write("{'success':'Update made'}");
+            pw.write("{\"success\":\"Update made\"}");
         }
     }
 }
