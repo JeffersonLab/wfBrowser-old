@@ -671,6 +671,13 @@ public class EventService {
         return rowsAffected;
     }
 
+    /**
+     * Set the archive flag on an event in the database.
+     * @param eventId The id of the event that is to be modified
+     * @param archive The value of the archive flag (true is set, false is unset)
+     * @return The number of rows affected (should always be 1/0)
+     * @throws SQLException 
+     */
     public int setEventArchiveFlag(long eventId, boolean archive) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
