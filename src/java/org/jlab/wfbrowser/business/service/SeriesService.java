@@ -28,7 +28,7 @@ public class SeriesService {
     public List<Series> getSeries(SeriesFilter filter) throws SQLException {
         List<Series> seriesList = new ArrayList<>();
 
-        String sql = "SELECT series_id, system_name, pattern, series_name, description"
+        String sql = "SELECT series_id, system_name, pattern, series_name, description, units"
                 + " FROM waveforms.series"
                 + " JOIN waveforms.system_type"
                 + " ON system_type.system_id = series.system_id"
@@ -46,7 +46,7 @@ public class SeriesService {
             filter.assignParameterValues(pstmt);
             rs = pstmt.executeQuery();
 
-            String name, system, pattern, description;
+            String name, system, pattern, description, units;
             int id;
             while (rs.next()) {
                 id = rs.getInt("series_id");
@@ -54,7 +54,8 @@ public class SeriesService {
                 system = rs.getString("system_name");
                 pattern = rs.getString("pattern");
                 description = rs.getString("description");
-                seriesList.add(new Series(name, id, pattern, system, description));
+                units = rs.getString("units");
+                seriesList.add(new Series(name, id, pattern, system, description, units));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
@@ -72,14 +73,14 @@ public class SeriesService {
      * @param description A user created description for the series
      * @throws java.sql.SQLException
      */
-    public void addSeries(String name, String pattern, String system, String description) throws SQLException {
+    public void addSeries(String name, String pattern, String system, String description, String units) throws SQLException {
         SystemService ss = new SystemService();
         int systemId = ss.getSystemId(system);
 
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "INSERT INTO waveforms.series (pattern, series_name, system_id, description) VALUES (?,?,?,?)";
+        String sql = "INSERT INTO waveforms.series (pattern, series_name, system_id, description, units) VALUES (?,?,?,?,?)";
         try {
             conn = SqlUtil.getConnection();
             conn.setAutoCommit(false);
@@ -88,6 +89,7 @@ public class SeriesService {
             pstmt.setString(2, name);
             pstmt.setInt(3, systemId);
             pstmt.setString(4, description);
+            pstmt.setString(5, units);
             int n = pstmt.executeUpdate();
             if (n < 1) {
                 throw new SQLException("Error adding series to database.  No change made");
@@ -100,14 +102,14 @@ public class SeriesService {
         }
     }
 
-    public void updateSeries(int seriesId, String name, String pattern, String description, String system) throws SQLException {
+    public void updateSeries(int seriesId, String name, String pattern, String description, String system, String units) throws SQLException {
         SystemService ss = new SystemService();
         int systemId = ss.getSystemId(system);
 
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "UPDATE waveforms.series set pattern = ?, series_name = ?, system_id = ?, description = ? "
+        String sql = "UPDATE waveforms.series set pattern = ?, series_name = ?, system_id = ?, description = ?, units = ? "
                 + "WHERE series_id = ?";
         try {
             conn = SqlUtil.getConnection();
@@ -117,13 +119,14 @@ public class SeriesService {
             pstmt.setString(2, name);
             pstmt.setInt(3, systemId);
             pstmt.setString(4, description);
-            pstmt.setInt(5, seriesId);
+            pstmt.setString(5, units);
+            pstmt.setInt(6, seriesId);
             int n = pstmt.executeUpdate();
             if (n < 1) {
                 conn.rollback();
                 String msg = "Error adding series to database.  No change made.";
                 LOGGER.log(Level.WARNING, msg);
-                throw new SQLException("msg");
+                throw new SQLException(msg);
             } else if (n > 1) {
                 conn.rollback();
                 String msg = "Error adding series to database.  More than one row would be updated.  No changes made.";

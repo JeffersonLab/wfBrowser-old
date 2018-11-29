@@ -8,6 +8,7 @@ package org.jlab.wfbrowser.presentation.controller.ajax;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
+import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.ServletException;
@@ -26,6 +27,13 @@ public class SeriesUpdateAjax extends HttpServlet {
 
     private static final Logger LOGGER = Logger.getLogger(SeriesUpdateAjax.class.getName());
 
+        @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html");
+        System.out.println(request.toString());
+    }
+    
     /**
      * Handles the HTTP <code>POST</code> method.
      *
@@ -42,6 +50,7 @@ public class SeriesUpdateAjax extends HttpServlet {
         String name = request.getParameter("name");
         String pattern = request.getParameter("pattern");
         String description = request.getParameter("description");
+        String units = request.getParameter("units");
 
         if (id == null || system == null || system.isEmpty() || name == null || name.isEmpty() || pattern == null || pattern.isEmpty()
                 || description == null || description.isEmpty()) {
@@ -67,10 +76,10 @@ public class SeriesUpdateAjax extends HttpServlet {
 
         SeriesService ss = new SeriesService();
         try {
-            ss.updateSeries(seriesId, name, pattern, description, system);
+            ss.updateSeries(seriesId, name, pattern, description, system, units);
         } catch (SQLException ex) {
-            String msg = "Error udpating database - " + ex.getMessage();
-            LOGGER.log(Level.WARNING, ex.toString());
+            String msg = "Error updating database - " + ex.getMessage();
+            LOGGER.log(Level.WARNING, "Error updating database", ex);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.setContentType("application/json");
             try (PrintWriter pw = response.getWriter()) {
@@ -78,10 +87,12 @@ public class SeriesUpdateAjax extends HttpServlet {
             }
             return;
         }
-        
+
+        response.setContentType("application/json");
         try (PrintWriter pw = response.getWriter()) {
             pw.print("{\"message\":\"Successful update\"}");
         }
+
     }
 
     /**

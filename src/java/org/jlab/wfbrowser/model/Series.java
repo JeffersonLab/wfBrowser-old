@@ -20,18 +20,24 @@ public class Series {
     private final int id;
     private final String pattern;
     private final String system;
-    private final String comment;
+    private final String description;
+    private final String units;
 
-    public Series(String name, int id, String pattern, String system, String comment) {
+    public Series(String name, int id, String pattern, String system, String description, String units) {
         this.name = name;
         this.id = id;
         this.pattern = pattern;
         this.system = system;
-        this.comment = comment;
+        this.description = description;
+        this.units = units;
     }
 
-    public String getComment() {
-        return comment;
+    public String getUnits() {
+        return units;
+    }
+
+    public String getDescription() {
+        return description;
     }
     
     public String getSystem() {
@@ -56,7 +62,8 @@ public class Series {
                 .add("seriesId", id)
                 .add("pattern", pattern)
                 .add("system", system)
-                .add("comment", comment)
+                .add("units", units)
+                .add("description", description)
                 .build();
     }
 }

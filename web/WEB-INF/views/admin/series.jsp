@@ -20,8 +20,9 @@
                     <thead>
                         <tr>
                             <th>Series Name</th>
+                            <th>SQL Lookup Pattern</th>
+                            <th>Units</th>
                             <th>Description</th>
-                            <th>Lookup Pattern</th>
                             <th>System</th>
                         </tr>
                     </thead>
@@ -29,8 +30,9 @@
                         <c:forEach items="${seriesList}" var="series">
                             <tr data-series-id="${series.id}">
                                 <td ><c:out value="${series.name}"/></td>
-                                <td><c:out value="${series.comment}"/></td>
                                 <td><c:out value="${series.pattern}"/></td>
+                                <td><c:out value="${series.units}"/></td>
+                                <td><c:out value="${series.description}"/></td>
                                 <td><c:out value="${series.system}"/></td>
                             </tr>
                         </c:forEach>
@@ -47,12 +49,16 @@
                             <div class="li-value"><input type="text" id="row-name" name="name" placeholder="Ex. GMES"/></div>
                         </li>
                         <li>
-                            <div class="li-key"><label class="required-field" for="description">Description</label></div>
-                            <div class="li-value"><input type="text" id="row-description" name="description"/></div>
-                        </li>                                       
-                        <li>
                             <div class="li-key"><label class="required-field" for="pattern">SQL Lookup Pattern</label></div>
                             <div class="li-value"><input type="text" id="row-pattern" name="pattern" placeholder="Ex. R___WFSGMES"/></div>
+                        </li>                                       
+                        <li>
+                            <div class="li-key"><label class="required-field" for="units">Units</label></div>
+                            <div class="li-value"><input type="text" id="row-units" name="units"/></div>
+                        </li>                                       
+                        <li>
+                            <div class="li-key"><label class="required-field" for="description">Description</label></div>
+                            <div class="li-value"><input type="text" id="row-description" name="description"/></div>
                         </li>                                       
                     </ul>
                 </form>

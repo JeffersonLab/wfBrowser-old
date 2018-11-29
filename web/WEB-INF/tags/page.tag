@@ -44,7 +44,7 @@
                             <c:url value="/login" var="loginUrl">
                                 <c:param name="returnUrl" value="${domainRelativeReturnUrl}"/>
                             </c:url>
-                            <a id="login-link" href="${loginUrl}">Login</a> (<a id="auto-login" href="#">Auto</a>)
+                            <a id="login-link" href="${loginUrl}">Login</a> <!--(<a id="auto-login" href="#">Auto</a>)-->
                         </c:otherwise>
                     </c:choose>
                 </div>
