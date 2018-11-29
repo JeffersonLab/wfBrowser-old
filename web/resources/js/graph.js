@@ -396,7 +396,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     for (var i = 0; i < event.waveforms.length; i++) {
         dygraphIdSet.add(event.waveforms[i].dygraphId);
     }
-
+    
     // Construct checkboxes that will control the visibility of inidividual cavity series.  Once we've created the graphs, we can bind a click event handler
     var checkBoxNum = 0;
     dygraphIdSet.forEach(function (value) {
