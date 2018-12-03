@@ -119,4 +119,8 @@
         <description/>
         <role-name>ADMIN</role-name>
     </security-role>
+    <security-role>
+        <description>Role that provides permissions necessary for posting a new event</description>
+        <role-name>EVENTPOST</role-name>
+    </security-role>
 </web-app>
