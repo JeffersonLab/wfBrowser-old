@@ -219,8 +219,10 @@ public class EventService {
         String prev = null;
         String[] prevParts;
         String pv = null;
+        List<Path> fileList = new ArrayList<>();
         for (Path path : fileSet) {
             if (prev == null) {
+                fileList.add(path);
                 prev = path.getFileName().toString();
                 prevParts = prev.split("\\.");
                 pv = prevParts[0];
@@ -228,8 +230,8 @@ public class EventService {
                 String[] parts = path.getFileName().toString().split("\\.");
                 if (parts[0].equals(pv)) {
                     LOGGER.log(Level.WARNING, "Ignoring duplicate harvester file {0}", path.toString());
-                    fileSet.remove(path);
                 } else {
+                    fileList.add(path);
                     prev = path.getFileName().toString();
                     prevParts = prev.split("\\.");
                     pv = prevParts[0];
@@ -238,7 +240,7 @@ public class EventService {
         }
 
         // Go through the set of Path objects representing valid data files and parse them.
-        for (Path path : fileSet) {
+        for (Path path : fileList) {
             waveformList.addAll(parseWaveformInputStream(Files.newInputStream(path), includeData));
         }
 
@@ -639,7 +641,7 @@ public class EventService {
 
             for (Event e : eventList) {
                 e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors, true)); // We want the actual waveform data
-
+                
                 // Get the mapping
                 Map<String, List<Series>> waveformToSeries = new HashMap<>();
                 pstmt.setLong(1, e.getEventId());

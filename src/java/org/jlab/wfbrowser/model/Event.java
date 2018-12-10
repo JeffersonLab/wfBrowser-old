@@ -340,12 +340,14 @@ public class Event {
     }
 
     /**
-     * Generate a json object in a way that makes it easy to pass to the dygraph widgets
-     * @param seriesSet A set of series names that should be included in the output
-     * @return 
+     * Generate a json object in a way that makes it easy to pass to the dygraph
+     * widgets
+     *
+     * @param seriesSet A set of series names that should be included in the
+     * output
+     * @return
      */
     public JsonObject toDyGraphJsonObject(Set<String> seriesSet) {
-
         JsonObjectBuilder job = Json.createObjectBuilder();
         if (eventId != null) {
             job.add("id", eventId)
@@ -355,19 +357,21 @@ public class Event {
                     .add("archive", archive);
             if (waveforms != null) {
                 double[][] data = getWaveformDataAsArray(seriesSet);
-                
+
                 List<String> headerNames = new ArrayList<>();
                 headerNames.add("time_offset");
-                
-                for(Waveform w: getWaveformList(seriesSet)) {
+
+                for (Waveform w : getWaveformList(seriesSet)) {
                     System.out.println(w.getWaveformName());
                     headerNames.add(w.getWaveformName());
                 }
 
                 // Get the timeOffsets
                 JsonArrayBuilder tjab = Json.createArrayBuilder();
-                for (int i = 0; i < data.length; i++) {
-                    tjab.add(data[i][0]);
+                if (data != null) {
+                    for (int i = 0; i < data.length; i++) {
+                        tjab.add(data[i][0]);
+                    }
                 }
                 job.add("timeOffsets", tjab.build());
 
@@ -421,7 +425,8 @@ public class Event {
      * @return
      */
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o
+    ) {
         if (o == this) {
             return true;
         }
