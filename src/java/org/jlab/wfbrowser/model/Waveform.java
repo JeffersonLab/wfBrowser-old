@@ -1,19 +1,8 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.jlab.wfbrowser.model;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.NavigableMap;
-import java.util.Set;
-import java.util.TreeMap;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -32,22 +21,45 @@ public class Waveform {
 
     private final String waveformName;
     private final List<Series> seriesList = new ArrayList<>();
-//    private final List<String> seriesNames = new ArrayList<>();
-    private final NavigableMap<Double, Double> points = new TreeMap<>();
+    private final double[] timeOffsets;
+    private final double[] values;
 
     public Waveform(String waveformName, List<Double> timeOffsets, List<Double> values) {
         if (timeOffsets.size() != values.size()) {
             throw new IllegalArgumentException("time and value arrays are of unequal length");
         }
         this.waveformName = waveformName;
+
+        this.timeOffsets = new double[timeOffsets.size()];
+        this.values = new double[values.size()];
         for (int i = 0; i < timeOffsets.size(); i++) {
-            points.put(timeOffsets.get(i), values.get(i));
+            this.timeOffsets[i] = timeOffsets.get(i);
+            this.values[i] = values.get(i);
         }
     }
 
-    public void applyWaveformToSeriesMappings(Map<String, List<Series>> mapping) {
-        if (mapping.get(waveformName) != null) {
-            seriesList.addAll(mapping.get(waveformName));
+    public Waveform(String waveformName, double[] timeOffsets, double[] values) {
+        if (timeOffsets.length != values.length) {
+            throw new IllegalArgumentException("time and value arrays are of unequal length");
+        }
+        this.waveformName = waveformName;
+
+        this.timeOffsets = new double[timeOffsets.length];
+        this.values = new double[values.length];
+        for (int i = 0; i < timeOffsets.length; i++) {
+            this.timeOffsets[i] = timeOffsets[i];
+            this.values[i] = values[i];
+        }
+    }
+
+    /**
+     * This adds multiple of series to the waveform's series list.
+     *
+     * @param seriesList A list of series to add the to waveform
+     */
+    public void addSeries(List<Series> seriesList) {
+        if (seriesList != null) {
+            this.seriesList.addAll(seriesList);
         }
     }
 
@@ -59,20 +71,16 @@ public class Waveform {
         return seriesList;
     }
 
-    public Waveform(String waveformName) {
-        this.waveformName = waveformName;
-    }
-
     public String getWaveformName() {
         return waveformName;
     }
 
-    public Set<Double> getTimeOffsets() {
-        return points.keySet();
+    public double[] getTimeOffsets() {
+        return Arrays.copyOf(timeOffsets, timeOffsets.length);
     }
 
-    public Collection<Double> getValues() {
-        return points.values();
+    public double[] getValues() {
+        return Arrays.copyOf(values, values.length);
     }
 
     /**
@@ -83,29 +91,56 @@ public class Waveform {
      * or before the first point, null is returned.
      *
      * @param timeOffset
-     * @return
+     * @return The waveform value of the nearest preceding point prior to
+     * timeOffset. If timeOffset is after the last point in the waveform or if
+     * the waveform has no value defined there, then NaN is returned.
      */
-    public Double getValueAtOffset(Double timeOffset) {
-        Double last = points.lastKey();
-        if (timeOffset > last) {
-            return null;
+    public double getValueAtOffset(double timeOffset) {
+        int floorIndex = floorIndexSearch(timeOffsets, 0, timeOffsets.length - 1, timeOffset);
+        if (floorIndex == -1) {
+            return Double.NaN;
         }
-
-        // Check if the offset is directly represented.  I believe this is O(1).
-        if (points.containsKey(timeOffset)) {
-            return points.get(timeOffset);
-        }
-
-        // Now we have to go searching for the point if it exists.
-        Entry<Double, Double> entry = points.floorEntry(timeOffset);
-        return entry == null ? null : entry.getValue();
+        return values[floorIndex];
     }
 
-    public void addPoint(Double timeOffset, Double value) {
-        if (timeOffset == null || value == null) {
-            throw new IllegalArgumentException("Attempting to add point to waveform with null value");
+    /**
+     * Find the index of arr that is the floor of the requested value x (index
+     * of arr where arr[index] is largest value in arr that is still less than
+     * or equal to x) using a recursive binary search. If value is outside of
+     * specified low/high range, return -1;
+     *
+     * @param arr array of doubles
+     * @param low low point of this iteration of the binary search
+     * @param high high point of this iteration the binary search
+     * @param x the value for which we want the floor index
+     * @return The floor index or -1 if it is outside the bounds of the array
+     */
+    private int floorIndexSearch(double arr[], int low, int high, double x) {
+        if (x > arr[high]) {
+            // If it is after the waveform timeOffsets, return -1
+            return -1;
+        } else if (Double.compare(x, arr[high]) == 0) {
+            // If it is the last point, return it
+            return high;
+        } else if (x < arr[low]) {
+            // If it is before the waveform timeOffsets, return -1
+            return -1;
+        } else if (Double.compare(x, arr[low]) == 0) {
+            // If it is the first point return it
+            return low;
         }
-        points.put(timeOffset, value);
+
+        int mid = (low + high) / 2;
+        if (Double.compare(x, arr[mid]) == 0) {
+            return mid;
+        } else if (x > arr[mid]) {
+            // do the search again setting low = mid;
+            return floorIndexSearch(arr, mid, high, x);
+        } else {
+            // Since x != arr[mid] and ! x > arr[mid], then x < arr[mid]
+            // do the search again setting low = mid;
+            return floorIndexSearch(arr, low, mid, x);
+        }
     }
 
     /**
@@ -117,20 +152,25 @@ public class Waveform {
     @Override
     public String toString() {
         List<String> seriesJson = new ArrayList<>();
-        for(Series series : seriesList) {
+        for (Series series : seriesList) {
             seriesJson.add(series.toJsonObject().toString());
         }
-        
-        String out = "waveformName: " + waveformName 
-                + "\nseries: [" + String.join(",", seriesJson) +"]\n";
-                out += "points: {";
-        for (Double t : points.keySet()) {
-            out += "[" + t + "," + points.get(t) + "]";
+
+        String out = "waveformName: " + waveformName
+                + "\nseries: [" + String.join(",", seriesJson) + "]\n";
+        out += "points: {";
+        for (int i = 0; i < values.length; i++) {
+            out += "[" + timeOffsets[i] + "," + values[i] + "]";
         }
         out += "}";
         return out;
     }
 
+    /**
+     * Create a generic json object representing the Event object
+     *
+     * @return A JsonObject representing the Event object
+     */
     public JsonObject toJsonObject() {
         JsonObjectBuilder job = Json.createObjectBuilder()
                 .add("waveformName", waveformName);
@@ -141,9 +181,9 @@ public class Waveform {
         job.add("series", sjab.build());
         JsonArrayBuilder tjab = Json.createArrayBuilder();
         JsonArrayBuilder vjab = Json.createArrayBuilder();
-        for (Double t : points.keySet()) {
-            tjab.add(t);
-            vjab.add(points.get(t));
+        for (int i = 0; i < values.length; i++) {
+            tjab.add(timeOffsets[i]);
+            vjab.add(values[i]);
         }
         job.add("timeOffsets", tjab.build());
         job.add("values", vjab.build());
