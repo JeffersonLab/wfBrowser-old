@@ -70,15 +70,6 @@ public class Graph extends HttpServlet {
          * have request or session values, then use defaults, update the session, and redirect.
          */
         HttpSession session = request.getSession();
-        if (session.isNew()) {
-            System.out.println("New session");
-        } else {
-            System.out.println("Existing session");
-            Enumeration<String> names = session.getAttributeNames();
-            while (names.hasMoreElements()) {
-                System.out.println(names.nextElement());
-            }
-        }
 
         // Process the begin/end parameters
         boolean redirectNeeded = false;
@@ -237,9 +228,9 @@ public class Graph extends HttpServlet {
             locationMap.put(location, locationSelections.contains(location));
         }
 
-        // Process the eventId request parameter.  Use the id if in the request, then use the session version if present, or use
-        // the most recent event in time window specified as a default.  If the session event is not within the specified time range,
-        // it will later be set to the standard default value for the other supplied parameters.
+        // Process the eventId request parameter.  Use the id if in the request or use the most recent event in time window 
+        // specified as a default.  DON'T save the event object in the session since this will cause the application server to hold
+        // on to hundreds of megabytes of data per session.  It's simple enough to go look it up since we're saving the eventId.
         Event currentEvent = null;
         Long id;
         if (eventId != null && !eventId.isEmpty()) {
@@ -253,36 +244,20 @@ public class Graph extends HttpServlet {
                 if (currentEventList == null || currentEventList.isEmpty()) {
                     currentEvent = null;
                 } else {
-                    currentEvent = currentEventList.get(0);
+                    currentEvent = currentEventList.get(0);  // Will be null if there were no events for the given EventFilter
                 }
-                session.setAttribute("graphCurrentEvent", currentEvent);
             } catch (SQLException ex) {
                 LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
                 throw new ServletException("Error querying database for event information.");
             }
-        } else if (session.getAttribute("graphCurrentEvent") != null) {
-            // No request, but we have session data
-            currentEvent = (Event) session.getAttribute("graphCurrentEvent");
-            if (currentEvent.getEventTime().isBefore(begin) || currentEvent.getEventTime().isAfter(end)) {
-                // the event will not fall within the specified time range
-                try {
-                    EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
-                    currentEvent = es.getMostRecentEvent(eFilter); // null if no events
-                } catch (SQLException ex) {
-                    LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
-                    throw new ServletException("Error querying database for event information.");
-                }
-            }
-            redirectNeeded = true;
         }
 
-        // If the eventId in the request or session was not in location or date range specified or was not specified at all;
+        // If the eventId in the request was not in location or date range specified OR was not specified at all
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
             try {
                 EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
                 currentEvent = es.getMostRecentEvent(eFilter);
-                session.setAttribute("graphCurrentEvent", currentEvent);
 
                 // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
                 if (currentEvent != null) {
@@ -299,6 +274,7 @@ public class Graph extends HttpServlet {
         } else {
             id = currentEvent.getEventId();
         }
+        session.setAttribute("graphEventId", id);
 
         // Get a list of events that are to be displayed in the timeline - should not be in session since this might change
         List<Event> eventList;
@@ -312,7 +288,6 @@ public class Graph extends HttpServlet {
 
         // If a redirect was found to be needed, build the URL based on variables set above and redirect to it.
         if (redirectNeeded) {
-            System.out.println("redirectNeeded");
             String redirectUrl = request.getContextPath() + "/graph?"
                     + "eventId=" + URLEncoder.encode((id == null ? "" : "" + id), "UTF-8")
                     + "&begin=" + URLEncoder.encode(beginString, "UTF-8")

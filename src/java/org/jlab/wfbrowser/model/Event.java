@@ -14,12 +14,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import javax.json.JsonNumber;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 
 /**
@@ -68,18 +66,19 @@ public class Event {
     }
 
     /**
-     * Check if the waveforms are consistent
+     * Check if the waveforms have equivalent timeOffsets and update the
+     * areWaveformsConsistent parameter
      *
-     * @return Whether the booleans
+     * @return void
      */
     private void updateWaveformsConsistency() {
         boolean consistent = true;
         if (waveforms != null && !waveforms.isEmpty()) {
-            Set<Double> timeOffsets = new HashSet<>();
+            double[] timeOffsets = null;
             for (Waveform w : waveforms) {
-                if (timeOffsets.isEmpty()) {
-                    timeOffsets.addAll(w.getTimeOffsets());
-                } else if (!timeOffsets.equals(w.getTimeOffsets())) {
+                if (timeOffsets == null) {
+                    timeOffsets = w.getTimeOffsets();
+                } else if (!Arrays.equals(timeOffsets, w.getTimeOffsets())) {
                     consistent = false;
                     break;
                 }
@@ -212,12 +211,80 @@ public class Event {
      * @param seriesSet A set of series to include. Include all if null.
      * @return
      */
-    private String[][] getWaveformDataAsArray(Set<String> seriesSet) {
-        String[][] data;
+    private double[][] getWaveformDataAsArray(Set<String> seriesSet) {
+        double[][] data;
         if (waveforms == null || waveforms.isEmpty()) {
             return null;
         }
 
+        List<Waveform> wfList = getWaveformList(seriesSet);
+        if (areWaveformsConsistent) {
+            // 2D array for hold csv content - [rows][columns]
+            //  number of points only since we aren't including headers, +1 columns because of the time_offset column
+            data = new double[wfList.get(0).getTimeOffsets().length][wfList.size() + 1];
+
+            // Set up the time offset column
+            double[] tos = wfList.get(0).getTimeOffsets();
+            for (int i = 0, iMax = data.length; i < iMax; i++) {
+                data[i][0] = tos[i];
+            }
+
+            // Add in all of the waveform series information
+            int j = 1;
+            for (Waveform w : wfList) {
+                double[] values = w.getValues();
+                for (int i = 0, iMax = values.length; i < iMax; i++) {
+                    data[i][j] = values[i];
+                }
+                j++;
+            }
+        } else {
+            // The waveforms are not consistent in that they do not all have the same set of time offsets.  Instead of just grabbing
+            // the timeoffsets from one waveform and pulling the values from all in order, we need to compile the full set of time
+            // offsets from all of the waveforms.  Then for each offset, see what the value would have been for a waveform at that
+            // point using a slightly smart method based on NavigableMap's floorKey method that interpolates, but not extrapolates.
+
+            // Get all of the time offset value from all of the waveforms and put them in a sorted set.  Manually convert the set to
+            // a list to ensure the order is maintained (SortedSet returns value in sorted order, and ArrayList maintains insertion
+            // order.
+            SortedSet<Double> timeOffsetSet = new TreeSet<>();
+            for (Waveform w : wfList) {
+                List<Double> tos = convertArrayToList(w.getTimeOffsets());
+                timeOffsetSet.addAll(tos);
+            }
+            List<Double> timeOffsets = new ArrayList<>();
+            for (Double t : timeOffsetSet) {
+                timeOffsets.add(t);
+            }
+
+            // 2D array for hold csv content - [rows][columns]
+            // rows for data only because no headers, +1 columns because of the time_offset column
+            data = new double[timeOffsets.size() + 1][wfList.size() + 1];
+
+            // Set up the time offset column
+            for (int i = 0, iMax = data.length; i < iMax; i++) {
+                data[i][0] = timeOffsets.get(i);
+            }
+
+            // Add in all of the waveform series data points
+            for (int j = 1, jMax = data[0].length; j < jMax; j++) {
+                for (int i = 1, iMax = data.length; i < iMax; i++) {
+                    Double value = wfList.get(j - 1).getValueAtOffset(timeOffsets.get(i - 1));
+                    data[i][j] = value;  // Should be a valid double or NaN if no value found
+                }
+            }
+        }
+        return data;
+    }
+
+    /**
+     * Return the list of waveforms that match a set of series names. Order
+     * should be consistent with the ordering of waveforms member
+     *
+     * @param seriesSet
+     * @return
+     */
+    private List<Waveform> getWaveformList(Set<String> seriesSet) {
         List<Waveform> wfList = new ArrayList<>();
         for (Waveform waveform : waveforms) {
             if (seriesSet != null) {
@@ -234,79 +301,7 @@ public class Event {
                 break;
             }
         }
-        if (wfList.isEmpty()) {
-            return null;
-        }
-
-        if (areWaveformsConsistent) {
-            // 2D array for hold csv content - [rows][columns]
-            // +1 rows because of the header, +1 columns because of the time_offset column
-            data = new String[wfList.get(0).getTimeOffsets().size() + 1][wfList.size() + 1];
-
-            // Setup the header row
-            data[0][0] = "time_offset";
-            for (int j = 1, jMax = data[0].length; j < jMax; j++) {
-                data[0][j] = wfList.get(j - 1).getWaveformName(); // j-1 since j-index includes the "time_offset" series
-            }
-
-            // Set up the time offset column
-            List<Double> tos = new ArrayList<>(wfList.get(0).getTimeOffsets());
-            for (int i = 1, iMax = data.length; i < iMax; i++) {
-                data[i][0] = tos.get(i - 1).toString();
-            }
-
-            // Add in all of the waveform series information
-            for (int j = 1, jMax = data[0].length; j < jMax; j++) {
-                int i = 1;
-                Iterator<Double> it = wfList.get(j - 1).getValues().iterator();
-                while (it.hasNext()) {
-                    data[i][j] = it.next().toString();
-                    i++;
-                }
-            }
-
-        } else {
-            // The waveforms are not consistent in that they do not all have the same set of time offsets.  Instead of just grabbing
-            // the timeoffsets from one waveform and pulling the values from all in order, we need to compile the full set of time
-            // offsets from all of the waveforms.  Then for each offset, see what the value would have been for a waveform at that
-            // point using a slightly smart method based on NavigableMap's floorKey method that interpolates, but not extrapolates.
-
-            // Get all of the time offset value from all of the waveforms and put them in a sorted set.  Manually convert the set to
-            // a list to ensure the order is maintained (SortedSet returns value in sorted order, and ArrayList maintains insertion
-            // order.
-            SortedSet<Double> timeOffsetSet = new TreeSet<>();
-            for (Waveform w : wfList) {
-                timeOffsetSet.addAll(w.getTimeOffsets());
-            }
-            List<Double> timeOffsets = new ArrayList<>();
-            for (Double t : timeOffsetSet) {
-                timeOffsets.add(t);
-            }
-
-            // 2D array for hold csv content - [rows][columns]
-            // +1 rows because of the header, +1 columns because of the time_offset column
-            data = new String[timeOffsets.size() + 1][wfList.size() + 1];
-
-            // Setup the header row
-            data[0][0] = "time_offset";
-            for (int j = 1, jMax = data[0].length; j < jMax; j++) {
-                data[0][j] = wfList.get(j - 1).getWaveformName(); // j-1 since j-index includes the "time_offset" series
-            }
-
-            // Set up the time offset column
-            for (int i = 1, iMax = data.length; i < iMax; i++) {
-                data[i][0] = timeOffsets.get(i - 1).toString();
-            }
-
-            // Add in all of the waveform series information
-            for (int j = 1, jMax = data[0].length; j < jMax; j++) {
-                for (int i = 1, iMax = data.length; i < iMax; i++) {
-                    Double value = wfList.get(j - 1).getValueAtOffset(timeOffsets.get(i - 1));
-                    data[i][j] = value == null ? "" : value.toString();
-                }
-            }
-        }
-        return data;
+        return wfList;
     }
 
     /**
@@ -317,23 +312,42 @@ public class Event {
      * event.
      */
     public String toCsv(Set<String> seriesSet) {
-        String[][] csvData = getWaveformDataAsArray(seriesSet);
+        double[][] csvData = getWaveformDataAsArray(seriesSet);
+        List<String> headers = new ArrayList<>();
+        headers.add("time_offset");
+        for (Waveform w : getWaveformList(seriesSet)) {
+            if (w != null) {
+                headers.add(w.getWaveformName());
+            }
+        }
 
         String csvOut;
 
         // Generate the string representation of the CSV
-        List<String> csvRows = new ArrayList<>();
+        StringBuilder builder = new StringBuilder(csvData.length * csvData[0].length);
+        builder.append(String.join(",", headers));
+        builder.append('\n');
         for (int i = 0, iMax = csvData.length; i < iMax; i++) {
-            csvRows.add(String.join(",", csvData[i]));
+            builder.append(csvData[i][0]);
+            for (int j = 1, jMax = csvData[0].length; j < jMax; j++) {
+                builder.append(',');
+                builder.append(csvData[i][j]);
+            }
+            builder.append('\n');
         }
-        csvOut = String.join("\n", csvRows);
-        csvOut += "\n";
 
-        return csvOut;
+        return builder.toString();
     }
 
+    /**
+     * Generate a json object in a way that makes it easy to pass to the dygraph
+     * widgets
+     *
+     * @param seriesSet A set of series names that should be included in the
+     * output
+     * @return
+     */
     public JsonObject toDyGraphJsonObject(Set<String> seriesSet) {
-
         JsonObjectBuilder job = Json.createObjectBuilder();
         if (eventId != null) {
             job.add("id", eventId)
@@ -342,17 +356,21 @@ public class Event {
                     .add("system", system)
                     .add("archive", archive);
             if (waveforms != null) {
-                String[][] data = getWaveformDataAsArray(seriesSet);
+                double[][] data = getWaveformDataAsArray(seriesSet);
 
-                String[] waveformNames = data[0];
+                List<String> headerNames = new ArrayList<>();
+                headerNames.add("time_offset");
+
+                for (Waveform w : getWaveformList(seriesSet)) {
+                    System.out.println(w.getWaveformName());
+                    headerNames.add(w.getWaveformName());
+                }
 
                 // Get the timeOffsets
                 JsonArrayBuilder tjab = Json.createArrayBuilder();
-                for (int i = 1; i < data.length; i++) {
-                    if (data[i][0] == null || data[i][0].isEmpty()) {
-                        tjab.add(Double.NaN);
-                    } else {
-                        tjab.add(Double.parseDouble(data[i][0]));
+                if (data != null) {
+                    for (int i = 0; i < data.length; i++) {
+                        tjab.add(data[i][0]);
                     }
                 }
                 job.add("timeOffsets", tjab.build());
@@ -361,14 +379,14 @@ public class Event {
                 JsonArrayBuilder wjab = Json.createArrayBuilder();
                 JsonArrayBuilder sjab, djab;
                 JsonObjectBuilder wjob;
-                for (int i = 1; i < waveformNames.length; i++) {
+                for (int i = 1; i < headerNames.size(); i++) {
                     for (Waveform w : waveforms) {
-                        if (w.getWaveformName().equals(waveformNames[i])) {
-                            wjob = Json.createObjectBuilder().add("waveformName", waveformNames[i]);
+                        if (w.getWaveformName().equals(headerNames.get(i))) {
+                            wjob = Json.createObjectBuilder().add("waveformName", headerNames.get(i));
 
                             // Add some information that the client side can cue off of for consitent colors and names.
-                            wjob.add("dygraphLabel", waveformNames[i].substring(0, 4));
-                            wjob.add("dygraphId", waveformNames[i].substring(3, 4));
+                            wjob.add("dygraphLabel", headerNames.get(i).substring(0, 4));
+                            wjob.add("dygraphId", headerNames.get(i).substring(3, 4));
 
                             // Get the series names for the waveform and add them
                             sjab = Json.createArrayBuilder();
@@ -381,11 +399,7 @@ public class Event {
                             djab = Json.createArrayBuilder();
                             for (int j = 1; j < data.length; j++) {
                                 // Since waveformNames is the first row, it's index matches up with the columns of data;
-                                if (data[j][i] == null || data[j][i].isEmpty()) {
-                                    djab.add(JsonNumber.NULL);
-                                } else {
-                                    djab.add(Double.parseDouble(data[j][i]));
-                                }
+                                djab.add(data[j][i]);
                             }
                             wjob.add("dataPoints", djab.build());
                             wjab.add(wjob.build());
@@ -411,7 +425,8 @@ public class Event {
      * @return
      */
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o
+    ) {
         if (o == this) {
             return true;
         }
@@ -460,5 +475,20 @@ public class Event {
         }
         return "eventId: " + eventId + "\neventTime: " + getEventTimeString() + "\nlocation: " + location + "\nsystem: " + system
                 + "\nnum Waveforms: " + wSize + "\nWaveform Data:\n" + wData;
+    }
+
+    /**
+     * Convenience function for converting a primitive double array to a List of
+     * Doubles. Maintains order
+     *
+     * @param a An array of double to be converted
+     * @return The resultant list
+     */
+    private List<Double> convertArrayToList(double[] a) {
+        List<Double> out = new ArrayList<>();
+        for (int i = 0; i < a.length; i++) {
+            out.add(a[i]);
+        }
+        return out;
     }
 }

@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.jlab.wfbrowser.presentation.controller.ajax;
 
 import java.io.FileNotFoundException;
@@ -184,11 +179,13 @@ public class EventAjax extends HttpServlet {
             return;
         }
 
-        // The graph page uses AJAX calls to get data when a user clicks on the timeline or "next"/"prev" control buttons
+        // Update the session's graphEventId if the request came from graph page
         if (requester != null && requester.equals("graph")) {
-            if (!eventList.isEmpty()) {
-                HttpSession session = request.getSession();
-                session.setAttribute("graphCurrentEvent",eventList.get(0));
+            HttpSession session = request.getSession();
+            if (!eventList.isEmpty() && eventList.get(0) != null) {
+                session.setAttribute("graphEventId", eventList.get(0).getEventId());
+            } else {
+                session.setAttribute("graphEventId", null);
             }
         }
 

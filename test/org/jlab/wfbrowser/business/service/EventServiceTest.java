@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.jlab.wfbrowser.business.service;
 
 import java.io.FileNotFoundException;
@@ -72,18 +67,18 @@ public class EventServiceTest {
         List<Double> v34 = Arrays.asList(310.0, -32.0, 30.0, -332.4426);
 
         List<Waveform> waveforms = new ArrayList<>();
-        waveforms.add(new Waveform("W1", to1, v1));
-        waveforms.add(new Waveform("W2", to1, v2));
-        waveforms.add(new Waveform("W3", to1, v3));
-        waveforms.add(new Waveform("W4", to1, v4));
-        waveforms.add(new Waveform("W21", to2, v21));
-        waveforms.add(new Waveform("W22", to2, v22));
-        waveforms.add(new Waveform("W23", to2, v23));
-        waveforms.add(new Waveform("W24", to2, v24));
-        waveforms.add(new Waveform("W31", to3, v31));
-        waveforms.add(new Waveform("W32", to3, v32));
-        waveforms.add(new Waveform("W33", to3, v33));
-        waveforms.add(new Waveform("W34", to3, v34));
+        waveforms.add(new Waveform("WWW1", to1, v1));
+        waveforms.add(new Waveform("WWW2", to1, v2));
+        waveforms.add(new Waveform("WWW3", to1, v3));
+        waveforms.add(new Waveform("WWW4", to1, v4));
+        waveforms.add(new Waveform("WW21", to2, v21));
+        waveforms.add(new Waveform("WW22", to2, v22));
+        waveforms.add(new Waveform("WW23", to2, v23));
+        waveforms.add(new Waveform("WW24", to2, v24));
+        waveforms.add(new Waveform("WW31", to3, v31));
+        waveforms.add(new Waveform("WW32", to3, v32));
+        waveforms.add(new Waveform("WW33", to3, v33));
+        waveforms.add(new Waveform("WW34", to3, v34));
 
         e = new Event(t1, "test", "rf", false, false, waveforms);
         eCompressed = new Event(t2, "test", "rf", false, false, waveforms);
@@ -126,6 +121,8 @@ public class EventServiceTest {
         expResult.add(e);
         List<Event> result = instance.getEventList(filter);
 
+        String out = result.get(0).toDyGraphJsonObject(null).toString();
+        System.out.println(out);
         assertEquals(expResult, result);
 
         // Add an event that doesn't exist in the data.  This should fail.

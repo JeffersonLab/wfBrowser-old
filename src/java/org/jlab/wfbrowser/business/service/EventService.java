@@ -1,16 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.jlab.wfbrowser.business.service;
 
-import com.univocity.parsers.tsv.TsvParser;
-import com.univocity.parsers.tsv.TsvParserSettings;
-import java.io.ByteArrayInputStream;
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,10 +17,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -55,19 +52,21 @@ public class EventService {
                 props.load(is);
             }
         }
-        dataDir = Paths.get(props.getProperty("dataDir", "/usr/opsdata/waveforms"));
+        dataDir = Paths.get(props.getProperty("dataDir", "/usr/opsdata/waveforms/data"));
     }
 
-    /** Simple wrapper on parseCompressedWaveformData(Path eventArchive, boolean includeData) that always sets
-     * includeData to true.
+    /**
+     * Simple wrapper on parseCompressedWaveformData(Path eventArchive, boolean
+     * includeData) that always sets includeData to true.
+     *
      * @param eventArchive
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
-        private List<Waveform> parseCompressedWaveformData(Path eventArchive) throws IOException {
-            return parseCompressedWaveformData(eventArchive, true);
-        }
-    
+    private List<Waveform> parseCompressedWaveformData(Path eventArchive) throws IOException {
+        return parseCompressedWaveformData(eventArchive, true);
+    }
+
     /**
      * This method uncompresses a compressed waveform event directory and parses
      * it using the same parseWaveformInputStream method as parseWaveformData.
@@ -75,7 +74,8 @@ public class EventService {
      * set of txt files.
      *
      * @param eventArchive
-     * @param includeData boolean for whether or not the waveforms should include their data
+     * @param includeData boolean for whether or not the waveforms should
+     * include their data
      * @return
      * @throws IOException
      */
@@ -98,11 +98,7 @@ public class EventService {
                     } else if (entry.isDirectory()) {
                         foundParentDir = true;
                     } else {
-                        // If these tar files get to be huge, we may have to reconsider this part.  byte arrays can only contain up to 
-                        //  2^32 bytes or ~4GB.  For now, the tar files contain ~20MB of data.
-                        byte[] content = new byte[(int) entry.getSize()];
-                        ais.read(content);
-                        waveformList.addAll(parseWaveformInputStream(new ByteArrayInputStream(content), includeData));
+                        waveformList.addAll(parseWaveformInputStream(ais, includeData));
                     }
                 }
             }
@@ -111,14 +107,16 @@ public class EventService {
     }
 
     /**
-     * Wrapper on parseWaveformInputStream(InputStream, boolean) that always sets includeData to true)
-     * @param wis 
-     * @return 
+     * Wrapper on parseWaveformInputStream(InputStream, boolean) that always
+     * sets includeData to true)
+     *
+     * @param wis
+     * @return
      */
-    private List<Waveform> parseWaveformInputStream(InputStream wis) {
+    private List<Waveform> parseWaveformInputStream(InputStream wis) throws IOException {
         return parseWaveformInputStream(wis, true);
     }
-    
+
     /**
      * The method parses an InputStream representing one of the waveform
      * datafiles. These files are formatted as TSVs, with the first column being
@@ -126,62 +124,124 @@ public class EventService {
      * data. This process leads to the time column being stored multiple times
      * as each Waveform object stores its own time/value data.
      *
-     * @param wis
-     * @param includeData flag for whether or not the data and not just headers should be parsed
+     * @param wis An input stream providing the waveform data in TSV format
+     * @param includeData flag for whether or not the data and not just headers
+     * should be parsed
      * @return The list of waveforms that were contained in the input stream.
      */
-    private List<Waveform> parseWaveformInputStream(InputStream wis, boolean includeData) {
-        TsvParserSettings settings = new TsvParserSettings();
-        settings.getFormat().setLineSeparator("\n");
-        TsvParser parser = new TsvParser(settings);
+    private List<Waveform> parseWaveformInputStream(InputStream wis, boolean includeData) throws IOException {
+        List<Waveform> waveforms = new ArrayList<>();
+        String[] headers;
+        double[][] out;
 
-        List<Waveform> waveformList = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(wis))) {
+            String line = br.readLine();
+            if (line == null) {
+                return waveforms;
+            }
+            headers = line.split("\t");
 
-        parser.beginParsing(wis);
-        String[] row;
-        boolean isHeader = true;
-        while ((row = parser.parseNext()) != null) {
-            if (isHeader) {
-                isHeader = false;
-                for (int i = 1; i < row.length; i++) {
-                    // first entry should be time offset header value
-                    waveformList.add(new Waveform(row[i]));
+            // Define this as an array of empty arrays.  This will get redefined if the includeData flag is set.
+            out = new double[headers.length][0];
+            if (includeData) {
+                // The data array structure is the transpose of the file.  it goes columns, by rows, since we know the number of headers
+                // but not the number of rows of data.  Plus this makes it easier to access each waveform.
+                double[][] data = new double[headers.length][8192];
+                int i = 0;
+                while ((line = br.readLine()) != null) {
+
+                    // If our index is about to move out of bounds, copy the data to a larger 2D array
+                    if (i >= data[0].length) {
+                        for (int j = 0; j < data.length; j++) {
+                            data[j] = Arrays.copyOf(data[j], 2 * data[j].length);
+                        }
+                    }
+
+                    // Split the string on tabs.  The order of the tokens should match the headers
+                    String[] nums = line.split("\t");
+                    for (int j = 0; j < headers.length; j++) {
+                        if (nums[j].isEmpty()) {
+                            data[j][i] = Double.NaN;
+                        } else {
+                            data[j][i] = Double.parseDouble(nums[j]);
+                        }
+                    }
+                    i++;
                 }
-            } else if(includeData) {
-                Double timeOffset = Double.valueOf(row[0]);
-                for (int i = 1; i < row.length; i++) {
-                    // first entry should be the timeoffset, the rest will be waveform values
-                    Double value = Double.valueOf(row[i]);
-                    // Waveforms index are one less than the row value since we skip time column
-                    waveformList.get(i - 1).addPoint(timeOffset, value);
+
+                // Copy the data array structure to one that is properly sized for it.
+                out = new double[headers.length][i];
+                for (int j = 0; j < out.length; j++) {
+                    for (int k = 0; k < out[j].length; k++) {
+                        out[j][k] = data[j][k];
+                    }
                 }
-            } else {
-                break;
             }
         }
-        return waveformList;
+
+        // Create the waveform list
+        for (int j = 0; j < out.length; j++) {
+            if (j > 0) {
+                waveforms.add(new Waveform(headers[j], out[0], out[j]));
+            }
+        }
+
+        return waveforms;
     }
 
     /**
      * Parses all of the data files in the specified event directory
      *
      * @param eventDir
-     * @param includeData Should the waveform objects include the data points or only the header information
+     * @param includeData Should the waveform objects include the data points or
+     * only the header information
      * @return A List of Waveform objects representing the contents of the data
      * files in the supplied event directory
      * @throws IOException
      */
     private List<Waveform> parseWaveformData(Path eventDir, boolean includeData) throws IOException {
-        TsvParserSettings settings = new TsvParserSettings();
-        settings.getFormat().setLineSeparator("\n");
-        TsvParser parser = new TsvParser(settings);
-
         List<Waveform> waveformList = new ArrayList<>();
 
+        // Sort the file names.  They should be of the format <HARVESTER_PV>.<IOC_timestamp>.txt
+        // with timestamps sorting nicely (i.e., formatted as ####_##_## ##:##:##.#)
+        SortedSet<Path> fileSet = new TreeSet<>();
         try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(eventDir)) {
             for (Path path : directoryStream) {
-                waveformList.addAll(parseWaveformInputStream(Files.newInputStream(path), includeData));
+                // Actual harvester files end with .txt extension.  Do some basic filtering
+                if (path.getFileName().toString().contains(".txt")) {
+                    fileSet.add(path);
+                }
             }
+        }
+
+        // Go through and find duplicates.  Since the files are sorted nicely, you only need to look at the last kept filename and
+        // the current one to see if they are duplicate PVs.  If you find a duplicate, remove it from the list of files.
+        String prev = null;
+        String[] prevParts;
+        String pv = null;
+        List<Path> fileList = new ArrayList<>();
+        for (Path path : fileSet) {
+            if (prev == null) {
+                fileList.add(path);
+                prev = path.getFileName().toString();
+                prevParts = prev.split("\\.");
+                pv = prevParts[0];
+            } else {
+                String[] parts = path.getFileName().toString().split("\\.");
+                if (parts[0].equals(pv)) {
+                    LOGGER.log(Level.WARNING, "Ignoring duplicate harvester file {0}", path.toString());
+                } else {
+                    fileList.add(path);
+                    prev = path.getFileName().toString();
+                    prevParts = prev.split("\\.");
+                    pv = prevParts[0];
+                }
+            }
+        }
+
+        // Go through the set of Path objects representing valid data files and parse them.
+        for (Path path : fileList) {
+            waveformList.addAll(parseWaveformInputStream(Files.newInputStream(path), includeData));
         }
 
         return waveformList;
@@ -439,7 +499,8 @@ public class EventService {
      * @param event The event for which we are parsing data
      * @param ignoreErrors Whether or not to throw exception and log data if the
      * files cannot be found.
-     * @param includeData Whether or not to include the waveform data or just header information
+     * @param includeData Whether or not to include the waveform data or just
+     * header information
      * @return The event data as a list of waveforms
      * @throws IOException
      */
@@ -518,7 +579,7 @@ public class EventService {
      * @param filter
      * @param ignoreErrors Whether or not to ignore errors when parsing waveform
      * data on disk. Used for testing only.
-     * @param limit How many events to return.  Null for unlimited
+     * @param limit How many events to return. Null for unlimited
      * @return
      * @throws SQLException
      * @throws java.io.IOException
@@ -543,7 +604,7 @@ public class EventService {
                 getEventSql += filter.getWhereClause();
             }
             getEventSql += " ORDER BY event_time_utc DESC";
-            if (limit != null)  {
+            if (limit != null) {
                 getEventSql += " LIMIT " + limit;
             }
             pstmt = conn.prepareStatement(getEventSql);
@@ -575,12 +636,12 @@ public class EventService {
                     + " WHERE event_id = ?"
                     + " GROUP BY waveform_name"
                     + " ORDER BY waveform_name";
-            
+
             pstmt = conn.prepareStatement(mapSql);
-            
+
             for (Event e : eventList) {
                 e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors, true)); // We want the actual waveform data
-
+                
                 // Get the mapping
                 Map<String, List<Series>> waveformToSeries = new HashMap<>();
                 pstmt.setLong(1, e.getEventId());
@@ -599,7 +660,7 @@ public class EventService {
                     waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                 }
                 for (Waveform w : e.getWaveforms()) {
-                    w.applyWaveformToSeriesMappings(waveformToSeries);
+                    w.addSeries(waveformToSeries.get(w.getWaveformName()));
                 }
             }
         } finally {
@@ -673,10 +734,12 @@ public class EventService {
 
     /**
      * Set the archive flag on an event in the database.
+     *
      * @param eventId The id of the event that is to be modified
-     * @param archive The value of the archive flag (true is set, false is unset)
+     * @param archive The value of the archive flag (true is set, false is
+     * unset)
      * @return The number of rows affected (should always be 1/0)
-     * @throws SQLException 
+     * @throws SQLException
      */
     public int setEventArchiveFlag(long eventId, boolean archive) throws SQLException {
         Connection conn = null;
