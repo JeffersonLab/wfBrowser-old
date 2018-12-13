@@ -311,13 +311,15 @@ public class EventService {
                 throw new RuntimeException("Error querying database for system ID");
             }
 
-            String insertEventSql = "INSERT INTO waveforms.event (event_time_utc, location, system_id, archive) VALUES (?, ?, ?, ?)";
+            String insertEventSql = "INSERT INTO waveforms.event (event_time_utc, location, system_id, archive, to_be_deleted) VALUES (?, ?, ?, ?, ?, ?)";
 
             pstmt = conn.prepareStatement(insertEventSql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setString(1, e.getEventTimeString());
             pstmt.setString(2, e.getLocation());
             pstmt.setInt(3, systemId);
             pstmt.setInt(4, e.isArchive() ? 1 : 0);
+            pstmt.setInt(5, e.isDelete() ? 1 : 0);
+            pstmt.setInt(6, e.isGrouped() ? 1 : 0);
 
             int n = pstmt.executeUpdate();
             if (n != 1) {
@@ -511,16 +513,25 @@ public class EventService {
             return null;
         }
 
-        Path eventDir = dataDir.resolve(event.getRelativeFilePath());
-        Path eventArchive = dataDir.resolve(event.getRelativeArchivePath());
-        LOGGER.log(Level.FINEST, "Looking for data at {0}, {1} for event {2}", new Object[]{eventDir.toString(), eventArchive.toString(), event.getEventId()});
-        if (Files.exists(eventDir)) {
-            waveformList = parseWaveformData(eventDir, includeData);
-        } else if (Files.exists(eventArchive)) {
-            waveformList = parseCompressedWaveformData(eventArchive, includeData);
-        } else if (!ignoreErrors) {
-            LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
-            throw new FileNotFoundException("Could not locate data files for requested event");
+        if (event.isGrouped()) {
+            // event is grouped, so we can use the event data to determine the directory or tgz file containing the waveform files to be parsed
+            Path eventDir = dataDir.resolve(event.getRelativeFilePath());
+            Path eventArchive = dataDir.resolve(event.getRelativeArchivePath());
+            LOGGER.log(Level.FINEST, "Looking for data at {0}, {1} for event {2}", new Object[]{eventDir.toString(), eventArchive.toString(), event.getEventId()});
+            if (Files.exists(eventDir)) {
+                waveformList = parseWaveformData(eventDir, includeData);
+            } else if (Files.exists(eventArchive)) {
+                waveformList = parseCompressedWaveformData(eventArchive, includeData);
+            } else if (!ignoreErrors) {
+                LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
+                throw new FileNotFoundException("Could not locate data files for requested event");
+            }
+        } else {
+            // event is not grouped, so we know that there is only a single file to be read.  We have to get the name of that file from
+            // the event object since duplicate ungrouped events could have occurred within the same system at the same time.
+            // TODO: Write this part.  Should probably change the grouped case to use the list of files provided by the event.
+            // TODO: Update the database to include a list of waveform files that are part of the event
+            // TODO: Update the event object to hold this information
         }
 
         return waveformList;
@@ -593,12 +604,12 @@ public class EventService {
         Long eventId;
         Instant eventTime;
         String location, system;
-        Boolean archive, delete;
+        Boolean archive, delete, grouped;
 
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted FROM waveforms.event"
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted,grouped FROM waveforms.event"
                     + " JOIN waveforms.system_type USING(system_id) ";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
@@ -620,15 +631,17 @@ public class EventService {
                 system = rs.getString("system_name");
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
+                grouped = rs.getBoolean("grouped");
 
-                if (eventId == null || location == null || system == null || archive == null) {
+                if (eventId == null || location == null || system == null || archive == null || grouped == null) {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, new ArrayList<Waveform>()));
+                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, new ArrayList<Waveform>(), grouped));
                 }
             }
 
+            // Determine the rules for labeling waveform series (GMES vs DETA2, not Cav1, Cav2, ...)
             String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
                     + " FROM event_waveforms"
                     + " JOIN series ON waveform_name LIKE series.pattern"
@@ -639,9 +652,11 @@ public class EventService {
 
             pstmt = conn.prepareStatement(mapSql);
 
+            // Get the data for each event, then figure out the waveform to series mapping and apply it.
             for (Event e : eventList) {
+                // Get the data from disk and add it to the event
                 e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors, true)); // We want the actual waveform data
-                
+
                 // Get the mapping
                 Map<String, List<Series>> waveformToSeries = new HashMap<>();
                 pstmt.setLong(1, e.getEventId());
@@ -842,7 +857,7 @@ public class EventService {
             long eventId;
             Instant eventTime;
             String location, system;
-            Boolean archive, delete;
+            Boolean archive, delete, grouped;
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
                 eventTime = TimeUtil.getInstantFromDateTime(rs);
@@ -850,7 +865,8 @@ public class EventService {
                 location = rs.getString("location");
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
-                events.add(new Event(eventId, eventTime, location, system, archive, delete, null));
+                grouped = rs.getBoolean("grouped");
+                events.add(new Event(eventId, eventTime, location, system, archive, delete, null, grouped));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);

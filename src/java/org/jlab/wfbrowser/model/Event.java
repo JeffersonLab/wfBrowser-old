@@ -40,9 +40,10 @@ public class Event {
     private final boolean archive;
     private final boolean delete;
     private final List<Waveform> waveforms;
+    private final boolean grouped;  // Is the event a group of synchronized waveform files or a single file
     private boolean areWaveformsConsistent = true;  // If all waveforms have the same set of time offsets.  Simplies certain data operaitons.
 
-    public Event(long eventId, Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms) {
+    public Event(long eventId, Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms, boolean grouped) {
         this.eventId = eventId;
         this.eventTime = eventTime.truncatedTo(ChronoUnit.MICROS);
         this.location = location;
@@ -50,21 +51,23 @@ public class Event {
         this.archive = archive;
         this.delete = delete;
         this.waveforms = waveforms;
+        this.grouped = grouped;
 
         updateWaveformsConsistency();
     }
 
-    public Event(Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms) {
+    public Event(Instant eventTime, String location, String system, boolean archive, boolean delete, List<Waveform> waveforms, boolean grouped) {
         this.eventTime = eventTime.truncatedTo(ChronoUnit.MICROS);
         this.location = location;
         this.system = system;
         this.archive = archive;
         this.delete = delete;
         this.waveforms = waveforms;
+        this.grouped = grouped;
 
         updateWaveformsConsistency();
     }
-
+    
     /**
      * Check if the waveforms have equivalent timeOffsets and update the
      * areWaveformsConsistent parameter
@@ -131,6 +134,10 @@ public class Event {
 
     public boolean isArchive() {
         return archive;
+    }
+
+    public boolean isGrouped() {
+        return grouped;
     }
 
     public List<Waveform> getWaveforms() {

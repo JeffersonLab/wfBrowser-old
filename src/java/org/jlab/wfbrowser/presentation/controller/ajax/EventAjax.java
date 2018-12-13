@@ -240,6 +240,7 @@ public class EventAjax extends HttpServlet {
         String system = request.getParameter("system");
         String archive = request.getParameter("archive");
         String delete = request.getParameter("delete");
+        String grouped = request.getParameter("grouped");
         response.setContentType("application/json");
 
         if (datetime == null || location == null || system == null) {
@@ -254,9 +255,10 @@ public class EventAjax extends HttpServlet {
         EventService wfs = new EventService();
         try {
 
-            Boolean arch = archive != null;
-            Boolean del = delete != null;
-            Event event = new Event(t, location, system, arch, del, null);
+            Boolean arch = Boolean.parseBoolean(archive);
+            Boolean del = Boolean.parseBoolean(delete);
+            Boolean grp = Boolean.parseBoolean(grouped);
+            Event event = new Event(t, location, system, arch, del, null, grp);
             long id = wfs.addEvent(event, false);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
