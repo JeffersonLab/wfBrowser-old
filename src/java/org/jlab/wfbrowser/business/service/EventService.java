@@ -32,6 +32,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
 import org.jlab.wfbrowser.business.util.TimeUtil;
+import org.jlab.wfbrowser.model.CaptureFile;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.Waveform;
@@ -43,209 +44,6 @@ import org.jlab.wfbrowser.model.Waveform;
 public class EventService {
 
     private static final Logger LOGGER = Logger.getLogger(EventService.class.getName());
-    private static Path dataDir;
-
-    public EventService() throws FileNotFoundException, IOException {
-        Properties props = new Properties();
-        try (InputStream is = EventService.class.getClassLoader().getResourceAsStream("wfBrowser.properties")) {
-            if (is != null) {
-                props.load(is);
-            }
-        }
-        dataDir = Paths.get(props.getProperty("dataDir", "/usr/opsdata/waveforms/data"));
-    }
-
-    /**
-     * Simple wrapper on parseCompressedWaveformData(Path eventArchive, boolean
-     * includeData) that always sets includeData to true.
-     *
-     * @param eventArchive
-     * @return
-     * @throws IOException
-     */
-    private List<Waveform> parseCompressedWaveformData(Path eventArchive) throws IOException {
-        return parseCompressedWaveformData(eventArchive, true);
-    }
-
-    /**
-     * This method uncompresses a compressed waveform event directory and parses
-     * it using the same parseWaveformInputStream method as parseWaveformData.
-     * The compressed archives should contain a single parent directory with a
-     * set of txt files.
-     *
-     * @param eventArchive
-     * @param includeData boolean for whether or not the waveforms should
-     * include their data
-     * @return
-     * @throws IOException
-     */
-    private List<Waveform> parseCompressedWaveformData(Path eventArchive, boolean includeData) throws IOException {
-        List<Waveform> waveformList = new ArrayList<>();
-        boolean foundParentDir = false;
-        try (TarArchiveInputStream ais = new TarArchiveInputStream(
-                new GzipCompressorInputStream(Files.newInputStream(eventArchive, StandardOpenOption.READ)))) {
-            TarArchiveEntry entry;
-            while ((entry = ais.getNextTarEntry()) != null) {
-                if (entry != null) {
-                    if (!ais.canReadEntryData(entry)) {
-                        LOGGER.log(Level.WARNING, "Cannot read tar archive entry - {0}", entry.getName());
-                        throw new IOException("Cannont read archive entry");
-                    }
-                    // These shouldn't have nested structures, so just treat the Entry as though it were a file
-                    if (entry.isDirectory() && foundParentDir) {
-                        LOGGER.log(Level.WARNING, "Unexpected compressed directory structure - {0}", entry.getName());
-                        throw new IOException("Unexpected compressed directory structure.");
-                    } else if (entry.isDirectory()) {
-                        foundParentDir = true;
-                    } else {
-                        waveformList.addAll(parseWaveformInputStream(ais, includeData));
-                    }
-                }
-            }
-        }
-        return waveformList;
-    }
-
-    /**
-     * Wrapper on parseWaveformInputStream(InputStream, boolean) that always
-     * sets includeData to true)
-     *
-     * @param wis
-     * @return
-     */
-    private List<Waveform> parseWaveformInputStream(InputStream wis) throws IOException {
-        return parseWaveformInputStream(wis, true);
-    }
-
-    /**
-     * The method parses an InputStream representing one of the waveform
-     * datafiles. These files are formatted as TSVs, with the first column being
-     * the time offset and every other column representing a series of waveform
-     * data. This process leads to the time column being stored multiple times
-     * as each Waveform object stores its own time/value data.
-     *
-     * @param wis An input stream providing the waveform data in TSV format
-     * @param includeData flag for whether or not the data and not just headers
-     * should be parsed
-     * @return The list of waveforms that were contained in the input stream.
-     */
-    private List<Waveform> parseWaveformInputStream(InputStream wis, boolean includeData) throws IOException {
-        List<Waveform> waveforms = new ArrayList<>();
-        String[] headers;
-        double[][] out;
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(wis))) {
-            String line = br.readLine();
-            if (line == null) {
-                return waveforms;
-            }
-            headers = line.split("\t");
-
-            // Define this as an array of empty arrays.  This will get redefined if the includeData flag is set.
-            out = new double[headers.length][0];
-            if (includeData) {
-                // The data array structure is the transpose of the file.  it goes columns, by rows, since we know the number of headers
-                // but not the number of rows of data.  Plus this makes it easier to access each waveform.
-                double[][] data = new double[headers.length][8192];
-                int i = 0;
-                while ((line = br.readLine()) != null) {
-
-                    // If our index is about to move out of bounds, copy the data to a larger 2D array
-                    if (i >= data[0].length) {
-                        for (int j = 0; j < data.length; j++) {
-                            data[j] = Arrays.copyOf(data[j], 2 * data[j].length);
-                        }
-                    }
-
-                    // Split the string on tabs.  The order of the tokens should match the headers
-                    String[] nums = line.split("\t");
-                    for (int j = 0; j < headers.length; j++) {
-                        if (nums[j].isEmpty()) {
-                            data[j][i] = Double.NaN;
-                        } else {
-                            data[j][i] = Double.parseDouble(nums[j]);
-                        }
-                    }
-                    i++;
-                }
-
-                // Copy the data array structure to one that is properly sized for it.
-                out = new double[headers.length][i];
-                for (int j = 0; j < out.length; j++) {
-                    for (int k = 0; k < out[j].length; k++) {
-                        out[j][k] = data[j][k];
-                    }
-                }
-            }
-        }
-
-        // Create the waveform list
-        for (int j = 0; j < out.length; j++) {
-            if (j > 0) {
-                waveforms.add(new Waveform(headers[j], out[0], out[j]));
-            }
-        }
-
-        return waveforms;
-    }
-
-    /**
-     * Parses all of the data files in the specified event directory
-     *
-     * @param eventDir
-     * @param includeData Should the waveform objects include the data points or
-     * only the header information
-     * @return A List of Waveform objects representing the contents of the data
-     * files in the supplied event directory
-     * @throws IOException
-     */
-    private List<Waveform> parseWaveformData(Path eventDir, boolean includeData) throws IOException {
-        List<Waveform> waveformList = new ArrayList<>();
-
-        // Sort the file names.  They should be of the format <HARVESTER_PV>.<IOC_timestamp>.txt
-        // with timestamps sorting nicely (i.e., formatted as ####_##_## ##:##:##.#)
-        SortedSet<Path> fileSet = new TreeSet<>();
-        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(eventDir)) {
-            for (Path path : directoryStream) {
-                // Actual harvester files end with .txt extension.  Do some basic filtering
-                if (path.getFileName().toString().contains(".txt")) {
-                    fileSet.add(path);
-                }
-            }
-        }
-
-        // Go through and find duplicates.  Since the files are sorted nicely, you only need to look at the last kept filename and
-        // the current one to see if they are duplicate PVs.  If you find a duplicate, remove it from the list of files.
-        String prev = null;
-        String[] prevParts;
-        String pv = null;
-        List<Path> fileList = new ArrayList<>();
-        for (Path path : fileSet) {
-            if (prev == null) {
-                fileList.add(path);
-                prev = path.getFileName().toString();
-                prevParts = prev.split("\\.");
-                pv = prevParts[0];
-            } else {
-                String[] parts = path.getFileName().toString().split("\\.");
-                if (parts[0].equals(pv)) {
-                    LOGGER.log(Level.WARNING, "Ignoring duplicate harvester file {0}", path.toString());
-                } else {
-                    fileList.add(path);
-                    prev = path.getFileName().toString();
-                    prevParts = prev.split("\\.");
-                    pv = prevParts[0];
-                }
-            }
-        }
-
-        // Go through the set of Path objects representing valid data files and parse them.
-        for (Path path : fileList) {
-            waveformList.addAll(parseWaveformInputStream(Files.newInputStream(path), includeData));
-        }
-
-        return waveformList;
-    }
 
     /**
      * Adds an event's meta data to the database. Verify that an event directory
@@ -253,33 +51,23 @@ public class EventService {
      * database.
      *
      * @param e The Event to add to the database
-     * @param force Add to the database even if the data cannot be found on
-     * disk. Mostly to make testing easier.
      * @return The eventId of the new entry in the database corresponding to the
      * row in the event table.
      * @throws FileNotFoundException
      * @throws SQLException
      */
-    public long addEvent(Event e, boolean force) throws FileNotFoundException, SQLException, IOException {
-        if (force == false) {
-            Path eventDir = dataDir.resolve(e.getRelativeFilePath());
-            Path eventArchive = dataDir.resolve(e.getRelativeArchivePath());
-            if (!Files.exists(eventDir) && !Files.exists(eventArchive)) {
-                throw new FileNotFoundException("Cannot add event to database if data is missing from disk.  Directory '"
-                        + eventDir.toString() + "' or '" + eventArchive.toString() + "' not found.");
-            }
+    public long addEvent(Event e) throws FileNotFoundException, SQLException, IOException {
+        if (!e.isDataOnDisk()) {
+            throw new FileNotFoundException("Cannot add event to database if data is missing from disk.  Directory '"
+                    + e.getEventDirectoryPath().toString() + "' or '" + e.getArchivePath().toString() + "' not found.");
         }
-
-        // We need to read the waveform data files from disk, but we don't need the actual data.  Parsing the 20MB of data
-        // takes a while when adding en masse.
-        List<Waveform> waveformList = getWaveformsFromDisk(e, force, false);
 
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
         String systemIdSql = "SELECT system_id,count(*) "
-                + "FROM waveforms.system_type"
+                + "FROM system_type"
                 + " WHERE system_name = ?";
 
         int systemId;
@@ -311,7 +99,7 @@ public class EventService {
                 throw new RuntimeException("Error querying database for system ID");
             }
 
-            String insertEventSql = "INSERT INTO waveforms.event (event_time_utc, location, system_id, archive, to_be_deleted) VALUES (?, ?, ?, ?, ?, ?)";
+            String insertEventSql = "INSERT INTO event (event_time_utc, location, system_id, archive, to_be_deleted, grouped, classification) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             pstmt = conn.prepareStatement(insertEventSql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setString(1, e.getEventTimeString());
@@ -320,6 +108,7 @@ public class EventService {
             pstmt.setInt(4, e.isArchive() ? 1 : 0);
             pstmt.setInt(5, e.isDelete() ? 1 : 0);
             pstmt.setInt(6, e.isGrouped() ? 1 : 0);
+            pstmt.setString(7, e.getClassification());
 
             int n = pstmt.executeUpdate();
             if (n != 1) {
@@ -335,21 +124,59 @@ public class EventService {
                 conn.rollback();
                 throw new RuntimeException("Error querying database for last inserted event_id");
             }
+            pstmt.close();
 
-            // In testing mode (force/ignoreErrors == true), waveformList could be null.
-            if (waveformList != null) {
-                String seriesSql = "INSERT INTO event_waveforms (event_id, waveform_name) VALUES(?,?)";
-                pstmt = conn.prepareStatement(seriesSql);
-                for (Waveform w : waveformList) {
-                    pstmt.setLong(1, eventId);
-                    pstmt.setString(2, w.getWaveformName());
-                    int numUpdated = pstmt.executeUpdate();
-                    if (numUpdated != 1) {
-                        conn.rollback();
-                        throw new SQLException("Error adding waveform metadata to database.");
-                    }
-                    pstmt.clearParameters();
+            // Make sure we the event has capture files to add
+            Map<String, CaptureFile> captureFileMap = e.getCaptureFileMap();
+            if (captureFileMap == null || captureFileMap.isEmpty()) {
+                conn.rollback();
+                throw new RuntimeException("Attempting to add event with no associated capture files");
+            }
+
+            // Add the capture files to the database.  For each capture file, we need to add the list of waveforms associated with it.
+            String captureSql = "INSERT INTO capture (event_id, filename, sample_start, sample_end, sample_step)"
+                    + " VALUES(?,?,?,?,?)";
+            for (String filename : captureFileMap.keySet()) {
+                pstmt = conn.prepareStatement(captureSql, Statement.RETURN_GENERATED_KEYS);
+                CaptureFile cf = captureFileMap.get(filename);
+                pstmt.setLong(1, eventId);
+                pstmt.setString(2, filename);
+                pstmt.setDouble(3, cf.getSampleStart());
+                pstmt.setDouble(4, cf.getSampleEnd());
+                pstmt.setDouble(5, cf.getSampleStep());
+                int numUpdated = pstmt.executeUpdate();
+                if (numUpdated != 1) {
+                    conn.rollback();
+                    throw new SQLException("Error adding capture file to database");
                 }
+
+                // Get the capture_id of the capture file we just added to the database
+                long captureId;
+                rse = pstmt.getGeneratedKeys();
+                if (rse != null && rse.next()) {
+                    captureId = rse.getLong(1);
+                } else {
+                    conn.rollback();
+                    throw new RuntimeException("Error querying database for last inserted event_id");
+                }
+                pstmt.close();
+
+                List<Waveform> waveformList = cf.getWaveforms();
+                if (waveformList != null) {
+                    String waveformSql = "INSERT INTO capture_wf (capture_id, waveform_name) VALUES(?,?)";
+                    pstmt = conn.prepareStatement(waveformSql);
+                    for (Waveform w : waveformList) {
+                        pstmt.setLong(1, captureId);
+                        pstmt.setString(2, w.getWaveformName());
+                        numUpdated = pstmt.executeUpdate();
+                        if (numUpdated != 1) {
+                            conn.rollback();
+                            throw new SQLException("Error adding waveform metadata to database.");
+                        }
+                        pstmt.clearParameters();
+                    }
+                }
+                pstmt.close();
             }
             conn.commit();
         } finally {
@@ -367,7 +194,7 @@ public class EventService {
      */
     public Long getMostRecentEventId(EventFilter filter) throws SQLException {
         Long out = null;
-        String sql = "SELECT event_id FROM waveforms.event JOIN system_type ON event.system_id = system_type.system_id";
+        String sql = "SELECT event_id FROM event JOIN system_type ON event.system_id = system_type.system_id";
         if (filter != null) {
             sql += filter.getWhereClause();
         }
@@ -401,7 +228,7 @@ public class EventService {
      * @throws java.io.IOException
      */
     public Event getMostRecentEvent(EventFilter filter) throws SQLException, IOException {
-        List<Event> eventList = getEventList(filter, false, 1l);
+        List<Event> eventList = getEventList(filter, 1l);
         Event out = null;
         if (!eventList.isEmpty()) {
             out = eventList.get(0);
@@ -417,7 +244,7 @@ public class EventService {
      */
     public List<String> getLocationNames() throws SQLException {
         List<String> out = new ArrayList<>();
-        String sql = "SELECT DISTINCT location FROM waveforms.event ORDER BY location";
+        String sql = "SELECT DISTINCT location FROM event ORDER BY location";
 
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -495,49 +322,6 @@ public class EventService {
     }
 
     /**
-     * Method for reading parsing on disk event data into a list of event
-     * waveform objects
-     *
-     * @param event The event for which we are parsing data
-     * @param ignoreErrors Whether or not to throw exception and log data if the
-     * files cannot be found.
-     * @param includeData Whether or not to include the waveform data or just
-     * header information
-     * @return The event data as a list of waveforms
-     * @throws IOException
-     */
-    private List<Waveform> getWaveformsFromDisk(Event event, boolean ignoreErrors, boolean includeData) throws IOException {
-        List<Waveform> waveformList = null;
-
-        if (event == null) {
-            return null;
-        }
-
-        if (event.isGrouped()) {
-            // event is grouped, so we can use the event data to determine the directory or tgz file containing the waveform files to be parsed
-            Path eventDir = dataDir.resolve(event.getRelativeFilePath());
-            Path eventArchive = dataDir.resolve(event.getRelativeArchivePath());
-            LOGGER.log(Level.FINEST, "Looking for data at {0}, {1} for event {2}", new Object[]{eventDir.toString(), eventArchive.toString(), event.getEventId()});
-            if (Files.exists(eventDir)) {
-                waveformList = parseWaveformData(eventDir, includeData);
-            } else if (Files.exists(eventArchive)) {
-                waveformList = parseCompressedWaveformData(eventArchive, includeData);
-            } else if (!ignoreErrors) {
-                LOGGER.log(Level.SEVERE, "Could not locate data files at {0} or {1}", new Object[]{eventDir.toString(), eventArchive.toString()});
-                throw new FileNotFoundException("Could not locate data files for requested event");
-            }
-        } else {
-            // event is not grouped, so we know that there is only a single file to be read.  We have to get the name of that file from
-            // the event object since duplicate ungrouped events could have occurred within the same system at the same time.
-            // TODO: Write this part.  Should probably change the grouped case to use the list of files provided by the event.
-            // TODO: Update the database to include a list of waveform files that are part of the event
-            // TODO: Update the event object to hold this information
-        }
-
-        return waveformList;
-    }
-
-    /**
      * Returns the event object mapping to the event records with eventId from
      * the database. Simple wrapper that does not ignore errors.
      *
@@ -547,7 +331,7 @@ public class EventService {
      * @throws java.io.IOException
      */
     public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
-        return getEventList(filter, false, null);
+        return getEventList(filter, null);
     }
 
     /**
@@ -555,12 +339,13 @@ public class EventService {
      *
      * @param eventId
      * @return
+     * @throws java.sql.SQLException
      */
     public Map<String, String> getWaveformToSeriesMap(long eventId) throws SQLException {
         Map<String, String> waveformToSeries = new HashMap<>();
         String sql = "SELECT waveform_name, series_name"
                 + " FROM event_waveforms"
-                + " JOIN series ON event_waveforms.waveform_name LIKE series.pattern"
+                + " JOIN series ON event_waveform_name LIKE series.pattern"
                 + " WHERE event_id = ?";
 
         Connection conn = null;
@@ -588,14 +373,12 @@ public class EventService {
      * the database.
      *
      * @param filter
-     * @param ignoreErrors Whether or not to ignore errors when parsing waveform
-     * data on disk. Used for testing only.
      * @param limit How many events to return. Null for unlimited
      * @return
      * @throws SQLException
      * @throws java.io.IOException
      */
-    public List<Event> getEventList(EventFilter filter, boolean ignoreErrors, Long limit) throws SQLException, IOException {
+    public List<Event> getEventList(EventFilter filter, Long limit) throws SQLException, IOException {
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -603,14 +386,15 @@ public class EventService {
         List<Event> eventList = new ArrayList<>();
         Long eventId;
         Instant eventTime;
-        String location, system;
+        String location, system, classification;
         Boolean archive, delete, grouped;
+        //TODO: Add this to database and update logic for getting captureFiles out of database
 
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted,grouped FROM waveforms.event"
-                    + " JOIN waveforms.system_type USING(system_id) ";
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted,grouped,classification FROM event"
+                    + " JOIN system_type USING(system_id) ";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
             }
@@ -632,31 +416,74 @@ public class EventService {
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
                 grouped = rs.getBoolean("grouped");
+                classification = rs.getString("classification");
 
                 if (eventId == null || location == null || system == null || archive == null || grouped == null) {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, new ArrayList<Waveform>(), grouped));
+                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, grouped, classification));
                 }
             }
+            rs.close();
+            pstmt.close();
+
+            // For each event, go through the database and load up the capture file information.  We''ll come back and do a
+            // second pass to add the waveform data to the CaptureFiles.
+            String captureSql = "SELECT capture_id, filename, sample_start, sample_end, sample_step "
+                    + " FROM capture"
+                    + " WHERE event_id = ?";
+            pstmt = conn.prepareStatement(captureSql, Statement.RETURN_GENERATED_KEYS);
+            for (Event e : eventList) {
+                pstmt.setLong(1, e.getEventId());
+                rs = pstmt.executeQuery();
+                long captureId;
+                String filename;
+                double sampleStart, sampleEnd, sampleStep;
+                while (rs.next()) {
+                    captureId = rs.getLong("capture_id");
+                    filename = rs.getString("filename");
+                    sampleStart = rs.getDouble("sample_start");
+                    sampleEnd = rs.getDouble("sample_end");
+                    sampleStep = rs.getDouble("sample_step");
+                    e.addCaptureFile(new CaptureFile(captureId, filename, sampleStart, sampleEnd, sampleStep));
+                }
+                rs.close();
+            }
+            pstmt.close();
+
+            // For each event, get the recently constructed CaptureFiles, then add waveforms without data to them.  We'll add data later if it was requested.
+            String waveformSql = "SELECT cwf_id, waveform_name FROM capture_wf WHERE capture_id = ?";
+            pstmt = conn.prepareStatement(waveformSql);
+            for (Event e : eventList) {
+                String waveformName;
+                Long cwfId;
+                for (CaptureFile cf : e.getCaptureFileList()) {
+                    pstmt.setLong(1, cf.getCaptureId());
+                    rs = pstmt.executeQuery();
+                    while (rs.next()) {
+                        cwfId = rs.getLong("cwf_id");
+                        waveformName = rs.getString("waveform_name");
+                        System.out.println("cwfid=" + cwfId + "  waveformName=" + waveformName);
+                        e.addWaveform(cf.getFilename(), new Waveform(cwfId, waveformName));
+                    }
+                    rs.close();
+                }
+            }
+            pstmt.close();
 
             // Determine the rules for labeling waveform series (GMES vs DETA2, not Cav1, Cav2, ...)
             String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
-                    + " FROM event_waveforms"
+                    + " FROM capture_wf"
                     + " JOIN series ON waveform_name LIKE series.pattern"
                     + " JOIN system_type ON series.system_id = system_type.system_id"
+                    + " JOIN capture ON capture.capture_id = capture_wf.capture_id"
                     + " WHERE event_id = ?"
                     + " GROUP BY waveform_name"
                     + " ORDER BY waveform_name";
-
             pstmt = conn.prepareStatement(mapSql);
-
-            // Get the data for each event, then figure out the waveform to series mapping and apply it.
+            // Get the waveform data for each event's CaptureFile, then figure out the waveform to series mapping and apply it.
             for (Event e : eventList) {
-                // Get the data from disk and add it to the event
-                e.getWaveforms().addAll(getWaveformsFromDisk(e, ignoreErrors, true)); // We want the actual waveform data
-
                 // Get the mapping
                 Map<String, List<Series>> waveformToSeries = new HashMap<>();
                 pstmt.setLong(1, e.getEventId());
@@ -674,9 +501,16 @@ public class EventService {
                     }
                     waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                 }
-                for (Waveform w : e.getWaveforms()) {
-                    w.addSeries(waveformToSeries.get(w.getWaveformName()));
-                }
+                rs.close();
+                
+                // Have the event apply the serires mapping
+                e.applySeriesMapping(waveformToSeries);
+            }
+            pstmt.close();
+
+            // Now get the data
+            for (Event e : eventList) {
+                
             }
         } finally {
             SqlUtil.close(pstmt, conn, rs);
@@ -700,7 +534,7 @@ public class EventService {
         PreparedStatement pstmt = null;
 
         int rowsAffected;
-        String deleteSql = "UPDATE waveforms.event SET to_be_deleted = ? WHERE event_id = ?";
+        String deleteSql = "UPDATE event SET to_be_deleted = ? WHERE event_id = ?";
 
         try {
             conn = SqlUtil.getConnection();
@@ -730,9 +564,9 @@ public class EventService {
         PreparedStatement pstmt = null;
 
         int rowsAffected;
-        String deleteSql = "DELETE waveforms.event WHERE to_be_deleted = 1 AND event_id = ?";
+        String deleteSql = "DELETE FROM event WHERE to_be_deleted = 1 AND event_id = ?";
         if (force) {
-            deleteSql = "DELETE FROM waveforms.event WHERE event_id = ?";
+            deleteSql = "DELETE FROM event WHERE event_id = ?";
         }
 
         try {
@@ -761,7 +595,7 @@ public class EventService {
         PreparedStatement pstmt = null;
 
         int rowsAffected;
-        String updateSql = "UPDATE waveforms.event SET archive = ? WHERE event_id = ?";
+        String updateSql = "UPDATE event SET archive = ? WHERE event_id = ?";
 
         try {
             conn = SqlUtil.getConnection();
@@ -787,19 +621,17 @@ public class EventService {
      * Add a list of events to the database.
      *
      * @param eventList
-     * @param force Add to the database even if the data cannot be found on
-     * disk. Should really only be used for testing.
      * @return
      * @throws SQLException
      * @throws java.io.FileNotFoundException
      */
-    public int addEventList(List<Event> eventList, boolean force) throws SQLException, FileNotFoundException, IOException {
+    public int addEventList(List<Event> eventList) throws SQLException, FileNotFoundException, IOException {
         long eventId;
         int numAdded = 0;
         for (Event e : eventList) {
             if (e != null) {
                 // eventId is an autoincremented primary key starting at 1.  It should never be < 0
-                eventId = addEvent(e, force);
+                eventId = addEvent(e);
                 numAdded++;
             }
         }
@@ -834,16 +666,17 @@ public class EventService {
      * @param filter
      * @return A list of events
      * @throws SQLException
+     * @throws java.io.IOException
      */
-    public List<Event> getEventListWithoutData(EventFilter filter) throws SQLException {
+    public List<Event> getEventListWithoutData(EventFilter filter) throws SQLException, IOException {
         List<Event> events = new ArrayList<>();
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_type.system_name"
-                + " FROM waveforms.event"
-                + " JOIN waveforms.system_type USING(system_id)";
+        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_type.system_name,classification"
+                + " FROM event"
+                + " JOIN system_type USING(system_id)";
         try {
             conn = SqlUtil.getConnection();
             if (filter != null) {
@@ -856,8 +689,9 @@ public class EventService {
             rs = pstmt.executeQuery();
             long eventId;
             Instant eventTime;
-            String location, system;
+            String location, system, classification;
             Boolean archive, delete, grouped;
+            // TODO: update to query captureFiles from database
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
                 eventTime = TimeUtil.getInstantFromDateTime(rs);
@@ -866,8 +700,15 @@ public class EventService {
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
                 grouped = rs.getBoolean("grouped");
-                events.add(new Event(eventId, eventTime, location, system, archive, delete, null, grouped));
+                classification = rs.getString("classification");
+                // false for includeData, false for ignoreErrors
+                // TODO: Update code to get capture files and waveforms without data
+                events.add(new Event(eventId, eventTime, location, system, archive, delete, grouped, classification));
             }
+            rs.close();
+            pstmt.close();
+            
+            // Query the capture file data for the events
         } finally {
             SqlUtil.close(rs, pstmt, conn);
         }
