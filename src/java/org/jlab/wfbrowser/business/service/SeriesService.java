@@ -34,8 +34,8 @@ public class SeriesService {
         List<Series> seriesList = new ArrayList<>();
 
         String sql = "SELECT series_id, system_name, pattern, series_name, description, units"
-                + " FROM waveforms.series"
-                + " JOIN waveforms.system_type"
+                + " FROM series"
+                + " JOIN system_type"
                 + " ON system_type.system_id = series.system_id"
                 + filter.getWhereClause()
                 + " ORDER BY series_name";
@@ -85,7 +85,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "INSERT INTO waveforms.series (pattern, series_name, system_id, description, units) VALUES (?,?,?,?,?)";
+        String sql = "INSERT INTO series (pattern, series_name, system_id, description, units) VALUES (?,?,?,?,?)";
         try {
             conn = SqlUtil.getConnection();
             conn.setAutoCommit(false);
@@ -114,7 +114,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "UPDATE waveforms.series set pattern = ?, series_name = ?, system_id = ?, description = ?, units = ? "
+        String sql = "UPDATE series set pattern = ?, series_name = ?, system_id = ?, description = ?, units = ? "
                 + "WHERE series_id = ?";
         try {
             conn = SqlUtil.getConnection();
@@ -151,7 +151,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "UPDATE waveforms.series_sets set set_name = ?, system_id = ?, description = ?"
+        String sql = "UPDATE series_sets set set_name = ?, system_id = ?, description = ?"
                 + " WHERE set_id = ?";
         try {
             conn = SqlUtil.getConnection();
@@ -175,7 +175,7 @@ public class SeriesService {
             }
 
             pstmt.close();
-            String delSql = "DELETE FROM waveforms.series_set_contents WHERE set_id = ?";
+            String delSql = "DELETE FROM series_set_contents WHERE set_id = ?";
             pstmt = conn.prepareStatement(delSql);
             pstmt.setLong(1, setId);
             n = pstmt.executeUpdate();
@@ -187,7 +187,7 @@ public class SeriesService {
             }
 
             pstmt.close();
-            String insSql = "INSERT INTO waveforms.series_set_contents (set_id, series_id) VALUES(?,?)";
+            String insSql = "INSERT INTO series_set_contents (set_id, series_id) VALUES(?,?)";
             pstmt = conn.prepareStatement(insSql);
             for (Series series : set) {
                 pstmt.setLong(1, setId);
@@ -215,7 +215,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "DELETE FROM waveforms.series WHERE series_id = ?";
+        String sql = "DELETE FROM series WHERE series_id = ?";
 
         try {
             conn = SqlUtil.getConnection();
@@ -244,7 +244,7 @@ public class SeriesService {
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "DELETE FROM waveforms.series_sets WHERE set_id = ?";
+        String sql = "DELETE FROM series_sets WHERE set_id = ?";
 
         try {
             conn = SqlUtil.getConnection();
