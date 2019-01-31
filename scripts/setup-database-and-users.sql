@@ -35,6 +35,7 @@ CREATE TABLE waveforms.event (
     system_id int(2) NOT NULL,
     archive tinyint(1) NOT NULL DEFAULT 0,
     to_be_deleted tinyint(1) NOT NULL DEFAULT 0,
+    grouped tinyint(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (event_id),
     UNIQUE KEY `event_time_utc` (`event_time_utc`,`location`,`system_id`),
     INDEX i_location(location),
@@ -45,21 +46,130 @@ CREATE TABLE waveforms.event (
 ) ENGINE=InnoDB;
 
 /*
- This table is used to track which waveforms an event contains.  Enables easy per 
- series lookup for UI.
+ This table is used to track which capture files map to an event and metadata about
+ those capture files.
+ sample_start  - first time value of the file
+ sample_end  - last time value of the file
+ sample_step - the difference in time between values (rows) of the file
  */
-CREATE TABLE waveforms.event_waveforms (
-  `es_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `event_id` bigint(20) NOT NULL,
-  `waveform_name` varchar(47) NOT NULL,
-  PRIMARY KEY (`es_id`),
-  UNIQUE KEY `waveform_name` (`event_id`,`waveform_name`),
-  INDEX i_waveform_name (waveform_name),
+CREATE TABLE waveforms.capture (
+  capture_id bigint(20) NOT NULL AUTO_INCREMENT,
+  event_id bigint(20) NOT NULL,
+  filename varchar(255) NOT NULL,
+  sample_start double NOT NULL,
+  sample_end double NOT NULL,
+  sample_step double NOT NULL,
+  PRIMARY KEY (`capture_id`),
   FOREIGN KEY fk_event_id (event_id)
     REFERENCES waveforms.event (`event_id`) 
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+/*
+ This table is used to map waveforms to a capture file which maps back to an event.
+ */
+CREATE TABLE waveforms.capture_wf (
+  cwf_id bigint NOT NULL AUTO_INCREMENT,
+  capture_id bigint NOT NULL,
+  waveform_name varchar(63) NOT NULL,
+  PRIMARY KEY (`cwf_id`),
+  UNIQUE KEY `waveform_name` (`capture_id`,`waveform_name`),
+  FOREIGN KEY fk_capture_id (capture_id)
+    REFERENCES waveforms.capture (`capture_id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+/*
+ This table defines a tag as a name matched to a rule, where the rule should be
+ a string containing metadata names and operators generating a boolean outcome
+ when interpreted by an application, i.e., the tag should be applied or not.
+ A null rule implies that the tag will be manually applied.
+ */
+CREATE TABLE waveforms.tag (
+  tag_id bigint NOT NULL AUTO_INCREMENT,
+  name varchar(23) NOT NULL,
+  rule varchar(255) DEFAULT NULL,
+  set_rule ENUM('all', 'some', 'none') NOT NULL,
+  PRIMARY KEY (`tag_id`)
+) ENGINE=InnoDB;
+
+/*
+ This table is used to map a tag list to an event.
+ */
+CREATE TABLE waveforms.event_tag (
+  event_tag_id bigint NOT NULL AUTO_INCREMENT,
+  event_id bigint NOT NULL,
+  tag_id bigint NOT NULL,
+  PRIMARY KEY (`event_tag_id`),
+  UNIQUE KEY `event_tag` (`event_id`, `tag_id`),
+  FOREIGN KEY fk_event_id (event_id)
+    REFERENCES waveforms.event (`event_id`)
+    ON DELETE CASCADE,
+  FOREIGN KEY fk_tag_id (tag_id)
+    REFERENCES waveforms.tag (`tag_id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+/*
+ This table holds the metadata read from the capture files.  Metadata should be
+ key/value pairs with an associated time (offset from trigger time).  Null value
+ would imply the metadata value could not be determine (e.g., PV unavailable).
+ Values can be of three types, number, string, or null.  null implies that the
+ value could not be determined, so it's type could not be determined.
+ */
+/*
+CREATE TABLE waveforms.capture_meta (
+  meta_id bigint NOT NULL AUTO_INCREMENT,
+  capture_id bigint NOT NULL,
+  name varchar(23) NOT NULL, 
+  value varchar(255) DEFAULT NULL,
+  offset_seconds DOUBLE NOT NULL,
+  class ENUM('number', 'string') DEFAULT NULL,
+  PRIMARY KEY (`meta_id`),
+  UNIQUE KEY `name` (`capture_id`, `name`),
+  FOREIGN KEY fk_capture_id (capture_id)
+    REFERENCES waveforms.capture (`capture_id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+*/
+
+/*
+ This table is used to define sets of metadata filters.  These can be used to
+ select events based on metadata.
+ modifier - return events that have all, some, or no(ne) capture files passing
+            the metadata filter set
+ */
+/*
+CREATE TABLE waveforms.meta_filter_set (
+  mf_set_id bigint NOT NULL AUTO_INCREMENT,
+  system_id int(2) NOT NULL,
+  modifier  ENUM('all','some','none') NOT NULL,
+  PRIMARY KEY (`mf_set_id`),
+  FOREIGN KEY fk_system_id (system_id)
+    REFERENCES waveforms.system_type (system_id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+*/
+
+/*
+ This table defines individual metadata filters.
+ key       - value of the capture_meta field to filter on
+ operation - logical operation to perform on the value corresponding to key
+ target    - value upon which to compare the value corresponding to key
+ */
+/*
+CREATE TABLE waveforms.meta_filter (
+  mf_id bigint NOT NULL AUTO_INCREMENT,
+  mf_set_id bigint NOT NULL,
+  name varchar(255) NOT NULL,
+  operation varchar(15) NOT NULL,
+  target varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`mf_id`),
+  FOREIGN KEY fk_mf_set_id (mf_set_id)
+    REFERENCES waveforms.meta_filter_set (`mf_set_id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+*/
 
 /*
  This set of tables holds the rules for looking up event series data by a name to 
@@ -71,6 +181,7 @@ series_id BIGINT NOT NULL AUTO_INCREMENT,
 system_id INT(2) NOT NULL,
 pattern VARCHAR(255) NOT NULL,
 series_name VARCHAR(127) NOT NULL,
+units VARCHAR(23) NULL,
 description varchar(2047)  DEFAULT NULL,
 UNIQUE KEY `series_name` (series_name),
 INDEX i_series_name(series_name),
@@ -79,6 +190,7 @@ FOREIGN KEY fk_system_id (system_id)
     REFERENCES waveforms.system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
 
 /* This holds the list of named sets of series that a client may want to view together. */
 CREATE TABLE waveforms.series_sets (
@@ -115,6 +227,11 @@ FOREIGN KEY fk_set_id (set_id)
  * wfb_reader, (unlimited, read/write, and read only users)
  * Please change passwords.
  */
+/* No DROP USER IF EXISTS in this version! */
+DROP USER 'waveforms_owner';
+DROP USER 'waveforms_writer';
+DROP USER 'waveforms_reader';
+
 CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
 CREATE USER 'waveforms_writer' IDENTIFIED BY 'passowrd';

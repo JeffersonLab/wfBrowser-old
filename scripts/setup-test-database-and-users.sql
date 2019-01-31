@@ -8,6 +8,20 @@
  * Created: Aug 30, 2018
  */
 
+/*
+ * Create the usual three user setup for this app wfb_owner, wfb_writer,
+ * wfb_reader, (unlimited, read/write, and read only users)
+ * Please change passwords.
+ */
+/* No DROP USER IF EXISTS in this version! */
+
+/*
+*/
+DROP USER 'wftest_owner';
+DROP USER 'wftest_writer';
+DROP USER 'wftest_reader';
+DROP DATABASE waveformstest;
+
 CREATE DATABASE waveformstest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE waveformstest;
 
@@ -33,6 +47,7 @@ CREATE TABLE event (
     event_id BIGINT NOT NULL AUTO_INCREMENT,
     event_time_utc datetime(1) NOT NULL,
     location varchar(10) NOT NULL,
+    classification varchar(16) NOT NULL,
     system_id int(2) NOT NULL,
     archive tinyint(1) NOT NULL DEFAULT 0,
     to_be_deleted tinyint(1) NOT NULL DEFAULT 0,
@@ -42,7 +57,7 @@ CREATE TABLE event (
     INDEX i_location(location),
     INDEX i_event_time(event_time_utc),
     FOREIGN KEY fk_system_id (system_id) 
-      REFERENCES waveforms.system_type (system_id)
+      REFERENCES system_type (system_id)
       ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -56,13 +71,15 @@ CREATE TABLE event (
 CREATE TABLE capture (
   capture_id bigint(20) NOT NULL AUTO_INCREMENT,
   event_id bigint(20) NOT NULL,
-  filename varchar(255) NOT NULL,
+  filename varchar(63) NOT NULL,
   sample_start double NOT NULL,
   sample_end double NOT NULL,
   sample_step double NOT NULL,
   PRIMARY KEY (`capture_id`),
+  UNIQUE KEY (`capture_id`, `filename`),
+  UNIQUE KEY (`event_id`,`filename`),
   FOREIGN KEY fk_event_id (event_id)
-    REFERENCES waveforms.event (`event_id`) 
+    REFERENCES event (`event_id`) 
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -76,7 +93,7 @@ CREATE TABLE capture_wf (
   PRIMARY KEY (`cwf_id`),
   UNIQUE KEY `waveform_name` (`capture_id`,`waveform_name`),
   FOREIGN KEY fk_capture_id (capture_id)
-    REFERENCES waveforms.capture (`capture_id`)
+    REFERENCES capture (`capture_id`)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -178,15 +195,16 @@ CREATE TABLE waveforms.meta_filter (
  series name "GMES" to a specific series 'R1N1WFSGMES'
  */
 CREATE TABLE series (
-series_id BIGINT NOT NULL AUTO_INCREMENT,
-system_id INT(2) NOT NULL,
-pattern VARCHAR(255) NOT NULL,
-series_name VARCHAR(127) NOT NULL,
-description varchar(2047)  DEFAULT NULL,
-UNIQUE KEY `series_name` (series_name),
-INDEX i_series_name(series_name),
-PRIMARY KEY (series_id),
-FOREIGN KEY fk_system_id (system_id)
+  series_id BIGINT NOT NULL AUTO_INCREMENT,
+  system_id INT(2) NOT NULL,
+  pattern VARCHAR(255) NOT NULL,
+  series_name VARCHAR(127) NOT NULL,
+  units  VARCHAR(23) NULL,
+  description varchar(2047)  DEFAULT NULL,
+  UNIQUE KEY `series_name` (series_name),
+  INDEX i_series_name(series_name),
+  PRIMARY KEY (series_id),
+  FOREIGN KEY fk_system_id (system_id)
     REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -194,47 +212,46 @@ FOREIGN KEY fk_system_id (system_id)
 
 /* This holds the list of named sets of series that a client may want to view together. */
 CREATE TABLE series_sets (
-set_id BIGINT NOT NULL AUTO_INCREMENT,
-system_id INT(2) NOT NULL,
-set_name VARCHAR(127) NOT NULL,
-description varchar(2047)  DEFAULT NULL,
-UNIQUE KEY `set_name` (set_name),
-INDEX i_set_name (set_name),
-PRIMARY KEY (set_id),
-FOREIGN KEY fk_system_id (system_id)
+  set_id BIGINT NOT NULL AUTO_INCREMENT,
+  system_id INT(2) NOT NULL,
+  set_name VARCHAR(127) NOT NULL,
+  description varchar(2047)  DEFAULT NULL,
+  UNIQUE KEY `set_name` (set_name),
+  INDEX i_set_name (set_name),
+  PRIMARY KEY (set_id),
+  FOREIGN KEY fk_system_id (system_id)
     REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 /* This is the lookup table of which named series are in a given series set. */
 CREATE TABLE series_set_contents (
-content_id BIGINT NOT NULL AUTO_INCREMENT,
-series_id BIGINT NOT NULL,
-set_id BIGINT NOT NULL,
-INDEX i_set_id (set_id),
-PRIMARY KEY (content_id),
-FOREIGN KEY fk_series_id (series_id)
+  content_id BIGINT NOT NULL AUTO_INCREMENT,
+  series_id BIGINT NOT NULL,
+  set_id BIGINT NOT NULL,
+  INDEX i_set_id (set_id),
+  PRIMARY KEY (content_id),
+  FOREIGN KEY fk_series_id (series_id)
     REFERENCES series (series_id)
     ON DELETE CASCADE,
-FOREIGN KEY fk_set_id (set_id)
+  FOREIGN KEY fk_set_id (set_id)
     REFERENCES series_sets (set_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 
-/*
- * Create the usual three user setup for this app wfb_owner, wfb_writer,
- * wfb_reader, (unlimited, read/write, and read only users)
- * Please change passwords.
- */
-/* No DROP USER IF EXISTS in this version! */
-DROP USER 'waveformstest_owner';
-DROP USER 'waveformstest_writer';
-DROP USER 'waveformstest_reader';
 
-CREATE USER 'waveformstest_owner' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON waveformstest.* TO 'waveformstest_owner';
-CREATE USER 'waveformstest_writer' IDENTIFIED BY 'password';
-GRANT SELECT,UPDATE,INSERT,DELETE ON waveformstest.* to 'waveformstest_writer';
-CREATE USER 'waveformstest_reader' IDENTIFIED BY 'password';
-GRANT SELECT ON waveformstest.* TO 'waveformstest_reader';
+CREATE USER 'wftest_owner' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON waveformstest.* TO 'wftest_owner';
+CREATE USER 'wftest_writer' IDENTIFIED BY 'password';
+GRANT SELECT,UPDATE,INSERT,DELETE ON waveformstest.* to 'wftest_writer';
+CREATE USER 'wftest_reader' IDENTIFIED BY 'password';
+GRANT SELECT ON waveformstest.* TO 'wftest_reader';
+
+/* Add a "system" for testing */
+INSERT INTO system_type (system_name) VALUES ('test');
+
+/* Add a couple of series for testing */
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'W%', 'Test Series - All', 'Should match all of the test waveforms');
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'W1%', 'Test Series - W1', 'Should match anything starting with W1');
+
