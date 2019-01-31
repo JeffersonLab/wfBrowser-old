@@ -1,7 +1,6 @@
 package org.jlab.wfbrowser.model;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -903,8 +902,7 @@ public class Event {
      * @return
      */
     @Override
-    public boolean equals(Object o
-    ) {
+    public boolean equals(Object o) {
         if (o == this) {
             return true;
         }
@@ -914,16 +912,11 @@ public class Event {
 
         Event e = (Event) o;
         boolean isEqual = true;
+        // For events to be equal, either both IDs are null or both are the same number.  Mixing null and non-null IDs could be
+        // problematic since one probably came from the database and the other didn't.  In the database, the IDs serve as primary keys, so are GUIDs.
         isEqual = isEqual && (eventId == null ? e.getEventId() == null : eventId.equals(e.getEventId()));
 
-        List<Waveform> waveforms = getWaveforms();
-        if (e.getWaveforms() != null || waveforms != null) {
-            if (e.getWaveforms() == null || waveforms == null) {
-                isEqual = false;
-            } else {
-                isEqual = isEqual && (waveforms.size() == e.getWaveforms().size());
-            }
-        }
+        // An event is defined by the time it occurred and its system, location, and classification.
         isEqual = isEqual && (eventTime.equals(e.getEventTime()));
         isEqual = isEqual && (location.equals(e.getLocation()));
         isEqual = isEqual && (system.equals(e.getSystem()));
