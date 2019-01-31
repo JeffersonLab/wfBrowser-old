@@ -19,37 +19,57 @@ import javax.json.JsonObjectBuilder;
  */
 public class Waveform {
 
+    private Long waveformId = null;
     private final String waveformName;
     private final List<Series> seriesList = new ArrayList<>();
-    private final double[] timeOffsets;
-    private final double[] values;
+    private double[] timeOffsets;
+    private double[] values;
 
-    public Waveform(String waveformName, List<Double> timeOffsets, List<Double> values) {
-        if (timeOffsets.size() != values.size()) {
-            throw new IllegalArgumentException("time and value arrays are of unequal length");
-        }
-        this.waveformName = waveformName;
-
-        this.timeOffsets = new double[timeOffsets.size()];
-        this.values = new double[values.size()];
-        for (int i = 0; i < timeOffsets.size(); i++) {
-            this.timeOffsets[i] = timeOffsets.get(i);
-            this.values[i] = values.get(i);
-        }
-    }
-
+    /**
+     * Create a waveform object from arrays of primitive doubles. Preferred
+     * since there is no boxing or copying costs. The array references used
+     * directly.
+     *
+     * @param waveformName The waveform name
+     * @param timeOffsets An a array of time offsets
+     * @param values An array of values
+     */
     public Waveform(String waveformName, double[] timeOffsets, double[] values) {
         if (timeOffsets.length != values.length) {
             throw new IllegalArgumentException("time and value arrays are of unequal length");
         }
         this.waveformName = waveformName;
+        this.timeOffsets = timeOffsets;
+        this.values = values;
+    }
 
-        this.timeOffsets = new double[timeOffsets.length];
-        this.values = new double[values.length];
-        for (int i = 0; i < timeOffsets.length; i++) {
-            this.timeOffsets[i] = timeOffsets[i];
-            this.values[i] = values[i];
+    /**
+     * Create a waveform object where the data will be added later.
+     *
+     * @param waveformId Database ID of the waveform.
+     * @param waveformName The name of the waveform.
+     */
+    public Waveform(Long waveformId, String waveformName) {
+        this.waveformId = waveformId;
+        this.waveformName = waveformName;
+
+        this.timeOffsets = new double[0];
+        this.values = new double[0];
+    }
+
+    /**
+     * Replaces the existing data arrays with new copies. Useful when adding the
+     * data after constructing the waveform.
+     *
+     * @param timeOffsets
+     * @param values
+     */
+    public void updateData(double[] timeOffsets, double[] values) {
+        if (timeOffsets.length != values.length) {
+            throw new IllegalArgumentException("time and value arrays are of unequal length");
         }
+        this.timeOffsets = timeOffsets;
+        this.values = values;
     }
 
     /**
@@ -71,6 +91,10 @@ public class Waveform {
         return seriesList;
     }
 
+    public Long getWaveformId() {
+        return waveformId;
+    }
+    
     public String getWaveformName() {
         return waveformName;
     }

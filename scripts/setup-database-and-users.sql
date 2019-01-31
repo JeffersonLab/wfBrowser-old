@@ -37,7 +37,7 @@ CREATE TABLE waveforms.event (
     to_be_deleted tinyint(1) NOT NULL DEFAULT 0,
     grouped tinyint(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (event_id),
-    UNIQUE KEY `event_time_utc` (`event_time_utc`,`location`,`system_id`),
+    UNIQUE KEY `event_time_utc` (`event_time_utc`,`location`,`system_id`, `classification`),
     INDEX i_location(location),
     INDEX i_event_time(event_time_utc),
     FOREIGN KEY fk_system_id (system_id) 

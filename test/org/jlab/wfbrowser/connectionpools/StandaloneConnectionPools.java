@@ -39,14 +39,14 @@ public class StandaloneConnectionPools implements Channel {
         initCtx = new InitialContext();
         envCtx = (Context) initCtx.lookup("java:comp/env");
 
-        String user = "wfb_writer";
+        String user = "wftest_writer";
         String password = "password";
 
         // Port is same for all hosts
         int port = 3306;
         String host = "devl21.acc.jlab.org";
 
-        String url = "jdbc:mysql://" + host + ":" + port + "/waveforms";
+        String url = "jdbc:mysql://" + host + ":" + port + "/waveformstest";
 
         MysqlConnectionPoolDataSource pds = new MysqlConnectionPoolDataSource();
         pds.setUrl(url);

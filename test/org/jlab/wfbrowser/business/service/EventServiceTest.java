@@ -1,27 +1,25 @@
 package org.jlab.wfbrowser.business.service;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import javax.naming.NamingException;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
 import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
-import org.jlab.wfbrowser.model.Waveform;
 import org.junit.AfterClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
+import java.util.TreeSet;
+import java.util.SortedSet;
 
 /**
  *
@@ -30,67 +28,101 @@ import org.junit.runners.MethodSorters;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class EventServiceTest {
 
+    // The two timstamps used for events.  t1 for unzipped, t2 for zipped.
+    private static Instant t1 = null;
+    private static Instant t2 = null;
+
+    // Consistent, no class, grouped
+    private static Event e1_grp_con_noclass = null;
+    private static Event e2_grp_con_noclass = null;
+    private static Event e1_grp_con_class1 = null;
+    private static Event e2_grp_con_class1 = null;
+
+    // Inconsistent, no class, grouped
+    private static Event e1_grp_incon_noclass = null;
+    private static Event e2_grp_incon_noclass = null;
+    private static Event e1_grp_incon_class1 = null;
+    private static Event e2_grp_incon_class1 = null;
+
+    // Consistent, no class, ungrouped
+    private static Event e1_ungrp_noclass = null;
+    private static Event e2_ungrp_noclass = null;
+    private static Event e1_ungrp_class1 = null;
+    private static Event e2_ungrp_class1 = null;
+
     private static StandaloneConnectionPools pools;
-    private static long eventId, eventIdCompressed;
-    private static Instant now, end;
-    private static Event e, eCompressed;
-    private static List<Event> eventList;
-    private static List<Long> eventIds;
+//    private static long eventId, eventIdCompressed;
+//    private static Instant now, end;
+//    private static Event e, eCompressed;
+    private static List<Event> eventList = new ArrayList<>();
+//    private static List<Long> eventIds = new ArrayList<>();
 
     public EventServiceTest() {
     }
 
     @BeforeClass
-    public static void oneTimeSetUp() throws NamingException, SQLException {
+    public static void oneTimeSetUp() throws NamingException, SQLException, IOException {
+        System.out.println("Start of setup");
+
+        // Setup the data connection and connection pools
         new StandaloneJndi();
         pools = new StandaloneConnectionPools();
 
-        // Construct an example event for use in tests.  These should reflect the values in the "waveforms/data/rf/test" directory
-        Instant t1 = LocalDateTime.of(2018, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);
-        Instant t2 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);
-        List<Double> to1 = Arrays.asList(-102.4, -102.35, -102.3, -102.25);
-        List<Double> to2 = Arrays.asList(-2102.4, -2102.35, -2102.3, -2102.25);
-        List<Double> to3 = Arrays.asList(-3102.4, -3102.35, -3102.3, -3102.25);
-        List<Double> v1 = Arrays.asList(9.0, -4.0, 0.0, -18.1934);
-        List<Double> v2 = Arrays.asList(10.0, 5.0, 0.0, 11.5247);
-        List<Double> v3 = Arrays.asList(12.0, -1.0, 0.0, -18.6768);
-        List<Double> v4 = Arrays.asList(10.0, -2.0, 0.0, -32.4426);
+        // Create some events to add to the database - files that match these must exist on the filesystem
+        t1 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the unzipped files
+        t2 = LocalDateTime.of(2017, 9, 14, 11, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the zipped files
 
-        List<Double> v21 = Arrays.asList(29.0, -24.0, 20.0, -218.1934);
-        List<Double> v22 = Arrays.asList(210.0, 25.0, 20.0, 211.5247);
-        List<Double> v23 = Arrays.asList(212.0, -21.0, 20.0, -218.6768);
-        List<Double> v24 = Arrays.asList(210.0, -22.0, 20.0, -232.4426);
+        // Setup the flags for the basic testing.  Make variable names match what they do.
+        boolean unarchive = false;
+        boolean archive = true;
+        boolean delete = true;
+        boolean noDelete = false;
+        boolean grouped = true;
+        boolean ungrouped = false;
+        String grp_con = "grouped-consistent";
+        String grp_incon = "grouped-inconsistent";
+        String ungrp = "ungrouped";
+        String noClass = "";
+        String class1 = "class1";
 
-        List<Double> v31 = Arrays.asList(39.0, -34.0, 30.0, -318.1934);
-        List<Double> v32 = Arrays.asList(310.0, 35.0, 30.0, 311.5247);
-        List<Double> v33 = Arrays.asList(312.0, -31.0, 30.0, -318.6768);
-        List<Double> v34 = Arrays.asList(310.0, -32.0, 30.0, -332.4426);
+        // Used for grouped events
+        String nullCF = null;
 
-        List<Waveform> waveforms = new ArrayList<>();
-        waveforms.add(new Waveform("WWW1", to1, v1));
-        waveforms.add(new Waveform("WWW2", to1, v2));
-        waveforms.add(new Waveform("WWW3", to1, v3));
-        waveforms.add(new Waveform("WWW4", to1, v4));
-        waveforms.add(new Waveform("WW21", to2, v21));
-        waveforms.add(new Waveform("WW22", to2, v22));
-        waveforms.add(new Waveform("WW23", to2, v23));
-        waveforms.add(new Waveform("WW24", to2, v24));
-        waveforms.add(new Waveform("WW31", to3, v31));
-        waveforms.add(new Waveform("WW32", to3, v32));
-        waveforms.add(new Waveform("WW33", to3, v33));
-        waveforms.add(new Waveform("WW34", to3, v34));
+        // Used for ungrouped events
+        String zipCF = "test3.2017_09_14_110000.1.txt"; // Must be base file name, since in practice the application won't know whether or not an event has been compressed.
+        String unzipCF = "test3.2017_09_14_100000.1.txt";
 
-        e = new Event(t1, "test", "rf", false, false, waveforms);
-        eCompressed = new Event(t2, "test", "rf", false, false, waveforms);
-        
-        now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        now = now.plusMillis(100);
-        end = now.plusMillis(5000);
-        eventList = new ArrayList<>();
-        eventIds = new ArrayList<>();
-        eventList.add(new Event(now.plusMillis(1000), "test", "rf", false, false, null));
-        eventList.add(new Event(now.plusMillis(2000), "test", "rf", false, false, null));
-        eventList.add(new Event(now.plusMillis(3000), "test", "rf", false, false, null));
+        // Setup the grouped and consistent events
+        // The e1 events mapped to the unzipped files, e2 events map to the zipped files.  e1a, etc. are duplicates of e1 and tested for equality, etc.
+        // These will almost certainly not match the IDs in the database, but are used/needed for testing.
+        e1_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF);
+        e2_grp_con_noclass = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF);  // Should not match e1 since different time        
+        e1_grp_con_class1 = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
+        e2_grp_con_class1 = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
+        eventList.add(e1_grp_con_noclass);
+        eventList.add(e2_grp_con_noclass);
+        eventList.add(e1_grp_con_class1);
+        eventList.add(e2_grp_con_class1);
+
+        // Setup the grouped and incosistent events
+        e1_grp_incon_noclass = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
+        e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
+        e1_grp_incon_class1 = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF);
+        e2_grp_incon_class1 = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF);
+        eventList.add(e1_grp_incon_noclass);
+        eventList.add(e2_grp_incon_noclass);
+        eventList.add(e1_grp_incon_class1);
+        eventList.add(e2_grp_incon_class1);
+
+        // Setup the ungrouped events (consistent by default)
+        e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF);
+        e2_ungrp_noclass = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, noClass, zipCF);
+        e1_ungrp_class1 = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, class1, unzipCF);
+        e2_ungrp_class1 = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, class1, zipCF);
+        eventList.add(e1_ungrp_noclass);
+        eventList.add(e2_ungrp_noclass);
+        eventList.add(e1_ungrp_class1);
+        eventList.add(e2_ungrp_class1);
     }
 
     @AfterClass
@@ -111,54 +143,29 @@ public class EventServiceTest {
         EventService instance = new EventService();
 
         // Set the test class parameter for use in other tests
-        eventId = instance.addEvent(e, false);
-        e.setEventId(eventId);
         List<Long> eventIdList = new ArrayList<>();
-        eventIdList.add(eventId);
+        for (Event e : eventList) {
+            System.out.println("Adding event: " + e.getSystem() + " " + e.getLocation() + " " + e.getClassification() + " " + e.getEventTimeString());
+            long id = instance.addEvent(e);
+            System.out.println("Event received id '" + id + "'");
+            eventIdList.add(id);
+            e.setEventId(id);
+        }
+
         EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null);
 
-        List<Event> expResult = new ArrayList<>();
-        expResult.add(e);
         List<Event> result = instance.getEventList(filter);
 
-        String out = result.get(0).toDyGraphJsonObject(null).toString();
-        System.out.println(out);
-        assertEquals(expResult, result);
+        assertEquals(eventList.size(), result.size());
 
-        // Add an event that doesn't exist in the data.  This should fail.
+        // Add a duplicate event.  This should fail.
         boolean threwException = false;
         try {
-            instance.addEvent(new Event(Instant.now(), "test", "rf", false, false, null), false);
-        } catch (FileNotFoundException ex) {
+            instance.addEvent(e1_ungrp_class1);
+        } catch (SQLException ex) {
             threwException = true;
         }
         assertEquals(true, threwException);
-    }
-
-    /**
-     * Test of addEvent method, of class EventService. Testing with
-     * compressed event
-     *
-     * @throws java.lang.Exception
-     */
-    //@Test
-    public void test1AddEventCompressed() throws Exception {
-        System.out.println("addEvent");
-        EventService instance = new EventService();
-
-        // Set the test class parameter for use in other tests
-        eventIdCompressed = instance.addEvent(eCompressed, false);
-        eCompressed.setEventId(eventIdCompressed);
-        List<Long> eventIdList = new ArrayList<>();
-        eventIdList.add(eventIdCompressed);
-        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null);
-
-        List<Event> expResult = new ArrayList<>();
-        expResult.add(eCompressed);
-        List<Event> result;
-        result = instance.getEventList(filter);
-        assertEquals(expResult, result);
-
     }
 
     /**
@@ -168,14 +175,61 @@ public class EventServiceTest {
     public void test2GetEventList() throws Exception {
         System.out.println("getEvent");
 
-        List<Event> expResult = new ArrayList<>();
-        expResult.add(e);
-        eventIds.add(eventId);
-
         EventService instance = new EventService();
-        EventFilter filter = new EventFilter(eventIds, null, null, null, null, null, null);
+        // Get all of the events under the test system
+        EventFilter filter = new EventFilter(null, null, null, "test", null, null, null);
         List<Event> result = instance.getEventList(filter);
-        assertEquals(expResult, result);
+        assertEquals(eventList.size(), result.size());
+        SortedSet<Long> resultIds = new TreeSet<>();
+        SortedSet<Long> expectedIds = new TreeSet<>();
+        for (Event e : result) {
+            resultIds.add(e.getEventId());
+        }
+        for (Event e : eventList) {
+            expectedIds.add(e.getEventId());
+        }
+        assertEquals(expectedIds, resultIds);
+
+        // Get all of the grouped_consistent events
+        List<String> locations = new ArrayList<>();
+        locations.add("grouped-consistent");
+        List<Event> expResultLocations = new ArrayList<>();
+        expResultLocations.add(e1_grp_con_noclass);
+        expResultLocations.add(e2_grp_con_noclass);
+        expResultLocations.add(e1_grp_con_class1);
+        expResultLocations.add(e2_grp_con_class1);
+
+        EventFilter filterLocations = new EventFilter(null, null, null, null, locations, null, null);
+        List<Event> resultLocations = instance.getEventList(filterLocations);
+
+        SortedSet<Long> resultLocationsIds = new TreeSet<>();
+        SortedSet<Long> expectedLocationsIds = new TreeSet<>();
+        for (Event e : resultLocations) {
+            resultIds.add(e.getEventId());
+        }
+        for (Event e : expResultLocations) {
+            expectedIds.add(e.getEventId());
+        }
+        assertEquals(expectedLocationsIds, resultLocationsIds);
+
+
+        // Get the e2_grp_incon_class1 via serveral filters
+        List<String> locations2 = new ArrayList<>();
+        locations2.add("grouped-inconsistent");
+        List<Event> expResultsMulti = new ArrayList<>();
+        expResultsMulti.add(e2_grp_incon_class1);
+
+        EventFilter filterMulti = new EventFilter(null, t1, t2, "test", locations2, false, false);
+        List<Event> resultsMulti = instance.getEventList(filter);
+        SortedSet<Long> resultsMultiIds = new TreeSet<>();
+        SortedSet<Long> expMultiIds = new TreeSet<>();
+        for (Event e : resultsMulti) {
+            resultIds.add(e.getEventId());
+        }
+        for (Event e : expResultsMulti) {
+            expectedIds.add(e.getEventId());
+        }
+        assertEquals(expMultiIds, resultsMultiIds);
     }
 
     /**
@@ -185,9 +239,16 @@ public class EventServiceTest {
     public void test4SetEventDeleteFlag() throws Exception {
         System.out.println("deleteEvent");
         EventService instance = new EventService();
+        long id = e1_grp_con_noclass.getEventId();
         int expResult = 1;
-        int result = instance.setEventDeleteFlag(eventId, true);
+        int result = instance.setEventDeleteFlag(id, true);
         assertEquals(expResult, result);
+
+        List<Long> ids = new ArrayList<>();
+        ids.add(id);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null);
+        List<Event> eList = instance.getEventList(filter);
+        assertEquals(eList.get(0).isDelete(), true);
     }
 
     /**
@@ -197,62 +258,31 @@ public class EventServiceTest {
     public void test3SetEventArchiveFlag() throws Exception {
         System.out.println("setEventArchiveFlag");
         EventService instance = new EventService();
+
+        // Should return 1 for number of updates
+        long id = e1_grp_con_noclass.getEventId();
         int expResult = 1;
-        int result = instance.setEventArchiveFlag(eventId, true);
-        EventFilter filter = new EventFilter(Arrays.asList(eventId), null, null, null, null, null, null);
-        List<Event> temp = instance.getEventList(filter);
-        assertEquals(true, temp.get(0).isArchive());
+        int result = instance.setEventArchiveFlag(id, true);
         assertEquals(expResult, result);
 
-        instance.setEventArchiveFlag(eventId, false);
-        temp = instance.getEventList(filter);
-        assertEquals(false, temp.get(0).isArchive());
-
+        // Verify the flag has been set
+        List<Long> ids = new ArrayList<>();
+        ids.add(id);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null);
+        List<Event> eList = instance.getEventList(filter);
+        assertEquals(eList.get(0).isArchive(), true);
     }
 
-    /**
-     * Test of the addEventList, getEventList, and deleteEventList method of
- class EventService.
-     */
-    @Test
-    public void test5AddGetDeleteEventList() throws Exception {
-        System.out.println("addGetDeleteEventList");
-        EventService instance = new EventService();
-        EventFilter filter = new EventFilter(null, now, end, "rf", Arrays.asList("test"), null, null);
-
-        System.out.println("  addEventList");
-        instance.addEventList(eventList, true);
-
-        List<Event> result = instance.getEventListWithoutData(filter);
-        // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
-        // Set them to null so that the match the expected results / the list we added
-        for (Event event : result) {
-            eventIds.add(event.getEventId());
-            event.setEventId(null);
-        }
-        List<Event> expResult = eventList;
-        assertEquals(expResult, result);
-
-        System.out.println("  deleteEventList");
-        instance.setEventDeleteFlag(eventIds, true);
-        // Filter on to_be_deleted flag is set
-        result = instance.getEventListWithoutData(new EventFilter(null, now, end, "rf", Arrays.asList("test"), null, true));
-        // Since these numbers will be different with every test its difficult to tell if we're getting the correct value.
-        // Set them to null so that the match the expected results / the list we added
-        for (Event event : result) {
-            eventIds.add(event.getEventId());
-            event.setEventId(null);
-        }
-        assertEquals(expResult, result);
-    }
-    
     @Test
     public void test6DeleteEvents() throws Exception {
         System.out.println("Deleting Test Events");
         EventService instance = new EventService();
-        instance.deleteEvent(eventId, true);
-        for(long id : eventIds) {
-            instance.deleteEvent(id, true);
+        EventFilter filter = new EventFilter(null, null, null, null, null, null, null);
+        List<Event> allEvents = instance.getEventList(filter);
+        assertEquals(eventList.size(), allEvents.size());
+
+        for (Event e : allEvents) {
+            instance.deleteEvent(e.getEventId(), true);
         }
     }
 }
