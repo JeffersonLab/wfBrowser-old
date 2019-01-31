@@ -8,14 +8,38 @@
  * Created: Aug 30, 2018
  */
 
+/* No DROP USER IF EXISTS in this version! */
+
+/*
+###### For testing #########
+*/
+DROP USER 'wftest_owner';
+DROP USER 'wftest_writer';
+DROP USER 'wftest_reader';
+DROP DATABASE waveformstest;
+
+CREATE DATABASE waveformstest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE waveformstest;
+
+/*
+###### For production #########
+DROP USER 'waveforms_owner';
+DROP USER 'waveforms_writer';
+DROP USER 'waveforms_reader';
+
 CREATE DATABASE waveforms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE waveforms;
+*/
+
+/* THIS IS ALL THE SAME REGARDLESS OF TESTING VS. PRODUCTION */
+
 
 /*
  Keep a list of systems that are allowed to store waveforms.  For now, there
  is just RF, but this system will likely grow to include others.  Also, makes
  it easy to track which systems are storing waveform data here.
  */
-CREATE TABLE waveforms.system_type (
+CREATE TABLE system_type (
     system_id int(2) NOT NULL AUTO_INCREMENT PRIMARY KEY,
     system_name varchar(16) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
@@ -28,10 +52,11 @@ CREATE TABLE waveforms.system_type (
  In the case of RF it will be the zone, but other systems may have different 
  location schemes.
  */
-CREATE TABLE waveforms.event (
+CREATE TABLE event (
     event_id BIGINT NOT NULL AUTO_INCREMENT,
     event_time_utc datetime(1) NOT NULL,
     location varchar(10) NOT NULL,
+    classification varchar(16) NOT NULL,
     system_id int(2) NOT NULL,
     archive tinyint(1) NOT NULL DEFAULT 0,
     to_be_deleted tinyint(1) NOT NULL DEFAULT 0,
@@ -41,7 +66,7 @@ CREATE TABLE waveforms.event (
     INDEX i_location(location),
     INDEX i_event_time(event_time_utc),
     FOREIGN KEY fk_system_id (system_id) 
-      REFERENCES waveforms.system_type (system_id)
+      REFERENCES system_type (system_id)
       ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -52,30 +77,32 @@ CREATE TABLE waveforms.event (
  sample_end  - last time value of the file
  sample_step - the difference in time between values (rows) of the file
  */
-CREATE TABLE waveforms.capture (
+CREATE TABLE capture (
   capture_id bigint(20) NOT NULL AUTO_INCREMENT,
   event_id bigint(20) NOT NULL,
-  filename varchar(255) NOT NULL,
+  filename varchar(63) NOT NULL,
   sample_start double NOT NULL,
   sample_end double NOT NULL,
   sample_step double NOT NULL,
   PRIMARY KEY (`capture_id`),
+  UNIQUE KEY (`capture_id`, `filename`),
+  UNIQUE KEY (`event_id`,`filename`),
   FOREIGN KEY fk_event_id (event_id)
-    REFERENCES waveforms.event (`event_id`) 
+    REFERENCES event (`event_id`) 
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 /*
  This table is used to map waveforms to a capture file which maps back to an event.
  */
-CREATE TABLE waveforms.capture_wf (
+CREATE TABLE capture_wf (
   cwf_id bigint NOT NULL AUTO_INCREMENT,
   capture_id bigint NOT NULL,
   waveform_name varchar(63) NOT NULL,
   PRIMARY KEY (`cwf_id`),
   UNIQUE KEY `waveform_name` (`capture_id`,`waveform_name`),
   FOREIGN KEY fk_capture_id (capture_id)
-    REFERENCES waveforms.capture (`capture_id`)
+    REFERENCES capture (`capture_id`)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -85,7 +112,7 @@ CREATE TABLE waveforms.capture_wf (
  when interpreted by an application, i.e., the tag should be applied or not.
  A null rule implies that the tag will be manually applied.
  */
-CREATE TABLE waveforms.tag (
+CREATE TABLE tag (
   tag_id bigint NOT NULL AUTO_INCREMENT,
   name varchar(23) NOT NULL,
   rule varchar(255) DEFAULT NULL,
@@ -96,17 +123,17 @@ CREATE TABLE waveforms.tag (
 /*
  This table is used to map a tag list to an event.
  */
-CREATE TABLE waveforms.event_tag (
+CREATE TABLE event_tag (
   event_tag_id bigint NOT NULL AUTO_INCREMENT,
   event_id bigint NOT NULL,
   tag_id bigint NOT NULL,
   PRIMARY KEY (`event_tag_id`),
   UNIQUE KEY `event_tag` (`event_id`, `tag_id`),
   FOREIGN KEY fk_event_id (event_id)
-    REFERENCES waveforms.event (`event_id`)
+    REFERENCES event (`event_id`)
     ON DELETE CASCADE,
   FOREIGN KEY fk_tag_id (tag_id)
-    REFERENCES waveforms.tag (`tag_id`)
+    REFERENCES tag (`tag_id`)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -118,7 +145,7 @@ CREATE TABLE waveforms.event_tag (
  value could not be determined, so it's type could not be determined.
  */
 /*
-CREATE TABLE waveforms.capture_meta (
+CREATE TABLE capture_meta (
   meta_id bigint NOT NULL AUTO_INCREMENT,
   capture_id bigint NOT NULL,
   name varchar(23) NOT NULL, 
@@ -128,7 +155,7 @@ CREATE TABLE waveforms.capture_meta (
   PRIMARY KEY (`meta_id`),
   UNIQUE KEY `name` (`capture_id`, `name`),
   FOREIGN KEY fk_capture_id (capture_id)
-    REFERENCES waveforms.capture (`capture_id`)
+    REFERENCES capture (`capture_id`)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 */
@@ -140,13 +167,13 @@ CREATE TABLE waveforms.capture_meta (
             the metadata filter set
  */
 /*
-CREATE TABLE waveforms.meta_filter_set (
+CREATE TABLE meta_filter_set (
   mf_set_id bigint NOT NULL AUTO_INCREMENT,
   system_id int(2) NOT NULL,
   modifier  ENUM('all','some','none') NOT NULL,
   PRIMARY KEY (`mf_set_id`),
   FOREIGN KEY fk_system_id (system_id)
-    REFERENCES waveforms.system_type (system_id)
+    REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 */
@@ -158,7 +185,7 @@ CREATE TABLE waveforms.meta_filter_set (
  target    - value upon which to compare the value corresponding to key
  */
 /*
-CREATE TABLE waveforms.meta_filter (
+CREATE TABLE meta_filter (
   mf_id bigint NOT NULL AUTO_INCREMENT,
   mf_set_id bigint NOT NULL,
   name varchar(255) NOT NULL,
@@ -166,7 +193,7 @@ CREATE TABLE waveforms.meta_filter (
   target varchar(255) DEFAULT NULL,
   PRIMARY KEY (`mf_id`),
   FOREIGN KEY fk_mf_set_id (mf_set_id)
-    REFERENCES waveforms.meta_filter_set (`mf_set_id`)
+    REFERENCES meta_filter_set (`mf_set_id`)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 */
@@ -176,48 +203,48 @@ CREATE TABLE waveforms.meta_filter (
  pattern matching routine.  This holds the patterns that are used to match a generic
  series name "GMES" to a specific series 'R1N1WFSGMES'
  */
-CREATE TABLE waveforms.series (
-series_id BIGINT NOT NULL AUTO_INCREMENT,
-system_id INT(2) NOT NULL,
-pattern VARCHAR(255) NOT NULL,
-series_name VARCHAR(127) NOT NULL,
-units VARCHAR(23) NULL,
-description varchar(2047)  DEFAULT NULL,
-UNIQUE KEY `series_name` (series_name),
-INDEX i_series_name(series_name),
-PRIMARY KEY (series_id),
-FOREIGN KEY fk_system_id (system_id)
-    REFERENCES waveforms.system_type (system_id)
+CREATE TABLE series (
+  series_id BIGINT NOT NULL AUTO_INCREMENT,
+  system_id INT(2) NOT NULL,
+  pattern VARCHAR(255) NOT NULL,
+  series_name VARCHAR(127) NOT NULL,
+  units VARCHAR(23) NULL,
+  description varchar(2047)  DEFAULT NULL,
+  UNIQUE KEY `series_name` (series_name),
+  INDEX i_series_name(series_name),
+  PRIMARY KEY (series_id),
+  FOREIGN KEY fk_system_id (system_id)
+    REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 
 /* This holds the list of named sets of series that a client may want to view together. */
-CREATE TABLE waveforms.series_sets (
-set_id BIGINT NOT NULL AUTO_INCREMENT,
-system_id INT(2) NOT NULL,
-set_name VARCHAR(127) NOT NULL,
-description varchar(2047)  DEFAULT NULL,
-UNIQUE KEY `set_name` (set_name),
-INDEX i_set_name (set_name),
-PRIMARY KEY (set_id),
-FOREIGN KEY fk_system_id (system_id)
-    REFERENCES waveforms.system_type (system_id)
+CREATE TABLE series_sets (
+  set_id BIGINT NOT NULL AUTO_INCREMENT,
+  system_id INT(2) NOT NULL,
+  set_name VARCHAR(127) NOT NULL,
+  description varchar(2047)  DEFAULT NULL,
+  UNIQUE KEY `set_name` (set_name),
+  INDEX i_set_name (set_name),
+  PRIMARY KEY (set_id),
+  FOREIGN KEY fk_system_id (system_id)
+    REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 /* This is the lookup table of which named series are in a given series set. */
-CREATE TABLE waveforms.series_set_contents (
-content_id BIGINT NOT NULL AUTO_INCREMENT,
-series_id BIGINT NOT NULL,
-set_id BIGINT NOT NULL,
-INDEX i_set_id (set_id),
-PRIMARY KEY (content_id),
-FOREIGN KEY fk_series_id (series_id)
-    REFERENCES waveforms.series (series_id)
+CREATE TABLE series_set_contents (
+  content_id BIGINT NOT NULL AUTO_INCREMENT,
+  series_id BIGINT NOT NULL,
+  set_id BIGINT NOT NULL,
+  INDEX i_set_id (set_id),
+  PRIMARY KEY (content_id),
+  FOREIGN KEY fk_series_id (series_id)
+    REFERENCES series (series_id)
     ON DELETE CASCADE,
-FOREIGN KEY fk_set_id (set_id)
-    REFERENCES waveforms.series_sets (set_id)
+  FOREIGN KEY fk_set_id (set_id)
+    REFERENCES series_sets (set_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -227,14 +254,35 @@ FOREIGN KEY fk_set_id (set_id)
  * wfb_reader, (unlimited, read/write, and read only users)
  * Please change passwords.
  */
-/* No DROP USER IF EXISTS in this version! */
-DROP USER 'waveforms_owner';
-DROP USER 'waveforms_writer';
-DROP USER 'waveforms_reader';
+
+/*
+####### FOR PRODUCTION -- update passwords ########
 
 CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
+GRANT ALL PRIVILEGES ON * TO 'waveforms_owner';
 CREATE USER 'waveforms_writer' IDENTIFIED BY 'passowrd';
-GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'waveforms_writer';
+GRANT SELECT,UPDATE,INSERT,DELETE ON * to 'waveforms_writer';
 CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
-GRANT SELECT ON waveforms.* TO 'waveforms_reader';
+GRANT SELECT ON * TO 'waveforms_reader';
+
+INSERT INTO system_type (system_name) VALUES ('rf');
+
+*/
+
+/*
+###### FOR TESTING ########
+Add a "system" for testing and some data in addition to the users
+*/
+
+CREATE USER 'wftest_owner' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON waveformstest.* TO 'wftest_owner';
+CREATE USER 'wftest_writer' IDENTIFIED BY 'password';
+GRANT SELECT,UPDATE,INSERT,DELETE ON waveformstest.* to 'wftest_writer';
+CREATE USER 'wftest_reader' IDENTIFIED BY 'password';
+GRANT SELECT ON waveformstest.* TO 'wftest_reader';
+
+INSERT INTO system_type (system_name) VALUES ('test');
+
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 't%', 'Test Series - All', 'Should match all of the test waveforms');
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 't1%1', 'Test Series - test1', 'Should match test1');
+

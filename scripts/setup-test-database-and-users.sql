@@ -13,14 +13,6 @@
  * wfb_reader, (unlimited, read/write, and read only users)
  * Please change passwords.
  */
-/* No DROP USER IF EXISTS in this version! */
-
-/*
-*/
-DROP USER 'wftest_owner';
-DROP USER 'wftest_writer';
-DROP USER 'wftest_reader';
-DROP DATABASE waveformstest;
 
 CREATE DATABASE waveformstest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE waveformstest;
@@ -252,6 +244,6 @@ GRANT SELECT ON waveformstest.* TO 'wftest_reader';
 INSERT INTO system_type (system_name) VALUES ('test');
 
 /* Add a couple of series for testing */
-INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'W%', 'Test Series - All', 'Should match all of the test waveforms');
-INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'W1%', 'Test Series - W1', 'Should match anything starting with W1');
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 't%', 'Test Series - All', 'Should match all of the test waveforms');
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 't1%1', 'Test Series - test1', 'Should match test1');
 
