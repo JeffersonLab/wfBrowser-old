@@ -158,8 +158,13 @@ public class Graph extends HttpServlet {
                 break;
             default:
                 seriesSelections = new TreeSet<>();
+                if (!seriesOptions.isEmpty()) {
                 seriesSelections.add(seriesOptions.get(0).getName());
                 session.setAttribute("graphSeriesSelections", seriesSelections);
+                } else {
+                    LOGGER.log(Level.WARNING, "No series returned from database.  Cannot determine what data to display.");
+                    throw new RuntimeException("No series returned from database.  Cannot determine what data to display.");
+                }
                 break;
         }
 
