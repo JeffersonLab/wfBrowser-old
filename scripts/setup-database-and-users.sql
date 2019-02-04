@@ -11,8 +11,7 @@
 /* No DROP USER IF EXISTS in this version! */
 
 /*
-###### For testing #########
-*/
+###### For testing - i.e., JUnit, not the development server #########
 DROP USER 'wftest_owner';
 DROP USER 'wftest_writer';
 DROP USER 'wftest_reader';
@@ -20,16 +19,17 @@ DROP DATABASE waveformstest;
 
 CREATE DATABASE waveformstest CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE waveformstest;
+*/
 
 /*
 ###### For production #########
+*/
 DROP USER 'waveforms_owner';
 DROP USER 'waveforms_writer';
 DROP USER 'waveforms_reader';
 
 CREATE DATABASE waveforms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE waveforms;
-*/
 
 /* THIS IS ALL THE SAME REGARDLESS OF TESTING VS. PRODUCTION */
 
@@ -55,7 +55,7 @@ CREATE TABLE system_type (
 CREATE TABLE event (
     event_id BIGINT NOT NULL AUTO_INCREMENT,
     event_time_utc datetime(1) NOT NULL,
-    location varchar(10) NOT NULL,
+    location varchar(23) NOT NULL,
     classification varchar(16) NOT NULL,
     system_id int(2) NOT NULL,
     archive tinyint(1) NOT NULL DEFAULT 0,
@@ -257,6 +257,7 @@ CREATE TABLE series_set_contents (
 
 /*
 ####### FOR PRODUCTION -- update passwords ########
+*/
 
 CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON * TO 'waveforms_owner';
@@ -267,12 +268,10 @@ GRANT SELECT ON * TO 'waveforms_reader';
 
 INSERT INTO system_type (system_name) VALUES ('rf');
 
-*/
 
 /*
 ###### FOR TESTING ########
 Add a "system" for testing and some data in addition to the users
-*/
 
 CREATE USER 'wftest_owner' IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON waveformstest.* TO 'wftest_owner';
@@ -285,4 +284,5 @@ INSERT INTO system_type (system_name) VALUES ('test');
 
 INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 't%', 'Test Series - All', 'Should match all of the test waveforms');
 INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 't1%1', 'Test Series - test1', 'Should match test1');
+*/
 
