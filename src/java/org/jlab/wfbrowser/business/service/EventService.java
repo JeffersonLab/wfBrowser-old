@@ -393,7 +393,8 @@ public class EventService {
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted,grouped,classification FROM event"
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted,grouped,classification"
+                    + " FROM event"
                     + " JOIN system_type USING(system_id) ";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
@@ -464,7 +465,6 @@ public class EventService {
                     while (rs.next()) {
                         cwfId = rs.getLong("cwf_id");
                         waveformName = rs.getString("waveform_name");
-                        System.out.println("cwfid=" + cwfId + "  waveformName=" + waveformName);
                         e.addWaveform(cf.getFilename(), new Waveform(cwfId, waveformName));
                     }
                     rs.close();
@@ -502,7 +502,7 @@ public class EventService {
                     waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                 }
                 rs.close();
-                
+
                 // Have the event apply the serires mapping
                 e.applySeriesMapping(waveformToSeries);
             }
@@ -510,7 +510,7 @@ public class EventService {
 
             // Now get the data
             for (Event e : eventList) {
-                
+                e.loadWaveformDataFromDisk();
             }
         } finally {
             SqlUtil.close(pstmt, conn, rs);
@@ -674,7 +674,7 @@ public class EventService {
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_type.system_name,classification"
+        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_type.system_name,classification,grouped"
                 + " FROM event"
                 + " JOIN system_type USING(system_id)";
         try {
@@ -707,7 +707,7 @@ public class EventService {
             }
             rs.close();
             pstmt.close();
-            
+
             // Query the capture file data for the events
         } finally {
             SqlUtil.close(rs, pstmt, conn);
