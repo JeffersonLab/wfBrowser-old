@@ -53,11 +53,7 @@ public class EventServiceTest {
     private static Event e2_ungrp_class1 = null;
 
     private static StandaloneConnectionPools pools;
-//    private static long eventId, eventIdCompressed;
-//    private static Instant now, end;
-//    private static Event e, eCompressed;
     private static List<Event> eventList = new ArrayList<>();
-//    private static List<Long> eventIds = new ArrayList<>();
 
     public EventServiceTest() {
     }
