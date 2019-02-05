@@ -56,6 +56,8 @@ add_event_to_server () {
     system=$2
     location=$3
     timestamp=$4
+    classification=$5
+    grouped=$6
 
     # URL pieces for making requests
     login_url="https://${server}/wfbrowser/login"
@@ -90,7 +92,8 @@ add_event_to_server () {
 
     # 
     msg=`$CURL -k -s -b "$COOKIE_JAR" -X POST -d datetime="$timestamp" \
-         -d location="$location" -d system="$system" "$event_url"`
+         -d location="$location" -d system="$system" -d classification="$classification" \
+         -d grouped="$grouped" "$event_url"`
     exit_val=$?
     match=`echo -e "$msg" | $GREP --count "successfully added"`
     if [ $exit_val -ne 0 -o "$match" -eq 0 ] ; then
@@ -128,5 +131,5 @@ if [ ! -r $curl_config ] ; then
     exit 1
 fi
 
-add_event_to_server "$SERVER" "$system" "$location" "$timestamp"
+add_event_to_server "$SERVER" "$system" "$location" "$timestamp" "" "true"
 exit $?
