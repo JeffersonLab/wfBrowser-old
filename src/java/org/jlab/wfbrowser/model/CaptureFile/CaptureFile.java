@@ -18,7 +18,12 @@ import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.Waveform;
 
 /**
- *
+ * The waveform harvester saves waveform data in per IOC "capture" files.  These capture files contain an optional metadata
+ * header section, and a mandatory waveform data section.  The first row of the waveform data section contains the names of
+ * data columns (time or waveform name).  There is additional metadata about the waveforms that is calculated from the data
+ * section, and can be used in presenting the data by higher level objects.  This includes the initial timestamp, ending timestamp,
+ * and the step size between samples.
+ * 
  * @author adamc
  */
 public class CaptureFile {
