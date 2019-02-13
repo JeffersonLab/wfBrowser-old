@@ -27,6 +27,7 @@ import javax.json.JsonObjectBuilder;
  */
 public class Metadata {
 
+    private Long id = null;
     private final MetadataType type;
     private final String name;
     private final Object value;
@@ -50,6 +51,14 @@ public class Metadata {
         this.start = start;
     }
 
+    /**
+     * Set the database ID number.
+     * @param id The ID number associated with the Metadata record in the database
+     */
+    public void setId(Long id) {
+        this.id = id;
+    }
+    
     /**
      * Construct a Metadata object from a String representing the a metadata
      * line in the harvester waveform file.
@@ -214,6 +223,12 @@ public class Metadata {
         JsonObjectBuilder job = Json.createObjectBuilder()
                 .add("name", name)
                 .add("type", type.toString());
+        
+        if (id == null) {
+            job.add("id", JsonObject.NULL);
+        } else {
+            job.add("id", id);
+        }
         if (null == type) {
             job.add("value", (String) null);
         } else switch (type) {
