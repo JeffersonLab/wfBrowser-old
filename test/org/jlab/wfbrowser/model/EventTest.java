@@ -30,6 +30,9 @@ public class EventTest {
 
     private static StandaloneConnectionPools pools;
 
+    // Consistent, no class, grouped, with metadata
+    private static Event e1_grp_con_noclass_meta = null;
+
     // Consistent, no class, grouped
     private static Event e1_grp_con_noclass = null;
     private static Event e1a_grp_con_noclass = null;
@@ -72,6 +75,7 @@ public class EventTest {
         boolean grouped = true;
         boolean ungrouped = false;
         String grp_con = "grouped-consistent";
+        String grp_con_meta = "grouped-consistent-metadata";
         String grp_incon = "grouped-inconsistent";
         String ungrp = "ungrouped";
         String noClass = "";
@@ -95,7 +99,11 @@ public class EventTest {
         e2_grp_con_noclass.setEventId(2L);
         e1_grp_con_class1 = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
         e2_grp_con_class1 = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
-        
+
+        // Setup the grouped, consistent event with metadata
+        e1_grp_con_noclass_meta = new Event(t1, grp_con_meta, "test", unarchive, noDelete, grouped, noClass, nullCF);
+        e1_grp_con_noclass_meta.setEventId(3L);
+
         // Setup the grouped and incosistent events
         e1_grp_incon_noclass = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
         e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
@@ -158,23 +166,31 @@ public class EventTest {
                 + "\"location\":\"grouped-consistent\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
-                + "\"waveforms\":["
-                + "{"
-                + "\"waveformName\":\"test1\","
-                + "\"series\":[],"
-                + "\"timeOffsets\":[1.1,2.1,3.1],"
-                + "\"values\":[1.5,2.5,0.5]"
-                + "},"
-                + "{"
-                + "\"waveformName\":\"test2\","
-                + "\"series\":[],"
-                + "\"timeOffsets\":[1.1,2.1,3.1],"
-                + "\"values\":[1.15,32.5,10.5]"
-                + "}"
+                + "\"captureFiles\":["
+                + "{\"filename\":\"test.2017_09_14_110000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test1\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.5,2.5,0.5]}]},"
+                + "{\"filename\":\"test2.2017_09_14_110000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
                 + "]"
                 + "}";
         String result = e2_grp_con_noclass.toJsonObject().toString();
         assertEquals(expResult, result);
+
+        String expResult1 = "{\"id\":3,"
+                + "\"datetime_utc\":\"2017-09-14 14:00:00.1\","
+                + "\"location\":\"grouped-consistent-metadata\","
+                + "\"system\":\"test\","
+                + "\"archive\":false,"
+                + "\"captureFiles\":["
+                + "{\"filename\":\"test.2017_09_14_100000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,"
+                + "\"metadata\":[{\"name\":\"PV1\",\"type\":\"NUMBER\",\"value\":\"5.6\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2\",\"type\":\"STRING\",\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3\",\"type\":\"UNAVAILABLE\",\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4\",\"type\":\"UNARCHIVED\",\"value\":null,\"offset\":null,\"start\":null}],"
+                + "\"waveforms\":[{\"waveformName\":\"test1\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.5,2.5,0.5]}]},"
+                + "{\"filename\":\"test2.2017_09_14_100000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,"
+                + "\"metadata\":[{\"name\":\"PV1:hb\",\"type\":\"NUMBER\",\"value\":\"0.056\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2.VAL\",\"type\":\"STRING\",\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3_1\",\"type\":\"UNAVAILABLE\",\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4-1\",\"type\":\"UNARCHIVED\",\"value\":null,\"offset\":null,\"start\":null}]"
+                + ",\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
+                + "]"
+                + "}";
+        String result1 = e1_grp_con_noclass_meta.toJsonObject().toString();
+        assertEquals(expResult1, result1);
+
     }
 
     @Test
@@ -183,32 +199,25 @@ public class EventTest {
         String expResult = "{\"id\":2,"
                 + "\"datetime_utc\":\"2017-09-14 15:00:00.1\","
                 + "\"location\":\"grouped-consistent\","
-                //                + "\"location\":\"loc1\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
                 + "\"timeOffsets\":[1.1,2.1,3.1],"
-                //                + "\"timeOffsets\":[1.1,2.1,3.1,100.1,200.5,300.3],"
                 + "\"waveforms\":["
                 + "{\"waveformName\":\"test1\","
                 + "\"dygraphLabel\":\"test\","
                 + "\"dygraphId\":\"t\","
                 + "\"series\":[],"
-                //                + "\"series\":[{\"name\":\"test1\",\"seriesId\":1,\"pattern\":\"pattern1\",\"system\":\"rf\",\"units\":\"units1\",\"description\":\"descript1\"}]"
                 + "\"dataPoints\":[1.5,2.5,0.5]"
-                //                + ",\"dataPoints\":[1.5,2.5,0.5,null,null,null]"
                 + "},"
                 + "{\"waveformName\":\"test2\","
                 + "\"dygraphLabel\":\"test\","
                 + "\"dygraphId\":\"t\","
                 + "\"series\":[],"
-                //                + "\"series\":[{\"name\":\"test2\",\"seriesId\":2,\"pattern\":\"pattern2\",\"system\":\"rf\",\"units\":\"units2\",\"description\":\"descript2\"}],"
                 + "\"dataPoints\":[1.15,32.5,10.5]"
-                //                + "\"dataPoints\":[null,null,null,1.15,32.5,10.5]"
                 + "}"
                 + "]"
                 + "}";
         String result = e2_grp_con_noclass.toDyGraphJsonObject(null).toString();
-        System.out.println(result);
         assertEquals(expResult, result);
     }
 

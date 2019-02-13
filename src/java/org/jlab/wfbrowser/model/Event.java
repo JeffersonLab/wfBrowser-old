@@ -1,5 +1,6 @@
 package org.jlab.wfbrowser.model;
 
+import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,6 +38,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jlab.wfbrowser.business.util.TimeUtil;
+import org.jlab.wfbrowser.model.CaptureFile.Metadata;
 
 /**
  * Object for representing and waveform triggering event. The eventId is
@@ -625,32 +627,17 @@ public class Event {
      */
     public JsonObject toJsonObject(Set<String> seriesSet) {
         JsonObjectBuilder job = Json.createObjectBuilder();
-        List<Waveform> waveforms = getWaveforms();
         if (eventId != null) {
             job.add("id", eventId)
                     .add("datetime_utc", TimeUtil.getDateTimeString(eventTime))
                     .add("location", location)
                     .add("system", system)
                     .add("archive", archive);
-            if (waveforms != null) {
-                // Don't add a waveforms parameter if it's null.  That indicates that the waveforms were requested
-                JsonArrayBuilder jab = Json.createArrayBuilder();
-                for (Waveform w : waveforms) {
-                    if (seriesSet != null) {
-                        for (String seriesName : seriesSet) {
-                            for (Series series : w.getSeries()) {
-                                if (series.getName().equals(seriesName)) {
-                                    jab.add(w.toJsonObject());
-                                    break;
-                                }
-                            }
-                        }
-                    } else {
-                        jab.add(w.toJsonObject());
-                    }
-                }
-                job.add("waveforms", jab.build());
+            JsonArrayBuilder jab = Json.createArrayBuilder();
+            for(String cfName : captureFileMap.keySet()) {
+                jab.add(captureFileMap.get(cfName).toJsonObject(seriesSet));
             }
+            job.add("captureFiles", jab.build());
         } else {
             // Should never try to send out a response on an "Event" that didn't come from the database.  Full stop if we try.
             throw new RuntimeException("Cannot return event without database event ID");
@@ -1066,7 +1053,18 @@ public class Event {
         Double sampleStop = null;
         Double sampleStep = null;
 
-        String line = br.readLine();
+        String line;
+
+        List<Metadata> metadataList = new ArrayList<>();
+        while ((line = br.readLine()) != null) {
+            if (line.matches("#.*")) {
+                metadataList.add(Metadata.getMetadataFromCaptureFileLine(line));
+            } else {
+                break;
+            }
+        }
+
+        // Check that there is data to process
         if (line == null) {
             return;
         }
@@ -1112,8 +1110,12 @@ public class Event {
         // Create the capture file if it doesn't exist.  If it doesn't exist, then this event wasn't made with data from the database,
         // so we don't have a capture ID to put here.  If the capture did exist, we just need to add the waveforms if they don't exist
         // and the waveform data if requested
-        captureFileMap.putIfAbsent(filename, new CaptureFile(null, filename, sampleStart, sampleStop, sampleStep));
-        updateWaveformsConsistency();
+        if (!captureFileMap.containsKey(filename)) {
+            CaptureFile cf = new CaptureFile(null, filename, sampleStart, sampleStop, sampleStep);
+            cf.addMetadata(metadataList);
+            captureFileMap.put(filename,cf);
+            updateWaveformsConsistency();
+        }
 
         // Add the waveforms to the captureFile or update the waveforms data if they already exist.
         for (int j = 0; j < out.length; j++) {

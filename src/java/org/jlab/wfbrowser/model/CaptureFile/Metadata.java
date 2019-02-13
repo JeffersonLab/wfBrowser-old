@@ -5,9 +5,13 @@
  */
 package org.jlab.wfbrowser.model.CaptureFile;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 
 /**
  * Metadata values MYA data points gathered by the harvester at a specified
@@ -200,5 +204,42 @@ public class Metadata {
         hash = 47 * hash + Objects.hashCode(this.name);
         hash = 47 * hash + Objects.hashCode(this.offset);
         return hash;
+    }
+    
+    /**
+     * Create a JSON representation of the object
+     * @return A JSON representation of the object
+     */
+    public JsonObject toJsonObject() {
+        JsonObjectBuilder job = Json.createObjectBuilder()
+                .add("name", name)
+                .add("type", type.toString());
+        if (null == type) {
+            job.add("value", (String) null);
+        } else switch (type) {
+            case NUMBER:
+                job.add("value", ((Double) value).toString())
+                .add("offset", offset)
+                .add("start", start);
+                break;
+            case STRING:
+                job.add("value", (String) value)
+                .add("offset", offset)
+                .add("start", start);
+                break;
+            case UNAVAILABLE:
+                job.add("value", JsonObject.NULL)
+                .add("offset", offset)
+                .add("start", JsonObject.NULL);
+                break;
+            case UNARCHIVED:
+                job.add("value", JsonObject.NULL)
+                .add("offset", JsonObject.NULL)
+                .add("start", JsonObject.NULL);
+                break;
+            default:
+                throw new IllegalArgumentException("Unrecognized MetadataType " + type);
+        }
+        return job.build();
     }
 }

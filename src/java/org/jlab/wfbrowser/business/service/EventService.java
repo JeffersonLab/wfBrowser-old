@@ -32,7 +32,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
 import org.jlab.wfbrowser.business.util.TimeUtil;
-import org.jlab.wfbrowser.model.CaptureFile;
+import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.Waveform;
