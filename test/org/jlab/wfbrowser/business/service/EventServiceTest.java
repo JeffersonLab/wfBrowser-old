@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import javax.naming.NamingException;
 import org.jlab.wfbrowser.business.filter.EventFilter;
@@ -20,6 +21,7 @@ import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import java.util.TreeSet;
 import java.util.SortedSet;
+import org.junit.Assert;
 
 /**
  *
@@ -51,11 +53,7 @@ public class EventServiceTest {
     private static Event e2_ungrp_class1 = null;
 
     private static StandaloneConnectionPools pools;
-//    private static long eventId, eventIdCompressed;
-//    private static Instant now, end;
-//    private static Event e, eCompressed;
     private static List<Event> eventList = new ArrayList<>();
-//    private static List<Long> eventIds = new ArrayList<>();
 
     public EventServiceTest() {
     }
@@ -145,9 +143,7 @@ public class EventServiceTest {
         // Set the test class parameter for use in other tests
         List<Long> eventIdList = new ArrayList<>();
         for (Event e : eventList) {
-            System.out.println("Adding event: " + e.getSystem() + " " + e.getLocation() + " " + e.getClassification() + " " + e.getEventTimeString());
             long id = instance.addEvent(e);
-            System.out.println("Event received id '" + id + "'");
             eventIdList.add(id);
             e.setEventId(id);
         }
@@ -212,24 +208,39 @@ public class EventServiceTest {
         }
         assertEquals(expectedLocationsIds, resultLocationsIds);
 
-
         // Get the e2_grp_incon_class1 via serveral filters
         List<String> locations2 = new ArrayList<>();
         locations2.add("grouped-inconsistent");
-        List<Event> expResultsMulti = new ArrayList<>();
-        expResultsMulti.add(e2_grp_incon_class1);
-
         EventFilter filterMulti = new EventFilter(null, t1, t2, "test", locations2, false, false);
-        List<Event> resultsMulti = instance.getEventList(filter);
+        List<Event> resultsMulti = instance.getEventList(filterMulti);
         SortedSet<Long> resultsMultiIds = new TreeSet<>();
         SortedSet<Long> expMultiIds = new TreeSet<>();
+
         for (Event e : resultsMulti) {
-            resultIds.add(e.getEventId());
+            resultsMultiIds.add(e.getEventId());
         }
-        for (Event e : expResultsMulti) {
-            expectedIds.add(e.getEventId());
-        }
+        expMultiIds.add(e1_grp_incon_noclass.getEventId());
+        expMultiIds.add(e2_grp_incon_noclass.getEventId());
+        expMultiIds.add(e1_grp_incon_class1.getEventId());
+        expMultiIds.add(e2_grp_incon_class1.getEventId());
         assertEquals(expMultiIds, resultsMultiIds);
+        
+        // Check that the we get waveform data back and that it matches
+        EventFilter idFilter = new EventFilter(Arrays.asList(e1_grp_con_noclass.getEventId()), null, null, null, null, null, null);
+        List<Event> resultsId = instance.getEventList(idFilter);
+        List <Long> expResultsIdList = Arrays.asList(e1_grp_con_noclass.getEventId());
+        List<Long> resultsIdList = new ArrayList<>();
+        
+        double[][] resultsData = null;
+        for(Event e : resultsId) {
+            if (resultsData == null) {
+                resultsData = e.getWaveformDataAsArray(null);
+            }
+            resultsIdList.add(e.getEventId());
+        }
+       assertEquals(expResultsIdList, resultsIdList);
+        Assert.assertArrayEquals(e1_grp_con_noclass.getWaveformDataAsArray(null), resultsData);
+        
     }
 
     /**

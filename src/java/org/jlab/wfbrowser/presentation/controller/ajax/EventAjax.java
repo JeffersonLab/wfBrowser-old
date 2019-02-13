@@ -162,7 +162,7 @@ public class EventAjax extends HttpServlet {
                 eventList = wfs.getEventListWithoutData(filter);
             }
         } catch (SQLException ex) {
-            LOGGER.log(Level.SEVERE, "Error querying database");
+            LOGGER.log(Level.SEVERE, "Error querying database", ex);
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             try (PrintWriter pw = response.getWriter()) {
