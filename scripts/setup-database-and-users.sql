@@ -106,6 +106,23 @@ CREATE TABLE capture_wf (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+
+/*
+ A table used to track PV metadata assocatied with capture files
+ */
+CREATE TABLE capture_meta (
+  meta_id bigint(20) NOT NULL AUTO_INCREMENT,
+  capture_id bigint(20) NOT NULL, 
+  meta_name varchar(63) NOT NULL, 
+  `type` ENUM('number', 'string', 'unarchived', 'unavailable') NOT NULL, 
+  value varchar(63), offset DOUBLE, 
+  `start` DOUBLE, PRIMARY KEY (`meta_id`), 
+  UNIQUE KEY `cf_meta` (`capture_id`, `meta_name`, `offset`),
+  FOREIGN KEY fk_capture_id (capture_id)
+    REFERENCES capture (`capture_id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 /*
  This table defines a tag as a name matched to a rule, where the rule should be
  a string containing metadata names and operators generating a boolean outcome
