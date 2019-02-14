@@ -75,7 +75,7 @@ public class EventTest {
         boolean grouped = true;
         boolean ungrouped = false;
         String grp_con = "grouped-consistent";
-        String grp_con_meta = "grouped-consistent-metadata";
+        String grp_con_meta = "grouped-consistent-meta";
         String grp_incon = "grouped-inconsistent";
         String ungrp = "ungrouped";
         String noClass = "";
@@ -134,8 +134,11 @@ public class EventTest {
 
         // Don't add e1a since it is a duplicate and should fail 
         EventService es = new EventService();
-        es.addEvent(e1_grp_con_noclass);
+//        es.addEvent(e1_grp_con_noclass);
         es.addEvent(e2_grp_con_noclass);
+        System.out.println(e1_grp_con_noclass_meta.getArchivePath());
+        System.out.println(e1_grp_con_noclass_meta.getEventDirectoryPath());
+        es.addEvent(e1_grp_con_noclass_meta);
 
         // Delete every event in the test database.  It should just be the two added above
         EventFilter filter = new EventFilter(null, null, null, null, null, null, null);
@@ -176,15 +179,15 @@ public class EventTest {
 
         String expResult1 = "{\"id\":3,"
                 + "\"datetime_utc\":\"2017-09-14 14:00:00.1\","
-                + "\"location\":\"grouped-consistent-metadata\","
+                + "\"location\":\"grouped-consistent-meta\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
                 + "\"captureFiles\":["
                 + "{\"filename\":\"test.2017_09_14_100000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,"
-                + "\"metadata\":[{\"name\":\"PV1\",\"type\":\"NUMBER\",\"value\":\"5.6\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2\",\"type\":\"STRING\",\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3\",\"type\":\"UNAVAILABLE\",\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4\",\"type\":\"UNARCHIVED\",\"value\":null,\"offset\":null,\"start\":null}],"
+                + "\"metadata\":[{\"name\":\"PV1\",\"type\":\"NUMBER\",\"id\":null,\"value\":\"5.6\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2\",\"type\":\"STRING\",\"id\":null,\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3\",\"type\":\"UNAVAILABLE\",\"id\":null,\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4\",\"type\":\"UNARCHIVED\",\"id\":null,\"value\":null,\"offset\":null,\"start\":null}],"
                 + "\"waveforms\":[{\"waveformName\":\"test1\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.5,2.5,0.5]}]},"
                 + "{\"filename\":\"test2.2017_09_14_100000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,"
-                + "\"metadata\":[{\"name\":\"PV1:hb\",\"type\":\"NUMBER\",\"value\":\"0.056\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2.VAL\",\"type\":\"STRING\",\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3_1\",\"type\":\"UNAVAILABLE\",\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4-1\",\"type\":\"UNARCHIVED\",\"value\":null,\"offset\":null,\"start\":null}]"
+                + "\"metadata\":[{\"name\":\"PV1:hb\",\"type\":\"NUMBER\",\"id\":null,\"value\":\"0.056\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2.VAL\",\"type\":\"STRING\",\"id\":null,\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3_1\",\"type\":\"UNAVAILABLE\",\"id\":null,\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4-1\",\"type\":\"UNARCHIVED\",\"id\":null,\"value\":null,\"offset\":null,\"start\":null}]"
                 + ",\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
                 + "]"
                 + "}";

@@ -9,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,15 +63,22 @@ public class Graph extends HttpServlet {
         String[] serSel = request.getParameterValues("series");
         String[] serSetSel = request.getParameterValues("seriesSet");
         String eventId = request.getParameter("eventId");
+        String system = request.getParameter("system");
 
         /* Basic strategy with these session attributes - if we get explicit request parameters, use them and update the session
          * copies.  If we don't get reuqest params, but we have the needed session attributes, use them and redirect.  If we don't
          * have request or session values, then use defaults, update the session, and redirect.
          */
         HttpSession session = request.getSession();
+        boolean redirectNeeded = false;
+
+        // Make sure we have a default system to query against
+        if (system == null) {
+            redirectNeeded = true;
+            system = "rf";
+        }
 
         // Process the begin/end parameters
-        boolean redirectNeeded = false;
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
         Instant begin, end;
@@ -108,8 +114,8 @@ public class Graph extends HttpServlet {
 
         // Create a map of the series and seriesSet options and whether or not the user selected them.
         SeriesService ss = new SeriesService();
-        SeriesFilter sFilter = new SeriesFilter(null, "rf", null);
-        SeriesSetFilter ssFilter = new SeriesSetFilter(null, "rf", null);
+        SeriesFilter sFilter = new SeriesFilter(null, system, null);
+        SeriesSetFilter ssFilter = new SeriesSetFilter(null, system, null);
         List<Series> seriesOptions = new ArrayList<>();
         List<SeriesSet> seriesSetOptions = new ArrayList<>();
         try {
@@ -159,8 +165,8 @@ public class Graph extends HttpServlet {
             default:
                 seriesSelections = new TreeSet<>();
                 if (!seriesOptions.isEmpty()) {
-                seriesSelections.add(seriesOptions.get(0).getName());
-                session.setAttribute("graphSeriesSelections", seriesSelections);
+                    seriesSelections.add(seriesOptions.get(0).getName());
+                    session.setAttribute("graphSeriesSelections", seriesSelections);
                 } else {
                     LOGGER.log(Level.WARNING, "No series returned from database.  Cannot determine what data to display.");
                     throw new RuntimeException("No series returned from database.  Cannot determine what data to display.");
@@ -244,7 +250,7 @@ public class Graph extends HttpServlet {
                 // Query the event id with the other constraints that were determined so far (location, start/end, etc.).  If we don't get
                 // anything, then get the default entry for that set of constrains minus the event Id
                 id = Long.parseLong(eventId);
-                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, "rf", locationSelections, null, null);
+                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, system, locationSelections, null, null);
                 List<Event> currentEventList = es.getEventList(currentFilter);
                 if (currentEventList == null || currentEventList.isEmpty()) {
                     currentEvent = null;
@@ -261,7 +267,7 @@ public class Graph extends HttpServlet {
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
             try {
-                EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
+                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, null, null);
                 currentEvent = es.getMostRecentEvent(eFilter);
 
                 // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
@@ -284,8 +290,8 @@ public class Graph extends HttpServlet {
         // Get a list of events that are to be displayed in the timeline - should not be in session since this might change
         List<Event> eventList;
         try {
-            EventFilter eFilter = new EventFilter(null, begin, end, "rf", locationSelections, null, null);
-            eventList = es.getEventListWithoutData(eFilter);
+            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, null, null);
+            eventList = es.getEventListWithoutCaptureFiles(eFilter);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
             throw new ServletException("Error querying database for event information.");
@@ -295,6 +301,7 @@ public class Graph extends HttpServlet {
         if (redirectNeeded) {
             String redirectUrl = request.getContextPath() + "/graph?"
                     + "eventId=" + URLEncoder.encode((id == null ? "" : "" + id), "UTF-8")
+                    + "&system=" + URLEncoder.encode(system, "UTF-8")
                     + "&begin=" + URLEncoder.encode(beginString, "UTF-8")
                     + "&end=" + URLEncoder.encode(endString, "UTF-8");
             for (String location : locationSelections) {

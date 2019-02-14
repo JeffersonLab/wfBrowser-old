@@ -472,7 +472,6 @@ public class Event {
         boolean exists = false;
 
         Path eventDir = getEventDirectoryPath();
-
         Path archiveFile;
         if (grouped) {
             archiveFile = getArchivePath();
@@ -634,7 +633,7 @@ public class Event {
                     .add("system", system)
                     .add("archive", archive);
             JsonArrayBuilder jab = Json.createArrayBuilder();
-            for(String cfName : captureFileMap.keySet()) {
+            for (String cfName : captureFileMap.keySet()) {
                 jab.add(captureFileMap.get(cfName).toJsonObject(seriesSet));
             }
             job.add("captureFiles", jab.build());
@@ -1113,7 +1112,7 @@ public class Event {
         if (!captureFileMap.containsKey(filename)) {
             CaptureFile cf = new CaptureFile(null, filename, sampleStart, sampleStop, sampleStep);
             cf.addMetadata(metadataList);
-            captureFileMap.put(filename,cf);
+            captureFileMap.put(filename, cf);
             updateWaveformsConsistency();
         }
 

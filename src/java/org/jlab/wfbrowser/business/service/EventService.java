@@ -18,6 +18,8 @@ import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
+import org.jlab.wfbrowser.model.CaptureFile.Metadata;
+import org.jlab.wfbrowser.model.CaptureFile.MetadataType;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.Waveform;
@@ -162,6 +164,48 @@ public class EventService {
                     }
                 }
                 pstmt.close();
+
+                List<Metadata> metadataList = cf.getMetadataList();
+                if (metadataList != null) {
+                    String metaSql = "INSERT INTO capture_meta (capture_id, meta_name, type, value, start, offset)"
+                            + " VALUES(?,?,?,?,?,?)";
+                    pstmt = conn.prepareStatement(metaSql);
+                    for (Metadata m : metadataList) {
+                        pstmt.setLong(1, captureId);
+                        pstmt.setString(2, m.getName());
+                        pstmt.setString(3, m.getType().toString());
+                        switch (m.getType()) {
+                            case NUMBER:
+                                pstmt.setString(4, ((Double) m.getValue()).toString());
+                                pstmt.setDouble(5, m.getStart());
+                                pstmt.setDouble(6, m.getOffset());
+                                break;
+                            case STRING:
+                                pstmt.setString(4, (String) m.getValue());
+                                pstmt.setDouble(5, m.getStart());
+                                pstmt.setDouble(6, m.getOffset());
+                                break;
+                            case UNAVAILABLE:
+                                pstmt.setString(4, null);
+                                pstmt.setNull(5, java.sql.Types.NULL);
+                                pstmt.setDouble(6, m.getOffset());
+                                break;
+                            case UNARCHIVED:
+                                pstmt.setString(4, null);
+                                pstmt.setNull(5, java.sql.Types.NULL);
+                                pstmt.setNull(6, java.sql.Types.NULL);
+                                break;
+                            default:
+                                throw new RuntimeException("Unrecognized MetadataType - " + m.getType().toString());
+                        }
+                        numUpdated = pstmt.executeUpdate();
+                        if (numUpdated != 1) {
+                            conn.rollback();
+                            throw new SQLException("Error adding capture file metadata to database.");
+                        }
+                        pstmt.clearParameters();
+                    }
+                }
             }
             conn.commit();
         } finally {
@@ -205,7 +249,8 @@ public class EventService {
     }
 
     /**
-     * Get the most recent event in the database given the applied filter
+     * Get the most recent event in the database given the applied filter.
+     * Includes data
      *
      * @param filter
      * @return
@@ -213,7 +258,7 @@ public class EventService {
      * @throws java.io.IOException
      */
     public Event getMostRecentEvent(EventFilter filter) throws SQLException, IOException {
-        List<Event> eventList = getEventList(filter, 1l);
+        List<Event> eventList = getEventList(filter, 1l, true);
         Event out = null;
         if (!eventList.isEmpty()) {
             out = eventList.get(0);
@@ -308,7 +353,7 @@ public class EventService {
 
     /**
      * Returns the event object mapping to the event records with eventId from
-     * the database. Simple wrapper that does not ignore errors.
+     * the database. Simple wrapper that has no limit and includes data.
      *
      * @param filter
      * @return
@@ -316,7 +361,7 @@ public class EventService {
      * @throws java.io.IOException
      */
     public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
-        return getEventList(filter, null);
+        return getEventList(filter, null, true);
     }
 
     /**
@@ -359,11 +404,13 @@ public class EventService {
      *
      * @param filter
      * @param limit How many events to return. Null for unlimited
+     * @param includeData Whether the events should include waveform data read
+     * from disk
      * @return
      * @throws SQLException
      * @throws java.io.IOException
      */
-    public List<Event> getEventList(EventFilter filter, Long limit) throws SQLException, IOException {
+    public List<Event> getEventList(EventFilter filter, Long limit, boolean includeData) throws SQLException, IOException {
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -373,7 +420,6 @@ public class EventService {
         Instant eventTime;
         String location, system, classification;
         Boolean archive, delete, grouped;
-        //TODO: Add this to database and update logic for getting captureFiles out of database
 
         try {
             conn = SqlUtil.getConnection();
@@ -457,6 +503,47 @@ public class EventService {
             }
             pstmt.close();
 
+            // Load up the capture file metadata
+            String metaSql = "SELECT meta_id, meta_name, type, value, start, offset FROM capture_meta WHERE capture_id = ?";
+            pstmt = conn.prepareStatement(metaSql);
+            for (Event e : eventList) {
+                Long metaId;
+                String metaName;
+                Object value;
+                Double start, offset;
+                MetadataType type;
+                for (CaptureFile cf : e.getCaptureFileList()) {
+                    pstmt.setLong(1, cf.getCaptureId());
+                    rs = pstmt.executeQuery();
+                    while (rs.next()) {
+                        metaId = rs.getLong("meta_id");
+                        metaName = rs.getString("meta_name");
+                        type = MetadataType.valueOf(rs.getString("type"));
+                        switch (type) {
+                            case NUMBER:
+                                value = Double.valueOf(rs.getString("value"));
+                                break;
+                            case STRING:
+                                value = rs.getString("value");
+                                break;
+                            case UNAVAILABLE:
+                                value = rs.getString("value"); // Should be null
+                                break;
+                            case UNARCHIVED:
+                                value = rs.getString("value"); // Should be null
+                                break;
+                            default:
+                                throw new SQLException("Error getting capture file metadata from database- unexpected MetadataType");
+                        }
+                        start = rs.getDouble("start");
+                        offset = rs.getDouble("offset");
+                        Metadata m = new Metadata(type, metaName, value, offset, start);
+                        m.setId(metaId);
+                        cf.addMetadata(m);
+                    }
+                }
+            }
+
             // Determine the rules for labeling waveform series (GMES vs DETA2, not Cav1, Cav2, ...)
             String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
                     + " FROM capture_wf"
@@ -493,9 +580,11 @@ public class EventService {
             }
             pstmt.close();
 
-            // Now get the data
-            for (Event e : eventList) {
-                e.loadWaveformDataFromDisk();
+            // Now get the data if requested
+            if (includeData) {
+                for (Event e : eventList) {
+                    e.loadWaveformDataFromDisk();
+                }
             }
         } finally {
             SqlUtil.close(pstmt, conn, rs);
@@ -646,14 +735,16 @@ public class EventService {
     /**
      * Get a list of events from the database matching the specified filter.
      * Useful for querying what events exist without the overhead of
-     * transferring all of the actual waveform data around.
+     * transferring all of the actual waveform data around. Only includes high
+     * level information about the event which can be useful for determining
+     * timelines, etc.
      *
      * @param filter
      * @return A list of events
      * @throws SQLException
      * @throws java.io.IOException
      */
-    public List<Event> getEventListWithoutData(EventFilter filter) throws SQLException, IOException {
+    public List<Event> getEventListWithoutCaptureFiles(EventFilter filter) throws SQLException, IOException {
         List<Event> events = new ArrayList<>();
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -676,7 +767,6 @@ public class EventService {
             Instant eventTime;
             String location, system, classification;
             Boolean archive, delete, grouped;
-            // TODO: update to query captureFiles from database
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
                 eventTime = TimeUtil.getInstantFromDateTime(rs);
@@ -687,13 +777,10 @@ public class EventService {
                 grouped = rs.getBoolean("grouped");
                 classification = rs.getString("classification");
                 // false for includeData, false for ignoreErrors
-                // TODO: Update code to get capture files and waveforms without data
                 events.add(new Event(eventId, eventTime, location, system, archive, delete, grouped, classification));
             }
             rs.close();
             pstmt.close();
-
-            // Query the capture file data for the events
         } finally {
             SqlUtil.close(rs, pstmt, conn);
         }
