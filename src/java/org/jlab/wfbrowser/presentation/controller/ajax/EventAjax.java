@@ -76,7 +76,7 @@ public class EventAjax extends HttpServlet {
         String[] serSetArray = request.getParameterValues("seriesSet");
         List<String> seriesSetList = serSetArray == null ? null : Arrays.asList(serSetArray);
         String requester = request.getParameter("requester");
-
+        
         String arch = request.getParameter("archive");
         Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
