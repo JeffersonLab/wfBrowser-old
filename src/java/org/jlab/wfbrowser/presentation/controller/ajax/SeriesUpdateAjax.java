@@ -8,7 +8,6 @@ package org.jlab.wfbrowser.presentation.controller.ajax;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
-import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.ServletException;
@@ -31,7 +30,6 @@ public class SeriesUpdateAjax extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/html");
-        System.out.println(request.toString());
     }
     
     /**
