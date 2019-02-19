@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -41,6 +44,7 @@ public class SeriesAjax extends HttpServlet {
             throws ServletException, IOException {
         // Process the request parameters
         String name = request.getParameter("name");
+        String system = request.getParameter("system");
         String[] ids = request.getParameterValues("id");
         List<Integer> idList = null;
         if (ids != null) {
@@ -50,29 +54,38 @@ public class SeriesAjax extends HttpServlet {
             }
         }
 
-        SeriesFilter filter = new SeriesFilter(Arrays.asList(name), "rf", idList);
+        List<String> nameList;
+        if (name != null) {
+            nameList = Arrays.asList(name);
+        } else {
+            nameList = new ArrayList<>();
+        }
+        SeriesFilter filter = new SeriesFilter(nameList, system, idList);
         SeriesService ss = new SeriesService();
         try {
             List<Series> seriesList = ss.getSeries(filter);
-            
-            String out = "{\"series\":[";
-            for(Series s : seriesList) {
-                out += s + ",";
+
+            JsonObjectBuilder job = Json.createObjectBuilder();
+            JsonArrayBuilder jab = Json.createArrayBuilder();
+            if (seriesList != null) {
+                for (Series s : seriesList) {
+                    jab.add(s.toJsonObject());
+                }
             }
-            out += "]}";
-            
+            job.add("series", jab.build());
+
             response.setContentType("application/json");
-            try(PrintWriter pw = response.getWriter()) {
-                pw.write(out);
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write(job.build().toString());
             }
         } catch (SQLException ex) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.setContentType("application/json");
-            try(PrintWriter pw = response.getWriter()) {
+            try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"error\":\"Error querying database - " + ex.getMessage() + "\"}");
             }
         }
-        
+
     }
 
     /**

@@ -52,7 +52,9 @@ public class SeriesSetsAjax extends HttpServlet {
             throws ServletException, IOException {
         // Process the request parameters
         String name = request.getParameter("name");
+        String system = request.getParameter("system");
         String[] ids = request.getParameterValues("id");
+
         List<Long> idList = null;
         if (ids != null) {
             idList = new ArrayList<>();
@@ -61,7 +63,12 @@ public class SeriesSetsAjax extends HttpServlet {
             }
         }
 
-        SeriesSetFilter filter = new SeriesSetFilter(idList, "rf", Arrays.asList(name));
+        List<String> nameList = null;
+        if (name != null) {
+            nameList = Arrays.asList(name);
+        }
+
+        SeriesSetFilter filter = new SeriesSetFilter(idList, system, nameList);
         SeriesService ss = new SeriesService();
         try {
             List<SeriesSet> seriesSetList = ss.getSeriesSets(filter);
@@ -137,7 +144,7 @@ public class SeriesSetsAjax extends HttpServlet {
                 response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 List<String> returnedSeries = new ArrayList<>();
-                for(Series s : seriesSet) {
+                for (Series s : seriesSet) {
                     returnedSeries.add(s.getName());
                 }
                 try (PrintWriter pw = response.getWriter()) {
