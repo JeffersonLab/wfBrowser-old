@@ -269,12 +269,24 @@ public class EventService {
     /**
      * Query the database for the List of unique location names
      *
+     * @param systemList A list of systems to filter on. Null or empty list
+     * means do no filtering
      * @return A list of the unique location names
      * @throws SQLException
      */
-    public List<String> getLocationNames() throws SQLException {
+    public List<String> getLocationNames(List<String> systemList) throws SQLException {
         List<String> out = new ArrayList<>();
-        String sql = "SELECT DISTINCT location FROM event ORDER BY location";
+        String sql = "SELECT DISTINCT location"
+                + " FROM event"
+                + " JOIN system_type ON event.system_id = system_type.system_id";
+        if (systemList != null && !systemList.isEmpty()) {
+            sql += " WHERE system_name IN (?";
+            for (int i = 1; i < systemList.size(); i++) {
+                sql += ",?";
+            }
+            sql += ")";
+        }
+        sql += " ORDER BY location";
 
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -282,6 +294,12 @@ public class EventService {
         try {
             conn = SqlUtil.getConnection();
             pstmt = conn.prepareStatement(sql);
+            if (systemList != null && !systemList.isEmpty()) {
+                for (int i = 1; i <= systemList.size(); i++) {
+                    pstmt.setString(i, systemList.get(i-1));
+                }
+            }
+
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 out.add(rs.getString("location"));
