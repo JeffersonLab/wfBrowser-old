@@ -68,7 +68,7 @@ public class EventAjax extends HttpServlet {
         String endString = request.getParameter("end");
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
         String system = request.getParameter("system");
-        system = system == null ? "rf" : system;
+        system = system == null ? null : system;
         String[] locArray = request.getParameterValues("location");
         List<String> locationList = locArray == null ? null : Arrays.asList(locArray);
         String[] serArray = request.getParameterValues("series");
@@ -76,7 +76,7 @@ public class EventAjax extends HttpServlet {
         String[] serSetArray = request.getParameterValues("seriesSet");
         List<String> seriesSetList = serSetArray == null ? null : Arrays.asList(serSetArray);
         String requester = request.getParameter("requester");
-        
+
         String arch = request.getParameter("archive");
         Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
