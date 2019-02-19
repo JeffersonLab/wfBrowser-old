@@ -128,7 +128,6 @@ public class EventAjax extends HttpServlet {
                 List<SeriesSet> seriesSets = ss.getSeriesSets(sfilter);
                 for (SeriesSet set : seriesSets) {
                     for (Series series : set.getSet()) {
-                        System.out.println(series.getName());
                         seriesMasterSet.add(series.getName()); // Not null
                     }
                 }
