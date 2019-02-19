@@ -60,6 +60,10 @@
                             <div class="li-key"><label class="required-field" for="description">Description</label></div>
                             <div class="li-value"><input type="text" id="row-description" name="description"/></div>
                         </li>                                       
+                        <li>
+                            <div class="li-key"><label class="required-field" for="description">System</label></div>
+                            <div class="li-value"><input type="text" id="row-system" name="system"/></div>
+                        </li>                                       
                     </ul>
                 </form>
             </t:editable-row-table-dialog>

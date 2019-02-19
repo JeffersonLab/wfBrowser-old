@@ -51,6 +51,10 @@ jlab.wfb.validateRowForm = function () {
         alert("Please enter a description");
         return false;
     }
+    if ($("#row-system").val() === '') {
+        alert("Please enter a system");
+        return false;
+    }
     if ($("#row-pattern").val() === '') {
         alert("Please enter a pattern");
         return false;
@@ -67,10 +71,11 @@ jlab.wfb.editRow = function () {
     var seriesId = $(".editable-row-table tbody tr.selected-row").data("series-id");
     var name = $("#row-name").val();
     var description = $("#row-description").val();
+    var system = $("#row-system").val();
     var pattern = $("#row-pattern").val();
     var units = $("#row-units").val();
     var url = jlab.contextPath + "/ajax/series-update";
-    var data = {"id": seriesId, "name": name, "description": description, "pattern": pattern, "system": "rf", "units": units};
+    var data = {"id": seriesId, "name": name, "description": description, "pattern": pattern, "system": system, "units": units};
     var $dialog = $("#table-row-dialog");
     jlab.doAjaxJsonPostRequest(url, data, $dialog, true);
 };
@@ -81,10 +86,11 @@ jlab.wfb.addRow = function () {
     }
     var name = $("#row-name").val();
     var description = $("#row-description").val();
+    var system = $("#row-system").val();
     var pattern = $("#row-pattern").val();
     var units = $("#row-units").val();
     var url = jlab.contextPath + "/ajax/series";
-    var data = {"name": name, "description": description, "pattern": pattern, "system": "rf", "units": units};
+    var data = {"name": name, "description": description, "pattern": pattern, "system": system, "units": units};
     var $dialog = $("table-row-dialog");
 
     jlab.doAjaxJsonPostRequest(url, data, $dialog, true);
@@ -106,11 +112,13 @@ $(document).on("click", "#open-edit-row-dialog-button", function () {
     var pattern = $selectedRow.find("td:nth-child(2)").text();
     var units = $selectedRow.find("td:nth-child(3)").text();
     var description = $selectedRow.find("td:nth-child(4)").text();
+    var system = $selectedRow.find("td:nth-child(5)").text();
 
     $("#row-name").val(name);
     $("#row-pattern").val(pattern);
     $("#row-units").val(units);
     $("#row-description").val(description);
+    $("#row-system").val(system);
 });
 
 $(document).on("table-row-add", function () {

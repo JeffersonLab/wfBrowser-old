@@ -55,6 +55,10 @@ jlab.wfb.validateRowForm = function () {
         alert("Please enter the comma separated set of series names");
         return false;
     }
+    if ($("#row-system").val() === '') {
+        alert("Please enter a system");
+        return false;
+    }
 
     return true;
 };
@@ -68,8 +72,9 @@ jlab.wfb.editRow = function () {
     var name = $("#row-name").val();
     var description = $("#row-description").val();
     var set = $("#row-set").val();
+    var system = $("#row-system").val();
     var url = jlab.contextPath + "/ajax/series-set-update";
-    var data = {"id": seriesSetId, "name": name, "description": description,  "system": "rf", "set": set};
+    var data = {"id": seriesSetId, "name": name, "description": description,  "system": system, "set": set};
     var $dialog = $("#table-row-dialog");
     jlab.doAjaxJsonPostRequest(url, data, $dialog, true);
 };
@@ -81,8 +86,9 @@ jlab.wfb.addRow = function () {
     var name = $("#row-name").val();
     var description = $("#row-description").val();
     var set = $("#row-set").val();
+    var system = $("#row-system").val();
     var url = jlab.contextPath + "/ajax/series-sets";
-    var data = {"name": name, "description": description, "set": set, "system": "rf"};
+    var data = {"name": name, "description": description, "set": set, "system": system};
     var $dialog = $("table-row-dialog");
 
     jlab.doAjaxJsonPostRequest(url, data, $dialog, true);
@@ -103,9 +109,11 @@ $(document).on("click", "#open-edit-row-dialog-button", function () {
     var name = $selectedRow.find("td:nth-child(1)").text();
     var description = $selectedRow.find("td:nth-child(2)").text();
     var set = $selectedRow.find("td:nth-child(3)").text();
+    var system = $selectedRow.find("td:nth-child(4)").text();
 
     $("#row-name").val(name);
     $("#row-set").val(set);
+    $("#row-system").val(system);
     $("#row-description").val(description);
 });
 

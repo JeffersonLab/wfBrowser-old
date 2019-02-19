@@ -54,6 +54,10 @@
                             <div class="li-key"><label class="required-field" for="set">Series Names</label></div>
                             <div class="li-value"><input type="text" id="row-set" name="set" placeholder="Ex. GMES,PMES"/></div>
                         </li>                                       
+                        <li>
+                            <div class="li-key"><label class="required-field" for="system">System</label></div>
+                            <div class="li-value"><input type="text" id="row-system" name="system" placeholder="Ex. rf"/></div>
+                        </li>                                       
                     </ul>
                 </form>
             </t:editable-row-table-dialog>
