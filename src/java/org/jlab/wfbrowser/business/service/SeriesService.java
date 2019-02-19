@@ -44,7 +44,6 @@ public class SeriesService {
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        System.out.println(sql);
         try {
             conn = SqlUtil.getConnection();
             pstmt = conn.prepareStatement(sql);
