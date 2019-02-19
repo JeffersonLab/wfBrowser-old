@@ -155,7 +155,11 @@ public class EventAjax extends HttpServlet {
         // the no data case.
         List<Event> eventList;
         try {
+            if (includeData) {
                 eventList = wfs.getEventList(filter, null, includeData);
+            } else {
+                eventList = wfs.getEventListWithoutCaptureFiles(filter);
+            }
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database", ex);
             response.setContentType("application/json");
