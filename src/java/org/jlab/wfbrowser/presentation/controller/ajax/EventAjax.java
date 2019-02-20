@@ -71,6 +71,8 @@ public class EventAjax extends HttpServlet {
         system = system == null ? null : system;
         String[] locArray = request.getParameterValues("location");
         List<String> locationList = locArray == null ? null : Arrays.asList(locArray);
+        String[] clsArray = request.getParameterValues("classification");
+        List<String> classificationList = clsArray == null ? null : Arrays.asList(clsArray);
         String[] serArray = request.getParameterValues("series");
         List<String> seriesList = serArray == null ? null : Arrays.asList(serArray);
         String[] serSetArray = request.getParameterValues("seriesSet");
@@ -149,7 +151,7 @@ public class EventAjax extends HttpServlet {
 
         EventService wfs = new EventService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, archive, delete);
+        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete);
 
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.

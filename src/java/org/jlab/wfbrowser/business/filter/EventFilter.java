@@ -24,6 +24,7 @@ public class EventFilter {
 
     private final List<Long> eventIdList;
     private final List<String> locationList;
+    private final List<String> classificationList;
     private final Instant begin, end;
     private final String system;
     private final Boolean archive;
@@ -38,16 +39,18 @@ public class EventFilter {
      * @param end
      * @param system
      * @param locationList
+     * @param classificationList
      * @param archive
      * @param delete
      */
-    public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, List<String> locationList, Boolean archive,
+    public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, List<String> locationList, List<String> classificationList, Boolean archive,
             Boolean delete) {
         this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
         this.system = system;
         this.locationList = locationList;
+        this.classificationList = classificationList;
         this.archive = archive;
         this.delete = delete;
     }
@@ -86,6 +89,14 @@ public class EventFilter {
             }
             locationFilter += ")";
             filters.add(locationFilter);
+        }
+        if (classificationList != null && !classificationList.isEmpty()) {
+            String classificationFilter = "location IN (?";
+            for (int i = 1; i < classificationList.size(); i++) {
+                classificationFilter += ",?";
+            }
+            classificationFilter += ")";
+            filters.add(classificationFilter);
         }
         if (archive != null) {
             filters.add("archive = ?");
@@ -132,6 +143,11 @@ public class EventFilter {
         if (locationList != null && !locationList.isEmpty()) {
             for (String location : locationList) {
                 stmt.setString(i++, location);
+            }
+        }
+        if (classificationList != null && !classificationList.isEmpty()) {
+            for (String classification : classificationList) {
+                stmt.setString(i++, classification);
             }
         }
         if (archive != null) {

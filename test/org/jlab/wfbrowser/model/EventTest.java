@@ -141,7 +141,7 @@ public class EventTest {
         es.addEvent(e1_grp_con_noclass_meta);
 
         // Delete every event in the test database.  It should just be the two added above
-        EventFilter filter = new EventFilter(null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null);
         List<Event> all = es.getEventList(filter);
         for (Event e : all) {
             es.deleteEvent(e.getEventId(), true);
