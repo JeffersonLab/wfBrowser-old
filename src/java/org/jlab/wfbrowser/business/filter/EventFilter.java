@@ -91,7 +91,7 @@ public class EventFilter {
             filters.add(locationFilter);
         }
         if (classificationList != null && !classificationList.isEmpty()) {
-            String classificationFilter = "location IN (?";
+            String classificationFilter = "classification IN (?";
             for (int i = 1; i < classificationList.size(); i++) {
                 classificationFilter += ",?";
             }
