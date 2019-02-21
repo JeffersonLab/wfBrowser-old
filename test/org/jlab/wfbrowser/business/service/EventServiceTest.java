@@ -148,7 +148,7 @@ public class EventServiceTest {
             e.setEventId(id);
         }
 
-        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null, null);
 
         List<Event> result = instance.getEventList(filter);
 
@@ -173,7 +173,7 @@ public class EventServiceTest {
 
         EventService instance = new EventService();
         // Get all of the events under the test system
-        EventFilter filter = new EventFilter(null, null, null, "test", null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, "test", null, null, null, null);
         List<Event> result = instance.getEventList(filter);
         assertEquals(eventList.size(), result.size());
         SortedSet<Long> resultIds = new TreeSet<>();
@@ -195,7 +195,7 @@ public class EventServiceTest {
         expResultLocations.add(e1_grp_con_class1);
         expResultLocations.add(e2_grp_con_class1);
 
-        EventFilter filterLocations = new EventFilter(null, null, null, null, locations, null, null);
+        EventFilter filterLocations = new EventFilter(null, null, null, null, locations, null, null, null);
         List<Event> resultLocations = instance.getEventList(filterLocations);
 
         SortedSet<Long> resultLocationsIds = new TreeSet<>();
@@ -211,7 +211,7 @@ public class EventServiceTest {
         // Get the e2_grp_incon_class1 via serveral filters
         List<String> locations2 = new ArrayList<>();
         locations2.add("grouped-inconsistent");
-        EventFilter filterMulti = new EventFilter(null, t1, t2, "test", locations2, false, false);
+        EventFilter filterMulti = new EventFilter(null, t1, t2, "test", locations2, null, false, false);
         List<Event> resultsMulti = instance.getEventList(filterMulti);
         SortedSet<Long> resultsMultiIds = new TreeSet<>();
         SortedSet<Long> expMultiIds = new TreeSet<>();
@@ -226,7 +226,7 @@ public class EventServiceTest {
         assertEquals(expMultiIds, resultsMultiIds);
         
         // Check that the we get waveform data back and that it matches
-        EventFilter idFilter = new EventFilter(Arrays.asList(e1_grp_con_noclass.getEventId()), null, null, null, null, null, null);
+        EventFilter idFilter = new EventFilter(Arrays.asList(e1_grp_con_noclass.getEventId()), null, null, null, null, null, null, null);
         List<Event> resultsId = instance.getEventList(idFilter);
         List <Long> expResultsIdList = Arrays.asList(e1_grp_con_noclass.getEventId());
         List<Long> resultsIdList = new ArrayList<>();
@@ -257,7 +257,7 @@ public class EventServiceTest {
 
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null);
         List<Event> eList = instance.getEventList(filter);
         assertEquals(eList.get(0).isDelete(), true);
     }
@@ -279,7 +279,7 @@ public class EventServiceTest {
         // Verify the flag has been set
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null);
         List<Event> eList = instance.getEventList(filter);
         assertEquals(eList.get(0).isArchive(), true);
     }
@@ -288,7 +288,7 @@ public class EventServiceTest {
     public void test6DeleteEvents() throws Exception {
         System.out.println("Deleting Test Events");
         EventService instance = new EventService();
-        EventFilter filter = new EventFilter(null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null);
         List<Event> allEvents = instance.getEventList(filter);
         assertEquals(eventList.size(), allEvents.size());
 
