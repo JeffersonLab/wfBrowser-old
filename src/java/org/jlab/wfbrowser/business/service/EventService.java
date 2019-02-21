@@ -296,13 +296,57 @@ public class EventService {
             pstmt = conn.prepareStatement(sql);
             if (systemList != null && !systemList.isEmpty()) {
                 for (int i = 1; i <= systemList.size(); i++) {
-                    pstmt.setString(i, systemList.get(i-1));
+                    pstmt.setString(i, systemList.get(i - 1));
                 }
             }
 
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 out.add(rs.getString("location"));
+            }
+        } finally {
+            SqlUtil.close(rs, pstmt, conn);
+        }
+
+        return out;
+    }
+
+    // TODO: Add a test routine
+    /**
+     * Get a list of classifications associated with a system or list of systems
+     * @param systemList A list of system names
+     * @return A list of classifications
+     * @throws SQLException 
+     */
+    public List<String> getClassifications(List<String> systemList) throws SQLException {
+        List<String> out = new ArrayList<>();
+        String sql = "SELECT DISTINCT classification"
+                + " FROM event"
+                + " JOIN system_type ON event.system_id = system_type.system_id";
+        if (systemList != null && !systemList.isEmpty()) {
+            sql += " WHERE system_name IN (?";
+            for (int i = 1; i < systemList.size(); i++) {
+                sql += ",?";
+            }
+            sql += ")";
+        }
+        sql += " ORDER BY classification";
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            if (systemList != null && !systemList.isEmpty()) {
+                for (int i = 1; i <= systemList.size(); i++) {
+                    pstmt.setString(i, systemList.get(i - 1));
+                }
+            }
+
+            rs = pstmt.executeQuery();
+            while (rs.next()) {
+                out.add(rs.getString("classification"));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
