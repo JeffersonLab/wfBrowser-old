@@ -631,7 +631,8 @@ public class Event {
                     .add("datetime_utc", TimeUtil.getDateTimeString(eventTime))
                     .add("location", location)
                     .add("system", system)
-                    .add("archive", archive);
+                    .add("archive", archive)
+                    .add("classification", classification);
             JsonArrayBuilder jab = Json.createArrayBuilder();
             for (String cfName : captureFileMap.keySet()) {
                 jab.add(captureFileMap.get(cfName).toJsonObject(seriesSet));
@@ -672,10 +673,6 @@ public class Event {
      */
     public double[][] getWaveformDataAsArray(Set<String> seriesSet) {
         double[][] data;
-        List<Waveform> waveforms = getWaveforms();
-        if (waveforms == null || waveforms.isEmpty()) {
-            return null;
-        }
 
         List<Waveform> wfList = getWaveforms(seriesSet);
         if (areWaveformsConsistent) {
@@ -846,8 +843,8 @@ public class Event {
                             wjob = Json.createObjectBuilder().add("waveformName", headerNames.get(i));
 
                             // Add some information that the client side can cue off of for consitent colors and names.
-                            wjob.add("dygraphLabel", headerNames.get(i).substring(0, 4));
-                            wjob.add("dygraphId", headerNames.get(i).substring(3, 4));
+                            wjob.add("dygraphLabel", getDygraphLabel(headerNames.get(i)));
+                            wjob.add("dygraphId", getDygraphId(headerNames.get(i)));
 
                             // Get the series names for the waveform and add them
                             sjab = Json.createArrayBuilder();
@@ -878,6 +875,47 @@ public class Event {
         return job.build();
     }
 
+    /**
+     * Generate a string label used by dygraph clients
+     * @param waveformName The name of the waveform for which we are producting a dygraph label
+     * @return 
+     */
+    private String getDygraphLabel(String waveformName) {
+        String label;
+        switch(system) {
+            case "rf":
+                label = waveformName.substring(0, 4);
+                break;
+            case "acclrm":
+                label = waveformName.substring(7,10);
+                break;
+            default:
+                throw new IllegalStateException("Unrecognized system - " + system);
+        }
+        return label;
+    }
+    
+    /** Generate a numeric ID that can be used by dygraph clients to group related waveforms
+     * 
+     */
+    private long getDygraphId(String waveformName) {
+        long id;
+        switch(system) {
+            case "rf":
+                id = Long.parseLong(waveformName.substring(3,4));
+                break;
+            case "acclrm":
+                Map<String, Long> idMap = new HashMap<>();
+                idMap.put("CRY", 1L);
+                idMap.put("FLR", 2L);
+                idMap.put("LCW", 3L);
+                id = idMap.get(waveformName.substring(7,10));
+                break;
+            default:
+                throw new IllegalStateException("Unrecognized system - " + system);
+        }
+        return id;
+    }
     /**
      * Events are considered equal if all of the metadata about the event are
      * equal. We currently do not enforce equality of waveform data, only that
