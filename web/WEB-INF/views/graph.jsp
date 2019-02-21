@@ -54,6 +54,39 @@
                 font-size: 80%;
             }
 
+
+            .secondary-nav-horizontal {
+                border: 1px solid black;
+                /*border-bottom: 1px solid black;*/
+                /*border-top: 1px solid black;*/
+                padding: 1px 2px 2px 1px;
+                float: right;       
+            }
+
+            .secondary-nav-horizontal ul {
+                padding: 0 4px;
+                list-style-type: none;
+                margin: 0 0 0 16px;
+                display: inline-block;
+            }
+
+            .secondary-nav-horizontal li.current-primary {
+                /*border-bottom: 1px solid #fff;*/
+                border-radius: 3px;
+                padding: 1px;
+                border: 1px solid black;
+                background-color: lightgray;
+            }
+
+            .secondary-nav-horizontal li {           
+                padding: 3px;
+                background-color: #fff;              
+                display: inline-block;
+            }
+
+            .content-header {
+                position: relative;
+            }
         </style>
     </jsp:attribute>
     <jsp:attribute name="scripts">
@@ -64,9 +97,24 @@
     </jsp:attribute>
     <jsp:body>
         <section>
-            <h2 id="page-header-title"><c:out value="${title}"/></h2>
+            <div class="content-header">
+                <h2 id="page-header-title"><c:out value="${title}"/></h2>
+
+                <nav class="secondary-nav-horizontal">
+                    System View:
+                    <ul>
+                        <li${'rf' eq requestScope.system ? ' class="current-primary"' : ''}>
+                            <a href="${pageContext.request.contextPath}/graph?system=rf">RF</a>
+                        </li>  
+                        <li${'acclrm' eq requestScope.system ? ' class="current-primary"' : ''}>
+                            <a href="${pageContext.request.contextPath}/graph?system=acclrm">Accelerometer</a>
+                        </li>  
+                    </ul>
+                </nav>
+            </div>
             <div id="timeline-container"></div>
-            <form id="page-contrlols-form" method="GET" action="${pageContext.request.contextPath}/graph">
+            <form id="page-contrlols-form" method="GET" action="${pageContext.request.contextPath}/graph" autocomplete="off">
+                <input type="hidden" name="system" value="${requestScope.system}"/>
                 <fieldset>
                     <ul class="key-value-list">
                         <li>
@@ -114,6 +162,20 @@
                             </div>
                         </li>
                     </ul>
+                    <c:if test="${requestScope.system == 'acclrm'}">
+                    <ul class="key-value-list">
+                        <li>
+                            <div class="li-key"><label for="classification">Classification</label></div>
+                            <div class="li-value">
+                                <select id="classification-selector" name="classification" multiple>
+                                    <c:forEach var="cls" items="${requestScope.classificationMap}">
+                                        <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                        </li>
+                    </ul>
+                    </c:if>
                     <input id="page-controls-submit" type="submit" value="Submit"/><span id="page-controls-error"></span>
                 </fieldset>
             </form>
@@ -125,14 +187,16 @@
             jlab.wfb = jlab.wfb || {};
             jlab.wfb.eventId = "${requestScope.eventId}";
                     jlab.wfb.locationSelections = [<c:forEach var="location" items="${locationSelections}" varStatus="status">'${location}'<c:if test="${!status.last}">,</c:if></c:forEach>];
+                    jlab.wfb.locationToGroupMap = new Map([<c:forEach var="index" begin="0" end="${fn:length(locationSelections)-1}">['${locationSelections.get(index)}', '${index}']<c:if test="${index != (fn:length(locationSelections)-1)}">,</c:if></c:forEach>]);
             jlab.wfb.begin = "${requestScope.begin}";
             jlab.wfb.end = "${requestScope.end}";
+            jlab.wfb.system = "${requestScope.system}";
             jlab.wfb.eventArray = ${requestScope.eventListJson};
             jlab.wfb.eventArray = jlab.wfb.eventArray.events;
             jlab.wfb.currentEvent = ${requestScope.currentEvent} || {}
             ;
                     jlab.wfb.seriesSelections = [<c:forEach var="series" items="${seriesSelections}" varStatus="status">'${series}'<c:if test="${!status.last}">,</c:if></c:forEach>];
-                    jlab.wfb.seriesSetSelections = [<c:forEach var="series" items="${seriesSetSelections}" varStatus="status">'${seriesSet}'<c:if test="${!status.last}">,</c:if></c:forEach>];
+                    jlab.wfb.seriesSetSelections = [<c:forEach var="seriesSet" items="${seriesSetSelections}" varStatus="status">'${seriesSet}'<c:if test="${!status.last}">,</c:if></c:forEach>];
                     jlab.wfb.seriesMasterSet = [<c:forEach var="series" items="${seriesMasterSet}" varStatus="status">'${series}'<c:if test="${!status.last}">,</c:if></c:forEach>];
                 </script>
     </jsp:body>  

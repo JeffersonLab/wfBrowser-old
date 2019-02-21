@@ -6,30 +6,13 @@ var $endPicker = $("#end-date-picker");
 var $seriesSelector = $("#series-selector");
 var $seriesSetSelector = $("#series-set-selector");
 var $locationSelector = $("#location-selector");
+var $classificationSelector = $("#classification-selector");
 var $graphPanel = $("#graph-panel");
 var timeline;
 var firstUpdate = true;
 
 // These get set by updateZoneSelector, and used by updateEventSelector
 var begin, end;
-
-/**
- * This map is used to convert named locations (zones) to a consistent set of IDs in the timeline widget.
- * @type Map
- */
-jlab.wfb.locationToGroupMap = new Map([
-    ["0L04", 0],
-    ["1L22", 1],
-    ["1L23", 2],
-    ["1L24", 3],
-    ["1L25", 4],
-    ["1L26", 5],
-    ["2L22", 6],
-    ["2L23", 7],
-    ["2L24", 8],
-    ["2L25", 9],
-    ["2L26", 10]
-]);
 
 /**
  * This map is used to apply a consistent set of colors based on a dygraph ID.  dygraph IDs are 1 indexed, so id-1 -> color
@@ -74,16 +57,12 @@ for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
 }
 var items = new vis.DataSet(itemArray);
 
-
-
-
-
 // Get the previous item from the same group
 jlab.wfb.getPrevItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group == curr.group);
+            return(item.group === curr.group);
         }
     });
 
@@ -268,7 +247,8 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
     var url = jlab.contextPath + "/graph"
             + "?begin=" + jlab.wfb.begin.replace(/ /, '+').encodeXml()
             + "&end=" + jlab.wfb.end.replace(/ /, '+').encodeXml()
-            + "&eventId=" + jlab.wfb.eventId;
+            + "&eventId=" + jlab.wfb.eventId
+            + "&system=" + jlab.wfb.system;
     for (var i = 0; i < jlab.wfb.seriesSelections.length; i++) {
         url += "&series=" + jlab.wfb.seriesSelections[i];
     }
@@ -319,28 +299,25 @@ jlab.wfb.loadNewGraphs = (function () {
 
             // Update the global current event and local tracker of the currentEvent
             currEventId = eventId;
-            jlab.wfb.currentEventId = eventId;
+            jlab.wfb.eventId = eventId;
 
             // Make sure the timeline matches the current event
             timeline.setSelection(currEventId);
 
-
             var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: eventId, out: "dygraph", includeData: true, requester: "graph"});
             promise.done(function (json) {
-
                 // Sanity check - make sure the id we get back is what we asked for.
                 if (json.events[0].id !== currEventId) {
-                    currEventId = json.events[0].id;
-                    jlab.wfb.currentEventId = json.events[0].id;
                     alert("Warning: Received different event than requested");
                 }
+                jlab.wfb.eventId = json.events[0].id;
                 jlab.wfb.currentEvent = json.events[0];
 
+                // Get the position so we can put it back after updating the graphs
+                var xOffset = window.pageXOffset;
+                var yOffset = window.pageYOffset;
 
-                // Clear out the graph panel, set the graph panel back to opaque, and delete any existing graph data
-                $graphPanel.empty();
-                $graphPanel.css({opacity: 1});
-                // Clear out all of the old graph data
+                // Delete old graph data
                 if (graphs !== null) {
                     for (var i = 0; i < graphs.length; i++) {
                         if (graphs[i] !== null) {
@@ -348,12 +325,18 @@ jlab.wfb.loadNewGraphs = (function () {
                         }
                     }
                 }
+                // Clear out the graph panel, set the graph panel back to opaque
+                $graphPanel.empty();
+                $graphPanel.css({opacity: 1});
 
                 // Make and display the graphs. Save them to the local array so we can delete them on the next update
                 graphs = jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesMasterSet);
 
                 // Make sure the URL bar and UI controls reflect any changes.
                 jlab.wfb.updateBrowserUrlAndControls();
+
+                // Scroll the screen back to the same position
+                window.scrollTo(xOffset, yOffset);
             });
             promise.fail(function () {
                 // jlab.doAjaxJsonGetRequest handles the generic error logic.  We just need to make sure that the timeline is accurate.
@@ -391,21 +374,31 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     $("#graph-panel .graph-panel-title").prepend(event.location);
     $("#graph-panel .graph-panel-date").prepend(jlab.dateToDateTimeString(date));
 
-    // Figure out which cavities are present in these charts
-    var dygraphIdSet = new Set();
+    // Figure out which series are present in these charts
+    var dygraphLabelIdMap = new Map();
     for (var i = 0; i < event.waveforms.length; i++) {
-        dygraphIdSet.add(event.waveforms[i].dygraphId);
+        dygraphLabelIdMap.set(event.waveforms[i].dygraphLabel, event.waveforms[i].dygraphId);
     }
-    
+
     // Construct checkboxes that will control the visibility of inidividual cavity series.  Once we've created the graphs, we can bind a click event handler
     var checkBoxNum = 0;
-    dygraphIdSet.forEach(function (value) {
+    // Map.foreach(function(value, key, map)
+    dygraphLabelIdMap.forEach(function (id, label, map) {
         if (checkBoxNum === 4) {
             $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
         }
         var forName = "cav-toggle-" + checkBoxNum;
-        var color = jlab.wfb.dygraphIdToColorArray[value - 1];
-        $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + value + '</label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-series-id="' + checkBoxNum + '" checked="checked">');
+        var color = jlab.wfb.dygraphIdToColorArray[id - 1];
+        switch (jlab.wfb.system) {
+            case "rf":
+                // For RF we can assign nicer cavity number labels instead of just a colored line.
+                $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + id + '</label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
+                break;
+            default:
+                // Give a colored line as a label.  Dygraph already does this for their labels, so just reuse their div with the color we specified earler
+                $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '"><div class="dygraph-legend-line" style="border-bottom-color: ' + color + ';"></div></label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
+                break;
+        }
         checkBoxNum++;
     });
 
@@ -515,13 +508,22 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     if (graphs.length > 1) {
         Dygraph.synchronize(graphs, {range: false});
     }
+
+    // Set a listener that toggles visibility on series
     $(".cavity-toggle").on("click", function () {
-        var seriesId = $(this).data("series-id");
+        var label = $(this).data("label");
         for (var i = 0; i < graphs.length; i++) {
-            if (graphs[i].visibility()[seriesId]) {
-                graphs[i].setVisibility(seriesId, false);
-            } else {
-                graphs[i].setVisibility(seriesId, true);
+            // Figure out which column the labeled series is in.  Time is the first column so, the series number is one less.
+            var props = graphs[i].getPropertiesForSeries(label);
+
+            // Some graphs may have a different number of dygraph series (system acclrm, I'm looking at you)
+            if (props !== null) {
+                var seriesId = props.column - 1;
+                if (graphs[i].visibility()[seriesId]) {
+                    graphs[i].setVisibility(seriesId, false);
+                } else {
+                    graphs[i].setVisibility(seriesId, true);
+                }
             }
         }
     });
@@ -700,6 +702,9 @@ $(function () {
     $seriesSelector.select2(select2Options);
     $seriesSetSelector.select2(select2Options);
     $locationSelector.select2(select2Options);
+    if (jlab.wfb.system === 'acclrm') {
+        $classificationSelector.select2(select2Options);
+    }
     $startPicker.val(jlab.wfb.begin);
     $endPicker.val(jlab.wfb.end);
     $(".date-time-field").datetimepicker({
@@ -711,11 +716,9 @@ $(function () {
     $("#page-controls-submit").on("click", jlab.wfb.validateForm);
 
     var timelineDiv = document.getElementById("timeline-container");
-//    jlab.wfb.makeTimeline(timelineDiv, jlab.wfb.locationSelections, jlab.wfb.eventArray);
     jlab.wfb.makeTimeline(timelineDiv, groups, items);
 
     if (typeof jlab.wfb.eventId !== "undefined" && jlab.wfb.eventId !== null && jlab.wfb.eventId !== "") {
         jlab.wfb.loadNewGraphs(jlab.wfb.currentEvent);
-//        jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesMasterSet);
     }
 });
