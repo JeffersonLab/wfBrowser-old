@@ -48,6 +48,7 @@
                 top: 110%;
                 width: 14em;
                 background-color: mintcream;
+                box-shadow: 8px 8px 8px #979797;
                 border-radius: 8px 8px 8px 8px;
                 padding: 4px;
                 border: 1px solid black;
