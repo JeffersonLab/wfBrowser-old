@@ -1,18 +1,19 @@
 var jlab = jlab || {};
+var vis = vis || (window.console && console.log("vis object from vis.js not loaded"));
+var Dygraph = Dygraph || (window.console && console.log("Dypgraph object from dypgraphs.js not loaded"));
+
 jlab.wfb = jlab.wfb || {};
 
-var $startPicker = $("#start-date-picker");
-var $endPicker = $("#end-date-picker");
-var $seriesSelector = $("#series-selector");
-var $seriesSetSelector = $("#series-set-selector");
-var $locationSelector = $("#location-selector");
-var $classificationSelector = $("#classification-selector");
-var $graphPanel = $("#graph-panel");
-var timeline;
-var firstUpdate = true;
+jlab.wfb.$startPicker = $("#start-date-picker");
+jlab.wfb.$endPicker = $("#end-date-picker");
+jlab.wfb.$seriesSelector = $("#series-selector");
+jlab.wfb.$seriesSetSelector = $("#series-set-selector");
+jlab.wfb.$locationSelector = $("#location-selector");
+jlab.wfb.$classificationSelector = $("#classification-selector");
 
-// These get set by updateZoneSelector, and used by updateEventSelector
-var begin, end;
+// gets overwritten onload - here for informational purposes
+jlab.wfb.timeline = null;
+
 
 /**
  * This map is used to apply a consistent set of colors based on a dygraph ID.  dygraph IDs are 1 indexed, so id-1 -> color
@@ -20,13 +21,23 @@ var begin, end;
  */
 jlab.wfb.dygraphIdToColorArray = ["#7FC97F", "#BEAED4", "#FDC086", "#000000", "#386CB0", "#F0027F", "#BF5B17", "#666666"];
 
+
+/**
+ * This converts a UTC date string to a Date object in localtime
+ * @param {type} dateString
+ * @returns {Date}
+ */
 jlab.wfb.convertUTCDateStringToLocalDate = function (dateString) {
     var date = new Date(dateString);
     return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(),
             date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
 };
 
-// This takes an event JSON object (from ajax/event ajax query) and converts it to a form that is expected by visjs DataSet
+/**
+ * This takes an event JSON object (from ajax/event ajax query) and converts it to a form that is expected by visjs DataSet
+ * @param {type} event
+ * @returns {jlab.wfb.eventToItem.item}
+ */
 jlab.wfb.eventToItem = function (event) {
     var date = jlab.wfb.convertUTCDateStringToLocalDate(event.datetime_utc);
     var item = {
@@ -41,23 +52,12 @@ jlab.wfb.eventToItem = function (event) {
 };
 
 
-
-
-// Setup the groups for the timeline
-var groupArray = new Array(jlab.wfb.locationSelections.length);
-for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
-    groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
-}
-var groups = new vis.DataSet(groupArray);
-
-// Setup the items for the timeline
-var itemArray = new Array(jlab.wfb.eventArray.length);
-for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
-    itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
-}
-var items = new vis.DataSet(itemArray);
-
-// Get the previous item from the same group
+/**
+ * This function returns the previous item from a specific group of a VisJS items object
+ * @param {type} items A VisJS items object
+ * @param {type} id The id of the item for which we want to get the previous item in it's group
+ * @returns {jlab.wfb.getFirstItem.subset|jlab.wfb.getFirstItem.first}
+ */
 jlab.wfb.getPrevItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
@@ -81,11 +81,17 @@ jlab.wfb.getPrevItem = function (items, id) {
     return prev;
 };
 
+/**
+ * This function returns the next item from a specific group of a VisJS items object
+ * @param {type} items A VisJS items object
+ * @param {type} id The id of the item for which we want to get the next item in it's group
+ * @returns {jlab.wfb.getFirstItem.subset|jlab.wfb.getFirstItem.first}
+ */
 jlab.wfb.getNextItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group == curr.group);
+            return(item.group === curr.group);
         }
     });
 
@@ -104,11 +110,17 @@ jlab.wfb.getNextItem = function (items, id) {
     return next;
 };
 
+/**
+ * This function returns the first item from a specific group of a VisJS items object
+ * @param {type} items A VisJS items object
+ * @param {type} id The id of an item belonging to the group from which we want to get the first item for
+ * @returns {jlab.wfb.getFirstItem.subset|jlab.wfb.getFirstItem.first}
+ */
 jlab.wfb.getFirstItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group == curr.group);
+            return(item.group === curr.group);
         }
     });
 
@@ -125,11 +137,17 @@ jlab.wfb.getFirstItem = function (items, id) {
     return first;
 };
 
+/**
+ * This function returns the last item from a specific group of a VisJS items object
+ * @param {type} items A VisJS items object
+ * @param {type} id The id of an item belonging to the group from which we want to get the last item for
+ * @returns {jlab.wfb.getFirstItem.subset|jlab.wfb.getFirstItem.first}
+ */
 jlab.wfb.getLastItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group == curr.group);
+            return(item.group === curr.group);
         }
     });
 
@@ -239,15 +257,19 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     return g;
 };
 
+
+/**
+ * This function is responsible for updating the window's URL and form controls to match the currently displayed page.  
+ * It also updates the history so that the last displayed event is what will be displayed on a "back" button event
+ * @returns {undefined}
+ */
 jlab.wfb.updateBrowserUrlAndControls = function () {
-    $startPicker.val(jlab.wfb.begin);
-    $endPicker.val(jlab.wfb.end);
 
     // Update the URL so someone could navigate back to or bookmark or copy paste the URL 
     var url = jlab.contextPath + "/graph"
             + "?begin=" + jlab.wfb.begin.replace(/ /, '+').encodeXml()
             + "&end=" + jlab.wfb.end.replace(/ /, '+').encodeXml()
-            + "&eventId=" + jlab.wfb.eventId
+            + "&eventId=" + jlab.wfb.currentEvent.id
             + "&system=" + jlab.wfb.system;
     for (var i = 0; i < jlab.wfb.seriesSelections.length; i++) {
         url += "&series=" + jlab.wfb.seriesSelections[i];
@@ -258,11 +280,20 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
     for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
         url += "&location=" + jlab.wfb.locationSelections[i];
     }
+
+    // Update the current state of the window so that should a user navigate away, the back button will return them to the last currently displayed event.
     window.history.replaceState(null, null, url);
 };
 
-// Make a new graph.  Looks up the jlab.wfb.eventId global variable amongst others
+
+/**
+ * This closure is used to update the display dygraphs of event series data.  If an object is supplied, then the function assumes it is an
+ * event object of the form returned by the wfbrowser ajax event end point.  If an ID is supplied, it downloads the corresponding event
+ * from that ajax endpoint.  This function is responsible for calling any routines to keep the page state in sync with the display.
+ * @type Function 
+ */
 jlab.wfb.loadNewGraphs = (function () {
+    var $graphPanel = $("#graph-panel");
     var currEventId = null;
     var graphs = null;
     var updateInProgress = false;
@@ -270,26 +301,22 @@ jlab.wfb.loadNewGraphs = (function () {
 
         // When the page first loads, we have access to the already generate event data and don't need to do an AJAX call to get it
         if (typeof eventId === "object") {
-            // it's an event object so the syntax looks weird
-            currEventId = eventId.id;
-
             // Make and display the graphs. Save them to the local array so we can delete them on the next update
-            graphs = jlab.wfb.makeGraphs(jlab.wfb.currentEvent, $graphPanel, jlab.wfb.seriesMasterSet);
+            graphs = jlab.wfb.makeGraphs(eventId, $graphPanel, jlab.wfb.seriesMasterSet);
 
             // Make sure the URL bar and UI controls reflect any changes.
             jlab.wfb.updateBrowserUrlAndControls();
-
             return;
         }
 
         if (typeof eventId === "undefined" || eventId === null) {
             window.console && console.log("Error: eventId undefined or null");
-            timeline.setSelection(currEventId);
+            jlab.wfb.timeline.setSelection(currEventId);
             return;
         }
 
         if (updateInProgress) {
-            timeline.setSelection(currEventId);
+            jlab.wfb.timeline.setSelection(currEventId);
             window.console && console.log("Update already in progress");
             return;
         } else {
@@ -299,10 +326,9 @@ jlab.wfb.loadNewGraphs = (function () {
 
             // Update the global current event and local tracker of the currentEvent
             currEventId = eventId;
-            jlab.wfb.eventId = eventId;
 
-            // Make sure the timeline matches the current event
-            timeline.setSelection(currEventId);
+            // Make sure the jlab.wfb.timeline matches the current event
+            jlab.wfb.timeline.setSelection(currEventId);
 
             var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: eventId, out: "dygraph", includeData: true, requester: "graph"});
             promise.done(function (json) {
@@ -310,7 +336,6 @@ jlab.wfb.loadNewGraphs = (function () {
                 if (json.events[0].id !== currEventId) {
                     alert("Warning: Received different event than requested");
                 }
-                jlab.wfb.eventId = json.events[0].id;
                 jlab.wfb.currentEvent = json.events[0];
 
                 // Get the position so we can put it back after updating the graphs
@@ -340,7 +365,7 @@ jlab.wfb.loadNewGraphs = (function () {
             });
             promise.fail(function () {
                 // jlab.doAjaxJsonGetRequest handles the generic error logic.  We just need to make sure that the timeline is accurate.
-                timeline.setSelection(currEventId);
+                jlab.wfb.timeline.setSelection(currEventId);
             });
             promise.always(function () {
                 updateInProgress = false;
@@ -404,7 +429,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
 
     // Setup the download button
     $("#graph-panel .graph-panel-action-controls .download").on("click", function () {
-        window.location = jlab.contextPath + "/ajax/event?id=" + event.id + "&out=csv&includeData=true";
+        window.location = jlab.contextPath + "/ajax/event?id=" + event.id + "&out=orig&includeData=true";
     });
 
     // Setup the archive button.  Admins see an "unarchive" button if the event is archvied.  Everyone else sees a disabled archvie button.
@@ -432,21 +457,22 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
 
     // Add a help button with information on the controls
     var helpHtml = "<div class='help-dialog'>CHART CONTROLS<hr>Zoom: click-drag<br>Pan: shift-click-drag<br>Restore: double-click</div>";
-    $("#graph-panel .graph-panel-action-controls").prepend("<span class='relative-span' style='position: relative; height: 100%;'></span><button class='help'>Help</button>");
+    $("#graph-panel .graph-panel-action-controls").prepend("<button class='help'>Help</button>");
     $("#graph-panel .graph-panel-action-controls .help").on("click", (function () {
         var isShown = false;
         return function () {
             if (!isShown) {
-                $("#graph-panel .graph-panel-action-controls .relative-span").prepend(helpHtml);
+                $("#graph-panel .graph-panel-action-controls").prepend(helpHtml);
                 isShown = true;
             } else {
-                $("#graph-panel .graph-panel-action-controls  .relative-span .help-dialog").remove();
+                $("#graph-panel .graph-panel-action-controls .help-dialog").remove();
                 isShown = false;
             }
         };
     })());
 
-
+    // Undocumented function to get the set of items underlying the timeline
+    var items = jlab.wfb.timeline.itemSet.getItems();
 
     // Setup the navigation controls
     var firstItem = jlab.wfb.getFirstItem(items, event.id);
@@ -568,9 +594,9 @@ jlab.wfb.makeTimeline = function (container, groups, items) {
         max: jlab.wfb.end
     };
 
-    timeline = new vis.Timeline(container, items, groups, options);
-    if (typeof jlab.wfb.eventId !== "undefined" && jlab.wfb.eventId !== null) {
-        timeline.setSelection(jlab.wfb.eventId);
+    var timeline = new vis.Timeline(container, items, groups, options);
+    if (typeof jlab.wfb.currentEvent === "object" && jlab.wfb.currentEvent !== null) {
+        timeline.setSelection(jlab.wfb.currentEvent.id);
     }
 
     // Currently a bug in the timeline widget is keeping this from working as desired.  I may be able to work around it.
@@ -649,9 +675,10 @@ jlab.wfb.makeTimeline = function (container, groups, items) {
 //                });
 
     timeline.on("select", function (params) {
-        jlab.wfb.eventId = params.items[0];
         jlab.wfb.loadNewGraphs(params.items[0]);
     });
+
+    return timeline;
 };
 
 jlab.wfb.validateForm = function () {
@@ -659,35 +686,52 @@ jlab.wfb.validateForm = function () {
     $err.empty();
 
     // Make sure that we will have some sort of series to display in the graphs
-    if ($seriesSelector.val() === null && $seriesSetSelector.val() === null) {
+    if (jlab.wfb.$seriesSelector.val() === null && jlab.wfb.$seriesSetSelector.val() === null) {
         $err.append("At least one series or series set must be supplied.");
         return false;
     }
 
     // Make sure that the timeline will have some sort of location to show and that we will have a group of events to pick from
-    if ($locationSelector.val() === null) {
+    if (jlab.wfb.$locationSelector.val() === null) {
         $err.append("At least one zone must be supplied.");
         return false;
     }
 
     // Make sure we got start/end times
-    if ($startPicker.val() === null || $startPicker.val() === "") {
+    if (jlab.wfb.$startPicker.val() === null || jlab.wfb.$startPicker.val() === "") {
         $err.append("Start time required.");
         return false;
     }
-    if ($endPicker.val() === null || $endPicker.val() === "") {
+    if (jlab.wfb.$endPicker.val() === null || jlab.wfb.$endPicker.val() === "") {
         $err.append("End time required.");
         return false;
     }
 
 
     // Check that the date range isn't too large.  The timeline widget uses DOM elements and too many of them can slow down the browser.
-    var start = new Date($startPicker.val());
-    var end = new Date($endPicker.val());
+    var start = new Date(jlab.wfb.$startPicker.val());
+    var end = new Date(jlab.wfb.$endPicker.val());
     var day = 1000 * 60 * 60 * 24; // millis to days
     if (((end.getTime() - start.getTime()) / day) > 14) {
-        $err.append("Date range cannot exceed two weeks.");
-        return false;
+        $err.append("<div id=range-dialog>Large date ranges can cause the interface to become sluggish.  Continue?</div>");
+        return $("#range-dialog").dialog({
+            resizable: false,
+            height: "auto",
+            width: 400,
+            modal: true,
+            buttons: {
+                "Continue": function () {
+                    $(this).dialog("close");
+                    return true;
+                },
+                "Cancel": function () {
+                    $(this).dialog("close");
+                    return false;
+                }
+            }
+        });
+//        $err.append("Date range cannot exceed two weeks.");
+//        return false;
     }
 
     // Everything passed the checks.  Return true;
@@ -696,29 +740,56 @@ jlab.wfb.validateForm = function () {
 
 
 $(function () {
+    // Setup the groups for the timeline
+    var groupArray = new Array(jlab.wfb.locationSelections.length);
+    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
+        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
+    }
+    var groups = new vis.DataSet(groupArray);
+
+// Setup the items for the timeline
+    var itemArray = new Array(jlab.wfb.eventArray.length);
+    for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
+        itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
+    }
+    var items = new vis.DataSet(itemArray);
+
     var select2Options = {
         width: "15em"
     };
-    $seriesSelector.select2(select2Options);
-    $seriesSetSelector.select2(select2Options);
-    $locationSelector.select2(select2Options);
+    jlab.wfb.$seriesSelector.select2(select2Options);
+    jlab.wfb.$seriesSetSelector.select2(select2Options);
+    jlab.wfb.$locationSelector.select2(select2Options);
     if (jlab.wfb.system === 'acclrm') {
-        $classificationSelector.select2(select2Options);
+        jlab.wfb.$classificationSelector.select2(select2Options);
     }
-    $startPicker.val(jlab.wfb.begin);
-    $endPicker.val(jlab.wfb.end);
+    jlab.wfb.$startPicker.val(jlab.wfb.begin);
+    jlab.wfb.$endPicker.val(jlab.wfb.end);
     $(".date-time-field").datetimepicker({
         controlType: jlab.dateTimePickerControl,
         dateFormat: 'yy-mm-dd',
         timeFormat: 'HH:mm:ss'
     });
 
+    $("#help-container .help").on("click", function () {
+        $helpDialog = $(this).siblings(".help-dialog");
+        $helpDialog.toggle({duration: 0});
+    });
+
+
     $("#page-controls-submit").on("click", jlab.wfb.validateForm);
 
-    var timelineDiv = document.getElementById("timeline-container");
-    jlab.wfb.makeTimeline(timelineDiv, groups, items);
 
-    if (typeof jlab.wfb.eventId !== "undefined" && jlab.wfb.eventId !== null && jlab.wfb.eventId !== "") {
+
+
+
+    var timelineDiv = document.getElementById("timeline-container");
+    jlab.wfb.timeline = jlab.wfb.makeTimeline(timelineDiv, groups, items);
+
+    console.log(typeof jlab.wfb.currentEvent);
+    if (typeof jlab.wfb.currentEvent === "object" && typeof jlab.wfb.currentEvent.id === "number") {
         jlab.wfb.loadNewGraphs(jlab.wfb.currentEvent);
+    } else {
+        $("#graph-panel").append("<div style='font-weight: bold;'>No events found</div>");
     }
 });
