@@ -91,22 +91,6 @@ public class EventAjax extends HttpServlet {
         if (out == null) {
             out = "";
         }
-//        String output = "json";
-//        if (out != null) {
-//            switch (out) {
-//                case "json":
-//                    output = "json";
-//                    break;
-//                case "csv":
-//                    output = "csv";
-//                    break;
-//                case "dygraph":
-//                    output = "dygraph";
-//                    break;
-//                default:
-//                    output = "json";
-//            }
-//        }
 
         if (eventIdList != null && eventIdList.isEmpty()) {
             response.setContentType("application/json");
@@ -317,6 +301,11 @@ public class EventAjax extends HttpServlet {
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");
             }
         } catch (IOException e) {
+            try (PrintWriter pw = response.getWriter()) {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                pw.write("{\"error\": \"Problem adding event - " + e.toString() + "\"}");
+            }
+        } catch (IllegalArgumentException e) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 pw.write("{\"error\": \"Problem adding event - " + e.toString() + "\"}");
