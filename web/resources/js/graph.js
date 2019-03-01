@@ -725,19 +725,6 @@ jlab.wfb.validateForm = function () {
 
 
 $(function () {
-    // Setup the groups for the timeline
-    var groupArray = new Array(jlab.wfb.locationSelections.length);
-    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
-        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
-    }
-    var groups = new vis.DataSet(groupArray);
-
-// Setup the items for the timeline
-    var itemArray = new Array(jlab.wfb.eventArray.length);
-    for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
-        itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
-    }
-    var items = new vis.DataSet(itemArray);
 
     var select2Options = {
         width: "15em"
@@ -761,17 +748,25 @@ $(function () {
         $helpDialog.toggle({duration: 0});
     });
 
-
     $("#page-controls-submit").on("click", jlab.wfb.validateForm);
 
+    // Setup the groups for the timeline
+    var groupArray = new Array(jlab.wfb.locationSelections.length);
+    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
+        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
+    }
+    var groups = new vis.DataSet(groupArray);
 
-
-
+    // Setup the items for the timeline
+    var itemArray = new Array(jlab.wfb.eventArray.length);
+    for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
+        itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
+    }
+    var items = new vis.DataSet(itemArray);
 
     var timelineDiv = document.getElementById("timeline-container");
     jlab.wfb.timeline = jlab.wfb.makeTimeline(timelineDiv, groups, items);
 
-    console.log(typeof jlab.wfb.currentEvent);
     if (typeof jlab.wfb.currentEvent === "object" && typeof jlab.wfb.currentEvent.id === "number") {
         jlab.wfb.loadNewGraphs(jlab.wfb.currentEvent);
     } else {
