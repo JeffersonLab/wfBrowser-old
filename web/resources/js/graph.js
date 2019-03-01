@@ -714,13 +714,13 @@ jlab.wfb.validateForm = function () {
     var day = 1000 * 60 * 60 * 24; // millis to days
     if (((end.getTime() - start.getTime()) / day) > 14) {
         var result = window.confirm("Large date ranges can cause the interface to become sluggish.  Continue?");
-        
+
         if (result === false) {
             return false;
         }
     }
     // Everything passed the checks.  Return true;
-        return true;
+    return true;
 };
 
 
