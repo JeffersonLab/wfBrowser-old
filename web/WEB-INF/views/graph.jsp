@@ -126,66 +126,72 @@
             <form id="page-contrlols-form" method="GET" action="${pageContext.request.contextPath}/graph" autocomplete="off">
                 <input type="hidden" name="system" value="${requestScope.system}"/>
                 <fieldset>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label class="required-field" for="begin">Start</label></div>
-                            <div class="li-value"><input type="text" id="start-date-picker" class="date-time-field" name="begin" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
-                        </li>
-                        <li>
-                            <div class="li-key"><label class="required-field" for="end">End</label></div>
-                            <div class="li-value"><input type="text" id="end-date-picker" class="date-time-field" name="end" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
-                        </li>
-                    </ul>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label class="required-field" for="locations">Zone</label></div>
-                            <div class="li-value">
-                                <select id="location-selector" name="location" multiple>
-                                    <c:forEach var="location" items="${requestScope.locationMap}">
-                                        <option value="${location.key}" label="${location.key}" <c:if test="${location.value}">selected</c:if>>${location.key}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                        </li>
-                    </ul>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label for="series">Series</label></div>
-                            <div class="li-value">
-                                <select id="series-selector" name="series" multiple>
-                                    <c:forEach var="series" items="${requestScope.seriesMap}">
-                                        <option value="${series.key}" label="${series.key}" <c:if test="${series.value}">selected</c:if>>${series.key}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                        </li>
-                    </ul>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label for="series-sets">Series Sets</label></div>
-                            <div class="li-value">
-                                <select id="series-set-selector" name="seriesSet" multiple>
-                                    <c:forEach var="seriesSet" items="${requestScope.seriesSetMap}">
-                                        <option value="${seriesSet.key}" label="${seriesSet.key}" <c:if test="${seriesSet.value}">selected</c:if>>${seriesSet.key}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                        </li>
-                    </ul>
-                    <c:if test="${requestScope.system == 'acclrm'}">
+                    <fieldset>
+                        <legend>Timeline</legend>
                         <ul class="key-value-list">
                             <li>
-                                <div class="li-key"><label for="classification">Classification</label></div>
+                                <div class="li-key"><label class="required-field" for="begin">Start</label></div>
+                                <div class="li-value"><input type="text" id="start-date-picker" class="date-time-field" name="begin" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
+                            </li>
+                            <li>
+                                <div class="li-key"><label class="required-field" for="end">End</label></div>
+                                <div class="li-value"><input type="text" id="end-date-picker" class="date-time-field" name="end" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
+                            </li>
+                        </ul>
+                        <ul class="key-value-list">
+                            <li>
+                                <div class="li-key"><label class="required-field" for="locations">Zone</label></div>
                                 <div class="li-value">
-                                    <select id="classification-selector" name="classification" multiple>
-                                        <c:forEach var="cls" items="${requestScope.classificationMap}">
-                                            <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
+                                    <select id="location-selector" name="location" multiple>
+                                        <c:forEach var="location" items="${requestScope.locationMap}">
+                                            <option value="${location.key}" label="${location.key}" <c:if test="${location.value}">selected</c:if>>${location.key}</option>
                                         </c:forEach>
                                     </select>
                                 </div>
                             </li>
                         </ul>
-                    </c:if>
+                        <c:if test="${requestScope.system == 'acclrm'}">
+                            <ul class="key-value-list">
+                                <li>
+                                    <div class="li-key"><label for="classification">Classification</label></div>
+                                    <div class="li-value">
+                                        <select id="classification-selector" name="classification" multiple>
+                                            <c:forEach var="cls" items="${requestScope.classificationMap}">
+                                                <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
+                                            </c:forEach>
+                                        </select>
+                                    </div>
+                                </li>
+                            </ul>
+                        </c:if>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Graph</legend>
+                        <ul class="key-value-list">
+                            <li>
+                                <div class="li-key"><label for="series">Series</label></div>
+                                <div class="li-value">
+                                    <select id="series-selector" name="series" multiple>
+                                        <c:forEach var="series" items="${requestScope.seriesMap}">
+                                            <option value="${series.key}" label="${series.key}" <c:if test="${series.value}">selected</c:if>>${series.key}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                            </li>
+                        </ul>
+                        <ul class="key-value-list">
+                            <li>
+                                <div class="li-key"><label for="series-sets">Series Sets</label></div>
+                                <div class="li-value">
+                                    <select id="series-set-selector" name="seriesSet" multiple>
+                                        <c:forEach var="seriesSet" items="${requestScope.seriesSetMap}">
+                                            <option value="${seriesSet.key}" label="${seriesSet.key}" <c:if test="${seriesSet.value}">selected</c:if>>${seriesSet.key}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                            </li>
+                        </ul>
+                    </fieldset>
                     <input id="page-controls-submit" type="submit" value="Submit"/><span id="page-controls-error"></span>
                 </fieldset>
             </form>
