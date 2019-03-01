@@ -2,9 +2,11 @@ package org.jlab.wfbrowser.presentation.controller.ajax;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -86,22 +88,25 @@ public class EventAjax extends HttpServlet {
         Boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
 
         String out = request.getParameter("out");
-        String output = "json";
-        if (out != null) {
-            switch (out) {
-                case "json":
-                    output = "json";
-                    break;
-                case "csv":
-                    output = "csv";
-                    break;
-                case "dygraph":
-                    output = "dygraph";
-                    break;
-                default:
-                    output = "json";
-            }
+        if (out == null) {
+            out = "";
         }
+//        String output = "json";
+//        if (out != null) {
+//            switch (out) {
+//                case "json":
+//                    output = "json";
+//                    break;
+//                case "csv":
+//                    output = "csv";
+//                    break;
+//                case "dygraph":
+//                    output = "dygraph";
+//                    break;
+//                default:
+//                    output = "json";
+//            }
+//        }
 
         if (eventIdList != null && eventIdList.isEmpty()) {
             response.setContentType("application/json");
@@ -190,38 +195,78 @@ public class EventAjax extends HttpServlet {
             }
         }
 
-        if (output.equals("json") || output.equals("dygraph")) {
-            JsonObjectBuilder job = Json.createObjectBuilder();
-            JsonArrayBuilder jab = Json.createArrayBuilder();
-            for (Event e : eventList) {
-                if (output.equals("json")) {
+        JsonObjectBuilder job;
+        JsonArrayBuilder jab;
+        switch (out) {
+            case "json":
+                job = Json.createObjectBuilder();
+                jab = Json.createArrayBuilder();
+                for (Event e : eventList) {
                     jab.add(e.toJsonObject(seriesMasterSet));
-                } else if (output.equals("dygraph")) {
+                }
+                job.add("events", jab.build());
+
+                response.setContentType("application/json");
+                try (PrintWriter pw = response.getWriter()) {
+                    pw.print(job.build().toString());
+                }
+                break;
+            case "dygraph":
+                job = Json.createObjectBuilder();
+                jab = Json.createArrayBuilder();
+                for (Event e : eventList) {
                     jab.add(e.toDyGraphJsonObject(seriesMasterSet));
                 }
-            }
-            job.add("events", jab.build());
+                job.add("events", jab.build());
 
-            response.setContentType("application/json");
-            try (PrintWriter pw = response.getWriter()) {
-                pw.print(job.build().toString());
-            }
-            return;
-        } else if (output.equals("csv")) {
-            response.setContentType("text/csv");
-            // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
-            // for now.  Only used to send over a single event to a dygraph chart widget.
-            try (PrintWriter pw = response.getWriter()) {
-                for (Event e : eventList) {
-                    if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
-                        pw.write(e.toCsv(seriesMasterSet));
-                    } else {
-                        pw.write("No data requested");
-                    }
-                    break;
+                response.setContentType("application/json");
+                try (PrintWriter pw = response.getWriter()) {
+                    pw.print(job.build().toString());
                 }
-            }
-            return;
+                break;
+            case "csv":
+                response.setContentType("text/csv");
+                // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
+                // for now.  Only used to send over a single event to a dygraph chart widget.
+                try (PrintWriter pw = response.getWriter()) {
+                    for (Event e : eventList) {
+                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+                            pw.write(e.toCsv(seriesMasterSet));
+                        } else {
+                            pw.write("No data requested");
+                        }
+                        break;
+                    }
+                }
+                break;
+            case "orig":
+                if (eventList.size() != 1) {
+                    response.setContentType("application/json");
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    try (PrintWriter pw = response.getWriter()) {
+                        pw.print("{'error': 'out=orig only defined for single event");
+                    }
+                    return;
+                }
+
+                Event e = eventList.get(0);
+                String filename = e.getSystem() + "_" + e.getLocation();
+                if (e.getClassification() != null && !e.getClassification().isEmpty()) {
+                    filename += "_" + e.getClassification();
+                }
+                filename += "_" + TimeUtil.getDateTimeString(e.getEventTime(), ZoneId.systemDefault()).replace(":", "").replace(" ", "_") + ".tar.gz";
+                response.setContentType("application/gzip");
+                response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+                try (OutputStream os = response.getOutputStream()) {
+                    e.streamCaptureFiles(os);
+                }
+                break;
+            default:
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                try (PrintWriter pw = response.getWriter()) {
+                    pw.print("{'error': 'unrecognized output format - " + out + "'");
+                }
         }
     }
 

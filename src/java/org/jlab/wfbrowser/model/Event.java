@@ -2,10 +2,13 @@ package org.jlab.wfbrowser.model;
 
 import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.time.Instant;
@@ -37,6 +40,9 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.apache.commons.compress.utils.IOUtils;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.CaptureFile.Metadata;
 
@@ -877,45 +883,50 @@ public class Event {
 
     /**
      * Generate a string label used by dygraph clients
-     * @param waveformName The name of the waveform for which we are producting a dygraph label
-     * @return 
+     *
+     * @param waveformName The name of the waveform for which we are producting
+     * a dygraph label
+     * @return
      */
     private String getDygraphLabel(String waveformName) {
         String label;
-        switch(system) {
+        switch (system) {
             case "rf":
                 label = waveformName.substring(0, 4);
                 break;
             case "acclrm":
-                label = waveformName.substring(7,10);
+                label = waveformName.substring(7, 10);
                 break;
             default:
                 throw new IllegalStateException("Unrecognized system - " + system);
         }
         return label;
     }
-    
-    /** Generate a numeric ID that can be used by dygraph clients to group related waveforms
-     * 
+
+    /**
+     * Generate a numeric ID that can be used by dygraph clients to group
+     * related waveforms
+     *
      */
     private long getDygraphId(String waveformName) {
         long id;
-        switch(system) {
+        switch (system) {
             case "rf":
-                id = Long.parseLong(waveformName.substring(3,4));
+                id = Long.parseLong(waveformName.substring(3, 4));
                 break;
             case "acclrm":
                 Map<String, Long> idMap = new HashMap<>();
                 idMap.put("CRY", 1L);
                 idMap.put("FLR", 2L);
                 idMap.put("LCW", 3L);
-                id = idMap.get(waveformName.substring(7,10));
+                id = idMap.get(waveformName.substring(7, 10));
                 break;
             default:
                 throw new IllegalStateException("Unrecognized system - " + system);
         }
         return id;
     }
+
     /**
      * Events are considered equal if all of the metadata about the event are
      * equal. We currently do not enforce equality of waveform data, only that
@@ -1205,6 +1216,57 @@ public class Event {
         }
         captureFileMap.get(captureFileName).addWaveform(waveform);
         updateWaveformsConsistency();
+    }
+
+    /**
+     * This method writes out the Event's capture file(s) in a tar.gz format. If
+     * grouped, the event directory is tar/gziped. If ungrouped, just the
+     * singular capture file is tar/gziped.
+     *
+     * @param os OutputStream to which the data should be written
+     * @throws java.io.FileNotFoundException
+     */
+    public void streamCaptureFiles(OutputStream os) throws FileNotFoundException, IOException {
+        if (!isDataOnDisk()) {
+            LOGGER.log(Level.SEVERE, "Could not locate data on disk");
+            throw new FileNotFoundException("Could not locate data on disk");
+        }
+
+        if (Files.exists(getArchivePath())) {
+            // The event is archived.  These are tar.gz files of either the single capture file or of the event directory
+            InputStream is = new FileInputStream(getArchivePath().toString());
+            int numRead;
+            byte[] b = new byte[8192];
+            while ((numRead = is.read(b)) != -1) {
+                os.write(b, 0, numRead);
+            }
+        } else {
+            // The event is not archived, i.e., it's not already in a tar.gz format.
+            try (TarArchiveOutputStream taos = new TarArchiveOutputStream(new GzipCompressorOutputStream(os))) {
+                File eventDir = this.getEventDirectoryPath().toFile();
+                String dirName = eventDir.getName();
+
+                // Add the event dir
+                TarArchiveEntry entry = new TarArchiveEntry(eventDir, dirName);
+                taos.putArchiveEntry(entry);
+                taos.closeArchiveEntry();
+
+                // Add the capture files
+                for (CaptureFile cf : captureFileMap.values()) {
+                    File file = Paths.get(eventDir.toString(), cf.getFilename()).toFile();
+                    
+                    // TarArchiveEntry wants a File object representing the file, plus a name field that is the relative path
+                    // of the entry in the archive.  This means the name field has to include the name of the event dir.
+                    entry = new TarArchiveEntry(file, Paths.get(eventDir.getName(), file.getName()).toString());
+                    taos.putArchiveEntry(entry);
+                    try (InputStream is = new FileInputStream(file)) {
+                        IOUtils.copy(is, taos);
+                    }
+                    taos.closeArchiveEntry();
+                }
+                taos.finish();
+            }
+        }
     }
 
 }

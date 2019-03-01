@@ -511,6 +511,19 @@ public class Graph extends HttpServlet {
         }
         JsonObject eventListJson = job.add("events", jab.build()).build();
 
+        // Create a system name meant for user consumption
+        String systemDisplay;
+        switch (system) {
+            case "rf":
+                systemDisplay = "RF";
+                break;
+            case "acclrm":
+                systemDisplay = "Accelerometer";
+                break;
+            default:
+                throw new IllegalArgumentException("No display name defined for system -" + system);
+        }
+
         request.setAttribute("begin", beginString);
         request.setAttribute("end", endString);
         request.setAttribute("locationSelections", locationSelections);
@@ -524,6 +537,7 @@ public class Graph extends HttpServlet {
         request.setAttribute("seriesSetMap", seriesSetMap);
         request.setAttribute("eventId", id);
         request.setAttribute("system", system);
+        request.setAttribute("systemDisplay", systemDisplay);
         request.setAttribute("eventListJson", eventListJson.toString());
         request.setAttribute("currentEvent", currentEvent == null ? "null" : currentEvent.toDyGraphJsonObject(seriesMasterSet).toString());
 

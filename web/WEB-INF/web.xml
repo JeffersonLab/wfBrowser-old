@@ -17,19 +17,19 @@
     </context-param>
     <context-param>
         <param-name>resourceVersionNumber</param-name>
-        <param-value>8</param-value>
+        <param-value>9</param-value>
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
-        <param-value>0.8</param-value>
+        <param-value>1.0</param-value>
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>Feb 21, 2019</param-value>
+        <param-value>Feb 28, 2019</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
-        <param-value>Anna Solopova (shabalin)</param-value>
+        <param-value>Anna Solopova (shabalin), Gary Croke (gcroke)</param-value>
     </context-param>
     <context-param>
         <param-name>technicalContact</param-name>
