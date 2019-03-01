@@ -273,10 +273,10 @@ public class EventAjax extends HttpServlet {
         String captureFile = request.getParameter("captureFile");
         response.setContentType("application/json");
 
-        if (datetime == null || location == null || system == null) {
+        if (datetime == null || location == null || system == null || classification == null || grouped == null) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                pw.write("{\"error\": \"Missing required argument.  Requires datetime, location, system\"}");
+                pw.write("{\"error\": \"Missing required argument.  Requires datetime, location, system, classification, grouped\"}");
             }
             return;
         }
