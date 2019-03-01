@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+firefox http://opsweb.acc.jlab.org/rf/waveforms/view
