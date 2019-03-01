@@ -713,29 +713,14 @@ jlab.wfb.validateForm = function () {
     var end = new Date(jlab.wfb.$endPicker.val());
     var day = 1000 * 60 * 60 * 24; // millis to days
     if (((end.getTime() - start.getTime()) / day) > 14) {
-        $err.append("<div id=range-dialog>Large date ranges can cause the interface to become sluggish.  Continue?</div>");
-        return $("#range-dialog").dialog({
-            resizable: false,
-            height: "auto",
-            width: 400,
-            modal: true,
-            buttons: {
-                "Continue": function () {
-                    $(this).dialog("close");
-                    return true;
-                },
-                "Cancel": function () {
-                    $(this).dialog("close");
-                    return false;
-                }
-            }
-        });
-//        $err.append("Date range cannot exceed two weeks.");
-//        return false;
+        var result = window.confirm("Large date ranges can cause the interface to become sluggish.  Continue?");
+        
+        if (result === false) {
+            return false;
+        }
     }
-
     // Everything passed the checks.  Return true;
-    return true;
+        return true;
 };
 
 
