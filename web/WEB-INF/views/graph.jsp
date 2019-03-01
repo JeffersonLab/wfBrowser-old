@@ -114,10 +114,10 @@
                     System View:
                     <ul>
                         <li${'rf' eq requestScope.system ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/graph?system=rf">RF</a>
+                            <a href="${pageContext.request.contextPath}/graph?system=rf&amp;begin=&amp;end=">RF</a>
                         </li>  
                         <li${'acclrm' eq requestScope.system ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/graph?system=acclrm">Accelerometer</a>
+                            <a href="${pageContext.request.contextPath}/graph?system=acclrm&amp;begin=&amp;end=">Accelerometer</a>
                         </li>  
                     </ul>
                 </nav>
