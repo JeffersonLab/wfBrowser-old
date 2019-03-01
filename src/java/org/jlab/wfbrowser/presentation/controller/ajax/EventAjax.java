@@ -43,8 +43,7 @@ public class EventAjax extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method. Used to query for "EventAjax"
-     * data as REST API end point.
+     * Allows users to query for event data
      *
      * @param request servlet request
      * @param response servlet response
@@ -255,8 +254,7 @@ public class EventAjax extends HttpServlet {
     }
 
     /**
-     * Handle logic for events to be added to waveform database. Part of REST
-     * API.
+     * Handle logic for events to be added to waveform database.
      *
      * @param request
      * @param response
@@ -313,6 +311,14 @@ public class EventAjax extends HttpServlet {
         }
     }
 
+    /**
+     * This method allows for modifying an existing event. The only currently
+     * allowed modifications are to the archive and delete flags.
+     *
+     * @param request
+     * @param response
+     * @throws IOException
+     */
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json");
