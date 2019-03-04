@@ -12,11 +12,14 @@ CUT='/bin/cut'
 CAT='/bin/cat'
 LS='/bin/ls'
 TR='/bin/tr'
+READLINK='/bin/readlink'
+DIRNAME='/bin/dirname'
 
 COOKIE_JAR=`$MKTEMP --suffix=-waveforms`
 
+SCRIPT_DIR=$($DIRNAME $($READLINK -f $0))
 data_dir=/usr/opsdata/waveforms/data/
-config_file="./curl.cfg"
+config_file="$SCRIPT_DIR/curl.cfg"
 SERVER="waveformstest.acc.jlab.org"
 SYSTEM_LIST='acclrm'
 
@@ -125,7 +128,7 @@ do
                         echo "POSTing $system/$location/$classification/$date/$time"
 
                         # Send the import request to the web service
-                        $CURL -b $COOKIE_JAR -X POST \
+                        $CURL -s -b $COOKIE_JAR -X POST \
                           -d datetime="$datef $timef" \
                           -d location="$location" \
                           -d system="$system" \
