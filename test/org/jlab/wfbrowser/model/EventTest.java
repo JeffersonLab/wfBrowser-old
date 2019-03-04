@@ -141,7 +141,7 @@ public class EventTest {
         es.addEvent(e1_grp_con_noclass_meta);
 
         // Delete every event in the test database.  It should just be the two added above
-        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null, null);
         List<Event> all = es.getEventList(filter);
         for (Event e : all) {
             es.deleteEvent(e.getEventId(), true);
@@ -169,6 +169,7 @@ public class EventTest {
                 + "\"location\":\"grouped-consistent\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
+                + "\"classification\":\"\","
                 + "\"captureFiles\":["
                 + "{\"filename\":\"test.2017_09_14_110000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test1\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.5,2.5,0.5]}]},"
                 + "{\"filename\":\"test2.2017_09_14_110000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
@@ -182,6 +183,7 @@ public class EventTest {
                 + "\"location\":\"grouped-consistent-meta\","
                 + "\"system\":\"test\","
                 + "\"archive\":false,"
+                + "\"classification\":\"\","
                 + "\"captureFiles\":["
                 + "{\"filename\":\"test.2017_09_14_100000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,"
                 + "\"metadata\":[{\"name\":\"PV1\",\"type\":\"NUMBER\",\"id\":null,\"value\":\"5.6\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2\",\"type\":\"STRING\",\"id\":null,\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3\",\"type\":\"UNAVAILABLE\",\"id\":null,\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4\",\"type\":\"UNARCHIVED\",\"id\":null,\"value\":null,\"offset\":null,\"start\":null}],"
@@ -208,13 +210,13 @@ public class EventTest {
                 + "\"waveforms\":["
                 + "{\"waveformName\":\"test1\","
                 + "\"dygraphLabel\":\"test\","
-                + "\"dygraphId\":\"t\","
+                + "\"dygraphId\":1,"
                 + "\"series\":[],"
                 + "\"dataPoints\":[1.5,2.5,0.5]"
                 + "},"
                 + "{\"waveformName\":\"test2\","
                 + "\"dygraphLabel\":\"test\","
-                + "\"dygraphId\":\"t\","
+                + "\"dygraphId\":2,"
                 + "\"series\":[],"
                 + "\"dataPoints\":[1.15,32.5,10.5]"
                 + "}"

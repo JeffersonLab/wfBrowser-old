@@ -29,9 +29,10 @@ public class EventFilter {
     private final String system;
     private final Boolean archive;
     private final Boolean delete;
+    private final Integer minCaptureFiles;
 
     /**
-     * Construct the basic filter object and save the individual filter values.
+     * Construct the basic filter object and save the individual filter values.  If minCaptureFiles != null, then query must join capture table with count(*) AS num_cf
      * Supply null if no filter is to be done on that field.
      *
      * @param eventIdList
@@ -42,9 +43,10 @@ public class EventFilter {
      * @param classificationList
      * @param archive
      * @param delete
+     * @param minCaptureFiles
      */
     public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, List<String> locationList, List<String> classificationList, Boolean archive,
-            Boolean delete) {
+            Boolean delete, Integer minCaptureFiles) {
         this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
@@ -53,6 +55,7 @@ public class EventFilter {
         this.classificationList = classificationList;
         this.archive = archive;
         this.delete = delete;
+        this.minCaptureFiles = minCaptureFiles;
     }
 
     /**
@@ -103,6 +106,9 @@ public class EventFilter {
         }
         if (delete != null) {
             filters.add("to_be_deleted = ?");
+        }
+        if (minCaptureFiles != null) {
+            filters.add("num_cf >= ?");
         }
 
         if (!filters.isEmpty()) {
@@ -155,6 +161,9 @@ public class EventFilter {
         }
         if (delete != null) {
             stmt.setInt(i++, delete ? 1 : 0);
+        }
+        if(minCaptureFiles != null) {
+            stmt.setInt(i++, minCaptureFiles);
         }
     }
 }

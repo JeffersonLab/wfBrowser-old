@@ -10,7 +10,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +67,12 @@ public class Graph extends HttpServlet {
 
         String eventId = request.getParameter("eventId");
         String system = request.getParameter("system");
+        String minCF = request.getParameter("minCF");
+        
+        Integer minCaptureFiles = null;
+        if (minCF != null && !minCF.isEmpty()) {
+            minCaptureFiles = Integer.parseInt(minCF);
+        }
 
         /* Basic strategy with these session attributes - if we get explicit request parameters, use them and update the session
          * copies.  If we don't get reuqest params, but we have the needed session attributes, use them and redirect.  If we don't
@@ -417,7 +422,7 @@ public class Graph extends HttpServlet {
                 // Query the event id with the other constraints that were determined so far (location, start/end, etc.).  If we don't get
                 // anything, then get the default entry for that set of constrains minus the event Id
                 id = Long.parseLong(eventId);
-                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, system, locationSelections, classificationSelections, null, null);
+                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
                 List<Event> currentEventList = es.getEventList(currentFilter);
                 if (currentEventList == null || currentEventList.isEmpty()) {
                     currentEvent = null;
@@ -434,7 +439,7 @@ public class Graph extends HttpServlet {
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
             try {
-                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null);
+                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
                 currentEvent = es.getMostRecentEvent(eFilter);
 
                 // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
@@ -457,7 +462,7 @@ public class Graph extends HttpServlet {
         // Get a list of events that are to be displayed in the timeline - should not be in session since this might change
         List<Event> eventList;
         try {
-            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null);
+            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
             eventList = es.getEventListWithoutCaptureFiles(eFilter);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
@@ -482,6 +487,9 @@ public class Graph extends HttpServlet {
             }
             for (String seriesSet : seriesSetSelections) {
                 redirectUrl += "&seriesSet=" + URLEncoder.encode(seriesSet, "UTF-8");
+            }
+            if (minCaptureFiles != null) {
+                redirectUrl += "&minCF=" + URLEncoder.encode(minCaptureFiles.toString(), "UTF-8");
             }
 
             response.sendRedirect(response.encodeRedirectURL(redirectUrl));
@@ -536,6 +544,7 @@ public class Graph extends HttpServlet {
         request.setAttribute("seriesMap", seriesMap);
         request.setAttribute("seriesSetMap", seriesSetMap);
         request.setAttribute("eventId", id);
+        request.setAttribute("minCF", minCF == null ? "" : minCF.toString());
         request.setAttribute("system", system);
         request.setAttribute("systemDisplay", systemDisplay);
         request.setAttribute("eventListJson", eventListJson.toString());

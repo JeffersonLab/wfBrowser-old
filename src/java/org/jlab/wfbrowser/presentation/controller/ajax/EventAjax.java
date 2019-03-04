@@ -88,7 +88,13 @@ public class EventAjax extends HttpServlet {
 
         String out = request.getParameter("out");
         if (out == null) {
-            out = "";
+            out = "json";
+        }
+
+        String minCF = request.getParameter("minCF");
+        Integer minCaptureFiles = null;
+        if (minCF != null && ! minCF.isEmpty()) {
+            minCaptureFiles = Integer.parseInt(minCF);
         }
 
         if (eventIdList != null && eventIdList.isEmpty()) {
@@ -137,18 +143,18 @@ public class EventAjax extends HttpServlet {
             seriesMasterSet.addAll(seriesList);
         }
 
-        EventService wfs = new EventService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete);
+        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete, minCaptureFiles);
 
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.
         List<Event> eventList;
         try {
+            EventService es = new EventService();
             if (includeData) {
-                eventList = wfs.getEventList(filter, null, includeData);
+                eventList = es.getEventList(filter, null, includeData);
             } else {
-                eventList = wfs.getEventListWithoutCaptureFiles(filter);
+                eventList = es.getEventListWithoutCaptureFiles(filter);
             }
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database", ex);
@@ -248,7 +254,7 @@ public class EventAjax extends HttpServlet {
                 response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 try (PrintWriter pw = response.getWriter()) {
-                    pw.print("{'error': 'unrecognized output format - " + out + "'");
+                    pw.print("{'error':'unrecognized output format - " + out + "'}");
                 }
         }
     }
@@ -300,7 +306,7 @@ public class EventAjax extends HttpServlet {
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
             }
-        } catch (SQLException|IOException|IllegalArgumentException e) {
+        } catch (SQLException | IOException | IllegalArgumentException e) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");

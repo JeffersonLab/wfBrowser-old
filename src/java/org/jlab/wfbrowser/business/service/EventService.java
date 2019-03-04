@@ -223,7 +223,12 @@ public class EventService {
      */
     public Long getMostRecentEventId(EventFilter filter) throws SQLException {
         Long out = null;
-        String sql = "SELECT event_id FROM event JOIN system_type ON event.system_id = system_type.system_id";
+        String sql = "SELECT event_id FROM ("
+                + " SELECT *, count(*) AS num_cf FROM event"
+                + " JOIN system_type ON event.system_id = system_type.system_id"
+                + " JOIN capture ON event.event_id = capture.event_id"
+                + " GROUP BY event_id"
+                + " ) AS t";
         if (filter != null) {
             sql += filter.getWhereClause();
         }
@@ -486,9 +491,12 @@ public class EventService {
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_id,event_time_utc,location,system_type.system_name,archive,to_be_deleted,grouped,classification"
-                    + " FROM event"
-                    + " JOIN system_type USING(system_id) ";
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_name,archive,to_be_deleted,grouped,classification"
+                    + " FROM (SELECT *, count(*) AS num_cf FROM event"
+                    + " JOIN system_type USING(system_id)"
+                    + " JOIN capture USING(event_id)"
+                    + " GROUP BY event_id"
+                    + " ) AS t ";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
             }
@@ -812,9 +820,13 @@ public class EventService {
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_type.system_name,classification,grouped"
+        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_name,classification,grouped"
+                + " FROM (SELECT *, COUNT(*) as num_cf"
                 + " FROM event"
-                + " JOIN system_type USING(system_id)";
+                + " JOIN system_type USING(system_id)"
+                + " JOIN capture USING(event_id)"
+                + " GROUP BY event_id"
+                + " ) AS t ";
         try {
             conn = SqlUtil.getConnection();
             if (filter != null) {
@@ -824,6 +836,7 @@ public class EventService {
             if (filter != null) {
                 filter.assignParameterValues(pstmt);
             }
+            System.out.println(sql);
             rs = pstmt.executeQuery();
             long eventId;
             Instant eventTime;

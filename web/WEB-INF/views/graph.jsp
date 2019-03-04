@@ -150,20 +150,46 @@
                                 </div>
                             </li>
                         </ul>
-                        <c:if test="${requestScope.system == 'acclrm'}">
-                            <ul class="key-value-list">
-                                <li>
-                                    <div class="li-key"><label for="classification">Classification</label></div>
-                                    <div class="li-value">
-                                        <select id="classification-selector" name="classification" multiple>
-                                            <c:forEach var="cls" items="${requestScope.classificationMap}">
-                                                <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
-                                            </c:forEach>
-                                        </select>
-                                    </div>
-                                </li>
-                            </ul>
-                        </c:if>
+                        <c:choose>
+                            <c:when test="${requestScope.system == 'acclrm'}">
+                                <ul class="key-value-list">
+                                    <li>
+                                        <div class="li-key"><label for="classification">Classification</label></div>
+                                        <div class="li-value">
+                                            <select id="classification-selector" name="classification" multiple>
+                                                <c:forEach var="cls" items="${requestScope.classificationMap}">
+                                                    <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
+                                                </c:forEach>
+                                            </select>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </c:when>
+                            <c:when test="${requestScope.system == 'rf'}">
+                                <ul class="key-value-list">
+                                    <li>
+                                        <div class="li-key"><label for="minCF">Min #Files</label></div>
+                                        <div class="li-value">
+                                            <input type="text" name="minCF" value="${requestScope.minCF}">
+                                        </div>
+                                    </li>
+                                </ul>
+                            </c:when>
+                        </c:choose>
+                        <%--<c:if test="${requestScope.system == 'acclrm'}">--%>
+                        <!--<ul class="key-value-list">-->
+                        <!--<li>-->
+                        <!--<div class="li-key"><label for="classification">Classification</label></div>-->
+                        <!--<div class="li-value">-->
+                        <!--<select id="classification-selector" name="classification" multiple>-->
+                        <%--<c:forEach var="cls" items="${requestScope.classificationMap}">--%>
+                            <!--<option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>-->
+                        <%--</c:forEach>--%>
+                        <!--</select>-->
+                        <!--</div>-->
+                        <!--</li>-->
+                        <!--</ul>-->
+                        <%--</c:if>--%>
                     </fieldset>
                     <fieldset>
                         <legend>Graph</legend>

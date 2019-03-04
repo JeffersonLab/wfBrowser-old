@@ -901,6 +901,10 @@ public class Event {
             case "acclrm":
                 label = waveformName.substring(7, 10);
                 break;
+            case "test":
+                // Used in test suites.
+                label = waveformName.substring(0, 4);
+                break;
             default:
                 throw new IllegalStateException("Unrecognized system - " + system);
         }
@@ -925,6 +929,10 @@ public class Event {
                 idMap.put("LCW", 3L);
                 id = idMap.get(waveformName.substring(7, 10));
                 break;
+            case "test":
+                // used in test suites
+                id = Long.parseLong(waveformName.substring(4, 5));
+                break;            
             default:
                 throw new IllegalStateException("Unrecognized system - " + system);
         }
