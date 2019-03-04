@@ -280,6 +280,9 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
     for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
         url += "&location=" + jlab.wfb.locationSelections[i];
     }
+    if ( jlab.wfb.minCF !== "") {
+        url += "&minCF=" + jlab.wfb.minCF;
+    }
 
     // Update the current state of the window so that should a user navigate away, the back button will return them to the last currently displayed event.
     window.history.replaceState(null, null, url);
@@ -766,6 +769,7 @@ $(function () {
 
     var timelineDiv = document.getElementById("timeline-container");
     jlab.wfb.timeline = jlab.wfb.makeTimeline(timelineDiv, groups, items);
+    jlab.wfb.timeline.setOptions({'zoomKey': 'ctrlKey'});
 
     if (typeof jlab.wfb.currentEvent === "object" && typeof jlab.wfb.currentEvent.id === "number") {
         jlab.wfb.loadNewGraphs(jlab.wfb.currentEvent);

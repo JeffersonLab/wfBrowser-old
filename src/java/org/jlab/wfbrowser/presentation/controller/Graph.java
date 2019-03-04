@@ -544,7 +544,7 @@ public class Graph extends HttpServlet {
         request.setAttribute("seriesMap", seriesMap);
         request.setAttribute("seriesSetMap", seriesSetMap);
         request.setAttribute("eventId", id);
-        request.setAttribute("minCF", minCF == null ? "" : minCF.toString());
+        request.setAttribute("minCF", minCaptureFiles);
         request.setAttribute("system", system);
         request.setAttribute("systemDisplay", systemDisplay);
         request.setAttribute("eventListJson", eventListJson.toString());
