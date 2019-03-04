@@ -281,32 +281,30 @@ public class EventAjax extends HttpServlet {
             return;
         }
 
+        String userName = request.getUserPrincipal().getName();
+
         Instant t = TimeUtil.getInstantFromDateTimeString(datetime);
         EventService wfs = new EventService();
+        String kvp;
         try {
 
             Boolean arch = Boolean.parseBoolean(archive);
             Boolean del = Boolean.parseBoolean(delete);
             Boolean grp = Boolean.parseBoolean(grouped);
+            kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" + t.toString() + " grp=" + grp
+                    + " arc=" + arch + " del=" + del + " cFile=" + captureFile;
+            LOGGER.log(Level.INFO, "User ''{0}'' attempting to add event {1}", new Object[]{userName, kvp});
             Event event = new Event(t, location, system, arch, del, grp, classification, captureFile);
             long id = wfs.addEvent(event);
+            LOGGER.log(Level.INFO, "Event addition succeeded");
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
             }
-        } catch (SQLException e) {
+        } catch (SQLException|IOException|IllegalArgumentException e) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");
-            }
-        } catch (IOException e) {
-            try (PrintWriter pw = response.getWriter()) {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                pw.write("{\"error\": \"Problem adding event - " + e.toString() + "\"}");
-            }
-        } catch (IllegalArgumentException e) {
-            try (PrintWriter pw = response.getWriter()) {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                pw.write("{\"error\": \"Problem adding event - " + e.toString() + "\"}");
+                LOGGER.log(Level.INFO, "Event addition failed - {0}", new Object[]{e.toString()});
             }
         }
     }

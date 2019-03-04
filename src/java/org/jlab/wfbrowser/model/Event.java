@@ -497,11 +497,15 @@ public class Event {
         } else if (Files.exists(eventDir)) {
             exists = true;
             for (String file : captureFiles) {
+
                 if (!Files.exists(eventDir.resolve(file))) {
+                    LOGGER.log(Level.WARNING, "Could not find file on disk - {0}", eventDir.resolve(file));
                     exists = false;
                     break;
                 }
             }
+        } else {
+            LOGGER.log(Level.WARNING, "Could not find archive file ''{0}'' or event directory ''{1}''", new Object[]{archiveFile, eventDir});
         }
 
         return exists;
@@ -1254,7 +1258,7 @@ public class Event {
                 // Add the capture files
                 for (CaptureFile cf : captureFileMap.values()) {
                     File file = Paths.get(eventDir.toString(), cf.getFilename()).toFile();
-                    
+
                     // TarArchiveEntry wants a File object representing the file, plus a name field that is the relative path
                     // of the entry in the archive.  This means the name field has to include the name of the event dir.
                     entry = new TarArchiveEntry(file, Paths.get(eventDir.getName(), file.getName()).toString());
