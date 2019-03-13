@@ -130,7 +130,7 @@
                         <legend>Timeline</legend>
                         <ul class="key-value-list">
                             <li>
-                                <div class="li-key"><label class="required-field" for="begin" title="Earliest time to display.">Start</label></div>
+                                <div class="li-key"><label class="required-field" for="begin" title="Earliest time to display">Start</label></div>
                                 <div class="li-value"><input type="text" id="start-date-picker" class="date-time-field" name="begin" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
                             </li>
                             <li>
@@ -168,7 +168,7 @@
                             <c:when test="${requestScope.system == 'rf'}">
                                 <ul class="key-value-list">
                                     <li>
-                                        <div class="li-key"><label for="minCF" title="Include events with at least this many cavities. Empty implies no filter.">Min #Cavities</label></div>
+                                        <div class="li-key"><label for="minCF" title="Include events with data for at least this many cavities. Empty implies no filter.">Min #Cavities</label></div>
                                         <div class="li-value">
                                             <input type="text" name="minCF" value="${requestScope.minCF}">
                                         </div>
