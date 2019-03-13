@@ -106,3 +106,8 @@
     color: red;
     font-weight: bold;
 }
+
+/* Remove button padding - its a problem in in FF */
+button {
+    padding: 1px;
+}
