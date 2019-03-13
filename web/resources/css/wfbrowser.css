@@ -111,3 +111,9 @@
 button {
     padding: 1px;
 }
+
+#version-info {
+    font-size: x-small;
+    text-align: right;
+    padding-right: 8px;
+}

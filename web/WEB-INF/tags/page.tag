@@ -69,6 +69,7 @@
                 <div id="content-liner">
                     <jsp:doBody/>
                 </div>
+                <div id="version-info">Version: ${initParam.releaseNumber}, Released: ${initParam.releaseDate}</div>
             </div>
         </div>
         <script type="text/javascript" src="${initParam.cdnContextPath}/jquery/1.10.2.min.js"></script>
