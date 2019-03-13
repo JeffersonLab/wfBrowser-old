@@ -8,7 +8,8 @@
 <c:set var="currentPath" scope="request" value="${requestScope['javax.servlet.forward.servlet_path']}"/>
 <!DOCTYPE html>
 <html>
-    <head>        
+    <head>
+        <meta name="google" content="notranslate">
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <title><c:out value="${initParam.appShortName}"/> - ${title}</title>
         <link rel="shortcut icon" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/img/logo16x16.png"/>
