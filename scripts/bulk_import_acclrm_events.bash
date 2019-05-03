@@ -88,7 +88,7 @@ if [ $AUTH == 1 ] ; then
     $CURL  -s -c $COOKIE_JAR -L -K $config_file "$login_url" > /dev/null
     exit_val=$?
     if [ $exit_val -ne 0 ] ; then
-        echo "Error authenticating to $server.  Received error code $exit_val.  Exiting"
+        echo "Error authenticating to $SERVER.  Received error code $exit_val.  Exiting"
         exit 1
     else
         echo "Successfully authenticated to $SERVER"
