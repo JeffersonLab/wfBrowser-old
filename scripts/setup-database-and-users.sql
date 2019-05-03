@@ -277,11 +277,11 @@ CREATE TABLE series_set_contents (
 */
 
 CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON * TO 'waveforms_owner';
+GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
 CREATE USER 'waveforms_writer' IDENTIFIED BY 'passowrd';
-GRANT SELECT,UPDATE,INSERT,DELETE ON * to 'waveforms_writer';
+GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'waveforms_writer';
 CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
-GRANT SELECT ON * TO 'waveforms_reader';
+GRANT SELECT ON waveforms.* TO 'waveforms_reader';
 
 INSERT INTO system_type (system_name) VALUES ('rf');
 
