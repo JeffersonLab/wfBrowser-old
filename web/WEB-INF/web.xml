@@ -17,15 +17,15 @@
     </context-param>
     <context-param>
         <param-name>resourceVersionNumber</param-name>
-        <param-value>9</param-value>
+        <param-value>11</param-value>
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
-        <param-value>1.0</param-value>
+        <param-value>1.1.2</param-value>
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>Feb 28, 2019</param-value>
+        <param-value>March 13, 2018</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
@@ -37,7 +37,7 @@
     </context-param>
     <context-param>
         <param-name>documentationUrl</param-name>
-        <param-value>https://devweb.acc.jlab.org/twiki/bin/view/SWDocs</param-value>
+        <param-value>https://accwiki.acc.jlab.org/do/view/AHLA/WaveformBrowser#User_Guide</param-value>
     </context-param>
     <filter>
         <filter-name>UrlRewriteFilter</filter-name>

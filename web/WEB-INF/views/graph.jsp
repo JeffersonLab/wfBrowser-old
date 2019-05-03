@@ -108,16 +108,16 @@
                 <h2 id="page-header-title"><c:out value="${title}"/></h2>
                 <div id="help-container">
                     <button class="help">Help</button>
-                    <div class='help-dialog' style='display: none;'>TIMELINE CONTROLS<hr>Zoom: Shift-Scroll<br>Pan: Click-Drag<br>Select Event: Click</div>
+                    <div class='help-dialog' style='display: none;'>TIMELINE CONTROLS<hr>Zoom: Control-Scroll<br>Pan: Click-Drag<br>Select Event: Click</div>
                 </div>
                 <nav class="secondary-nav-horizontal">
                     System View:
                     <ul>
                         <li${'rf' eq requestScope.system ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/graph?system=rf">RF</a>
+                            <a href="${pageContext.request.contextPath}/graph?system=rf&amp;begin=&amp;end=">RF</a>
                         </li>  
                         <li${'acclrm' eq requestScope.system ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/graph?system=acclrm">Accelerometer</a>
+                            <a href="${pageContext.request.contextPath}/graph?system=acclrm&amp;begin=&amp;end=">Accelerometer</a>
                         </li>  
                     </ul>
                 </nav>
@@ -126,66 +126,84 @@
             <form id="page-contrlols-form" method="GET" action="${pageContext.request.contextPath}/graph" autocomplete="off">
                 <input type="hidden" name="system" value="${requestScope.system}"/>
                 <fieldset>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label class="required-field" for="begin">Start</label></div>
-                            <div class="li-value"><input type="text" id="start-date-picker" class="date-time-field" name="begin" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
-                        </li>
-                        <li>
-                            <div class="li-key"><label class="required-field" for="end">End</label></div>
-                            <div class="li-value"><input type="text" id="end-date-picker" class="date-time-field" name="end" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
-                        </li>
-                    </ul>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label class="required-field" for="locations">Zone</label></div>
-                            <div class="li-value">
-                                <select id="location-selector" name="location" multiple>
-                                    <c:forEach var="location" items="${requestScope.locationMap}">
-                                        <option value="${location.key}" label="${location.key}" <c:if test="${location.value}">selected</c:if>>${location.key}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                        </li>
-                    </ul>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label for="series">Series</label></div>
-                            <div class="li-value">
-                                <select id="series-selector" name="series" multiple>
-                                    <c:forEach var="series" items="${requestScope.seriesMap}">
-                                        <option value="${series.key}" label="${series.key}" <c:if test="${series.value}">selected</c:if>>${series.key}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                        </li>
-                    </ul>
-                    <ul class="key-value-list">
-                        <li>
-                            <div class="li-key"><label for="series-sets">Series Sets</label></div>
-                            <div class="li-value">
-                                <select id="series-set-selector" name="seriesSet" multiple>
-                                    <c:forEach var="seriesSet" items="${requestScope.seriesSetMap}">
-                                        <option value="${seriesSet.key}" label="${seriesSet.key}" <c:if test="${seriesSet.value}">selected</c:if>>${seriesSet.key}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                        </li>
-                    </ul>
-                    <c:if test="${requestScope.system == 'acclrm'}">
+                    <fieldset>
+                        <legend>Timeline</legend>
                         <ul class="key-value-list">
                             <li>
-                                <div class="li-key"><label for="classification">Classification</label></div>
+                                <div class="li-key"><label class="required-field" for="begin" title="Earliest time to display">Start</label></div>
+                                <div class="li-value"><input type="text" id="start-date-picker" class="date-time-field" name="begin" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
+                            </li>
+                            <li>
+                                <div class="li-key"><label class="required-field" for="end" title="Latest time to display.">End</label></div>
+                                <div class="li-value"><input type="text" id="end-date-picker" class="date-time-field" name="end" placeholder="yyyy-mm-dd HH:mm:ss.S"/></div>
+                            </li>
+                        </ul>
+                        <ul class="key-value-list">
+                            <li>
+                                <div class="li-key"><label class="required-field" for="locations" title="Include on the following locations.">Zone</label></div>
                                 <div class="li-value">
-                                    <select id="classification-selector" name="classification" multiple>
-                                        <c:forEach var="cls" items="${requestScope.classificationMap}">
-                                            <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
+                                    <select id="location-selector" name="location" multiple>
+                                        <c:forEach var="location" items="${requestScope.locationMap}">
+                                            <option value="${location.key}" label="${location.key}" <c:if test="${location.value}">selected</c:if>>${location.key}</option>
                                         </c:forEach>
                                     </select>
                                 </div>
                             </li>
                         </ul>
-                    </c:if>
+                        <c:choose>
+                            <c:when test="${requestScope.system == 'acclrm'}">
+                                <ul class="key-value-list">
+                                    <li>
+                                        <div class="li-key"><label for="classification" title="Include only events with the following classification(s).  Emply implies no filter">Classification</label></div>
+                                        <div class="li-value">
+                                            <select id="classification-selector" name="classification" multiple>
+                                                <c:forEach var="cls" items="${requestScope.classificationMap}">
+                                                    <option value="${cls.key}" label="${cls.key}" <c:if test="${cls.value}">selected</c:if>>${cls.key}</option>
+                                                </c:forEach>
+                                            </select>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </c:when>
+                            <c:when test="${requestScope.system == 'rf'}">
+                                <ul class="key-value-list">
+                                    <li>
+                                        <div class="li-key"><label for="minCF" title="Include events with data for at least this many cavities. Empty implies no filter.">Min #Cavities</label></div>
+                                        <div class="li-value">
+                                            <input type="text" name="minCF" value="${requestScope.minCF}">
+                                        </div>
+                                    </li>
+                                </ul>
+                            </c:when>
+                        </c:choose>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Graph</legend>
+                        <ul class="key-value-list">
+                            <li>
+                                <div class="li-key"><label for="series" title="Show charts for these series below.">Series</label></div>
+                                <div class="li-value">
+                                    <select id="series-selector" name="series" multiple>
+                                        <c:forEach var="series" items="${requestScope.seriesMap}">
+                                            <option value="${series.key}" label="${series.key}" <c:if test="${series.value}">selected</c:if>>${series.key}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                            </li>
+                        </ul>
+                        <ul class="key-value-list">
+                            <li>
+                                <div class="li-key"><label for="series-sets" title="Show charts for these named sets of series below.">Series Sets</label></div>
+                                <div class="li-value">
+                                    <select id="series-set-selector" name="seriesSet" multiple>
+                                        <c:forEach var="seriesSet" items="${requestScope.seriesSetMap}">
+                                            <option value="${seriesSet.key}" label="${seriesSet.key}" <c:if test="${seriesSet.value}">selected</c:if>>${seriesSet.key}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                            </li>
+                        </ul>
+                    </fieldset>
                     <input id="page-controls-submit" type="submit" value="Submit"/><span id="page-controls-error"></span>
                 </fieldset>
             </form>
@@ -203,6 +221,7 @@
             jlab.wfb.system = "${requestScope.system}";
             jlab.wfb.eventArray = ${requestScope.eventListJson};
             jlab.wfb.eventArray = jlab.wfb.eventArray.events;
+            jlab.wfb.minCF = "${requestScope.minCF}";
             jlab.wfb.currentEvent = ${requestScope.currentEvent} || {}
             ;
                     jlab.wfb.seriesSelections = [<c:forEach var="series" items="${seriesSelections}" varStatus="status">'${series}'<c:if test="${!status.last}">,</c:if></c:forEach>];

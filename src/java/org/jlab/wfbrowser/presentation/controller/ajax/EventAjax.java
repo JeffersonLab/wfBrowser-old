@@ -43,8 +43,7 @@ public class EventAjax extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method. Used to query for "EventAjax"
-     * data as REST API end point.
+     * Allows users to query for event data
      *
      * @param request servlet request
      * @param response servlet response
@@ -89,24 +88,14 @@ public class EventAjax extends HttpServlet {
 
         String out = request.getParameter("out");
         if (out == null) {
-            out = "";
+            out = "json";
         }
-//        String output = "json";
-//        if (out != null) {
-//            switch (out) {
-//                case "json":
-//                    output = "json";
-//                    break;
-//                case "csv":
-//                    output = "csv";
-//                    break;
-//                case "dygraph":
-//                    output = "dygraph";
-//                    break;
-//                default:
-//                    output = "json";
-//            }
-//        }
+
+        String minCF = request.getParameter("minCF");
+        Integer minCaptureFiles = null;
+        if (minCF != null && ! minCF.isEmpty()) {
+            minCaptureFiles = Integer.parseInt(minCF);
+        }
 
         if (eventIdList != null && eventIdList.isEmpty()) {
             response.setContentType("application/json");
@@ -154,18 +143,18 @@ public class EventAjax extends HttpServlet {
             seriesMasterSet.addAll(seriesList);
         }
 
-        EventService wfs = new EventService();
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete);
+        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete, minCaptureFiles);
 
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.
         List<Event> eventList;
         try {
+            EventService es = new EventService();
             if (includeData) {
-                eventList = wfs.getEventList(filter, null, includeData);
+                eventList = es.getEventList(filter, null, includeData);
             } else {
-                eventList = wfs.getEventListWithoutCaptureFiles(filter);
+                eventList = es.getEventListWithoutCaptureFiles(filter);
             }
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database", ex);
@@ -265,14 +254,13 @@ public class EventAjax extends HttpServlet {
                 response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 try (PrintWriter pw = response.getWriter()) {
-                    pw.print("{'error': 'unrecognized output format - " + out + "'");
+                    pw.print("{'error':'unrecognized output format - " + out + "'}");
                 }
         }
     }
 
     /**
-     * Handle logic for events to be added to waveform database. Part of REST
-     * API.
+     * Handle logic for events to be added to waveform database.
      *
      * @param request
      * @param response
@@ -291,39 +279,50 @@ public class EventAjax extends HttpServlet {
         String captureFile = request.getParameter("captureFile");
         response.setContentType("application/json");
 
-        if (datetime == null || location == null || system == null) {
+        if (datetime == null || location == null || system == null || classification == null || grouped == null) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                pw.write("{\"error\": \"Missing required argument.  Requires datetime, location, system\"}");
+                pw.write("{\"error\": \"Missing required argument.  Requires datetime, location, system, classification, grouped\"}");
             }
             return;
         }
 
+        String userName = request.getUserPrincipal().getName();
+
         Instant t = TimeUtil.getInstantFromDateTimeString(datetime);
         EventService wfs = new EventService();
+        String kvp;
         try {
 
             Boolean arch = Boolean.parseBoolean(archive);
             Boolean del = Boolean.parseBoolean(delete);
             Boolean grp = Boolean.parseBoolean(grouped);
+            kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" + t.toString() + " grp=" + grp
+                    + " arc=" + arch + " del=" + del + " cFile=" + captureFile;
+            LOGGER.log(Level.INFO, "User ''{0}'' attempting to add event {1}", new Object[]{userName, kvp});
             Event event = new Event(t, location, system, arch, del, grp, classification, captureFile);
             long id = wfs.addEvent(event);
+            LOGGER.log(Level.INFO, "Event addition succeeded");
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"id\": \"" + id + "\", \"message\": \"Waveform event successfully added to database\"}");
             }
-        } catch (SQLException e) {
+        } catch (SQLException | IOException | IllegalArgumentException e) {
             try (PrintWriter pw = response.getWriter()) {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");
-            }
-        } catch (IOException e) {
-            try (PrintWriter pw = response.getWriter()) {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                pw.write("{\"error\": \"Problem adding event - " + e.toString() + "\"}");
+                LOGGER.log(Level.INFO, "Event addition failed - {0}", new Object[]{e.toString()});
             }
         }
     }
 
+    /**
+     * This method allows for modifying an existing event. The only currently
+     * allowed modifications are to the archive and delete flags.
+     *
+     * @param request
+     * @param response
+     * @throws IOException
+     */
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json");

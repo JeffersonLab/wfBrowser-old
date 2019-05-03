@@ -280,6 +280,9 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
     for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
         url += "&location=" + jlab.wfb.locationSelections[i];
     }
+    if ( jlab.wfb.minCF !== "") {
+        url += "&minCF=" + jlab.wfb.minCF;
+    }
 
     // Update the current state of the window so that should a user navigate away, the back button will return them to the last currently displayed event.
     window.history.replaceState(null, null, url);
@@ -713,46 +716,18 @@ jlab.wfb.validateForm = function () {
     var end = new Date(jlab.wfb.$endPicker.val());
     var day = 1000 * 60 * 60 * 24; // millis to days
     if (((end.getTime() - start.getTime()) / day) > 14) {
-        $err.append("<div id=range-dialog>Large date ranges can cause the interface to become sluggish.  Continue?</div>");
-        return $("#range-dialog").dialog({
-            resizable: false,
-            height: "auto",
-            width: 400,
-            modal: true,
-            buttons: {
-                "Continue": function () {
-                    $(this).dialog("close");
-                    return true;
-                },
-                "Cancel": function () {
-                    $(this).dialog("close");
-                    return false;
-                }
-            }
-        });
-//        $err.append("Date range cannot exceed two weeks.");
-//        return false;
-    }
+        var result = window.confirm("Large date ranges can cause the interface to become sluggish.  Continue?");
 
+        if (result === false) {
+            return false;
+        }
+    }
     // Everything passed the checks.  Return true;
     return true;
 };
 
 
 $(function () {
-    // Setup the groups for the timeline
-    var groupArray = new Array(jlab.wfb.locationSelections.length);
-    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
-        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
-    }
-    var groups = new vis.DataSet(groupArray);
-
-// Setup the items for the timeline
-    var itemArray = new Array(jlab.wfb.eventArray.length);
-    for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
-        itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
-    }
-    var items = new vis.DataSet(itemArray);
 
     var select2Options = {
         width: "15em"
@@ -776,17 +751,26 @@ $(function () {
         $helpDialog.toggle({duration: 0});
     });
 
-
     $("#page-controls-submit").on("click", jlab.wfb.validateForm);
 
+    // Setup the groups for the timeline
+    var groupArray = new Array(jlab.wfb.locationSelections.length);
+    for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
+        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
+    }
+    var groups = new vis.DataSet(groupArray);
 
-
-
+    // Setup the items for the timeline
+    var itemArray = new Array(jlab.wfb.eventArray.length);
+    for (var i = 0; i < jlab.wfb.eventArray.length; i++) {
+        itemArray[i] = jlab.wfb.eventToItem(jlab.wfb.eventArray[i]);
+    }
+    var items = new vis.DataSet(itemArray);
 
     var timelineDiv = document.getElementById("timeline-container");
     jlab.wfb.timeline = jlab.wfb.makeTimeline(timelineDiv, groups, items);
+    jlab.wfb.timeline.setOptions({'zoomKey': 'ctrlKey'});
 
-    console.log(typeof jlab.wfb.currentEvent);
     if (typeof jlab.wfb.currentEvent === "object" && typeof jlab.wfb.currentEvent.id === "number") {
         jlab.wfb.loadNewGraphs(jlab.wfb.currentEvent);
     } else {
