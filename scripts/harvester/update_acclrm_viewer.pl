@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use File::Path qw(make_path);
 use File::Basename;
+use Cwd qw(abs_path);
 use Data::Dumper;
 
 # This tool takes one argument, the path to a capture file containing
@@ -11,8 +12,8 @@ use Data::Dumper;
 # the require components of a wfbrowser event, and calls a script that
 # POSTs to the wfbrowser webservice end point for adding the event.
 
-my $script_version = "v1.0";
-my $script_dir = dirname(__FILE__);
+my $script_version = "v1.0.1";
+my $script_dir = dirname(abs_path(__FILE__));
 my $Rscript = "/usr/csite/pubtools/bin/Rscript";
 my $addEvent = $script_dir . "/add_event.bash";
 

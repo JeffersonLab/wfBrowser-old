@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use File::Path qw(make_path);
 use File::Basename;
+use Cwd qw(abs_path);
 use Data::Dumper;
 
 # This tool takes one argument, the directory path to a folder containing a set
@@ -12,8 +13,8 @@ use Data::Dumper;
 # view folder, then calls an R script to handle the generation of interactive
 # graphs that are saved to the filesystem as html files.
 
-my $script_version = "v1.0";
-my $script_dir = dirname(__FILE__);
+my $script_version = "v1.0.1";
+my $script_dir = dirname(abs_path(__FILE__));
 my $Rscript = "/usr/csite/pubtools/bin/Rscript";
 my $wfGrapher = $script_dir . "/wfGrapher.R";
 my $addEvent = $script_dir . "/add_event.bash";
