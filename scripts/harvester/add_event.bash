@@ -27,19 +27,20 @@ curl_config="${SCRIPT_DIR}/../cfg/add_event1.0.cfg"
 
 # Server to post to
 #SERVER="waveforms.acc.jlab.org"
-SERVER="waveformstest.acc.jlab.org"
-#SERVER="sftadamc2.acc.jlab.org:8181"
+#SERVER="waveformstest.acc.jlab.org"
+SERVER="sftadamc2.acc.jlab.org:8181"
 
 usage () {
     cat - <<EOF
 Usage: $0 [-h] <-s <system>> <-l <location>> <-c <classification>>
-          <-t <date_time>> <-g <is_grouped>>
+          <-t <date_time>> <-g <is_grouped>> <-f <filename>>
 -h                   Show this help message
 -s <system>          System name. Ex. rf
 -l <location>        Location name.  Ex. 1L22
 -c <classification>  Classification. Ex. periodic
 -t <date_time>       Event timestamp. Ex. "2018-12-01 15:30:05.1"
 -g <is_grouped>      Is event a group of capture files (true/false)
+-f <file_name>       The name of the capture file to import
 
 This script POSTs to the wfbrowser web service to request the addition
 of an event specified by the above arguments.  The data should be on
