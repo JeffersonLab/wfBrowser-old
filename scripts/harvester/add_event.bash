@@ -15,7 +15,7 @@ DIRNAME='/usr/bin/dirname'
 SCRIPT_DIR=$($DIRNAME "$0")
 
 # Which version of the script is this.  Needed to comply with certified rules
-SCRIPT_VERSION='v1.1'
+SCRIPT_VERSION='v1.1.1'
 
 # Who to notifiy in case of error
 #EMAIL_ADDRESS='accharvester@jlab.org'
@@ -23,12 +23,12 @@ EMAIL_ADDRESS='adamc@jlab.org'
 
 # CURL parameters
 COOKIE_JAR=`$MKTEMP --suffix=-waveforms`
-curl_config="${SCRIPT_DIR}/../cfg/add_event1.0.cfg"
+curl_config="${SCRIPT_DIR}/../../cfg/add_event1.0.cfg"
 
 # Server to post to
 #SERVER="waveforms.acc.jlab.org"
-#SERVER="waveformstest.acc.jlab.org"
-SERVER="sftadamc2.acc.jlab.org:8181"
+SERVER="waveformstest.acc.jlab.org"
+#SERVER="sftadamc2.acc.jlab.org:8181"
 
 usage () {
     cat - <<EOF
