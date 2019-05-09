@@ -13,15 +13,12 @@ use Data::Dumper;
 # view folder, then calls an R script to handle the generation of interactive
 # graphs that are saved to the filesystem as html files.
 
-my $script_version = "v1.0.1";
+my $script_version = "v1.1";
 my $script_dir = dirname(abs_path(__FILE__));
-my $Rscript = "/usr/csite/pubtools/bin/Rscript";
-my $wfGrapher = $script_dir . "/wfGrapher.R";
 my $addEvent = $script_dir . "/add_event.bash";
 
 if ( $#ARGV == -1 ) {
   print "update_rf_viewer.pl $script_version\n";
-  print `$Rscript $wfGrapher`;
   print `$addEvent`;
   exit;
 }
@@ -54,31 +51,16 @@ my $location = pop @dir_path;
 my $sys  = pop @dir_path;
 my $topdir = pop @dir_path;
 
-my $view_base = join('/', @dir_path) . "/view";
-if ( ! -d $view_base ) {
-  mkdir $view_base or die "Error couldn't create directory $view_base: $!\n";
-}
-
-my $view_path = "$view_base/$sys/$location/$date";
-make_path("$view_path");
-
-# Now run external commands to generate static html plots and update the 
-# waveform browser database
+# Update the waveform browser database
 my $exit_val = 0;
-
-my @cmd = ($Rscript, $wfGrapher, $data_path, $view_path, "$script_dir/../cfg");
-my $e_val = system(@cmd);
-if ( $e_val != 0 ) {
-    print "wfGrapher.R script exited with errors: $!\n";
-    $exit_val = 1;
-}
+my $e_val = 0;
 
 my $eTime = $time;
 my $eDate = $date;
 $eTime =~ s/(\d\d)(\d\d)(\d\d)(.*)/$1:$2:$3$4/;
 $eDate =~ s/_/-/g;
 my $eventTime = $eDate . " " . $eTime;
-@cmd = ($addEvent, '-s', $sys, '-l', $location, '-c', $classification, '-t', $eventTime, '-g', $grouped, '-f', "");
+my @cmd = ($addEvent, '-s', $sys, '-l', $location, '-c', $classification, '-t', $eventTime, '-g', $grouped, '-f', "");
 $e_val = system(@cmd);
 if ( $e_val != 0 ) {
     print "add_event.bash script exited with errors: $!\n";
