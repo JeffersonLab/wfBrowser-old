@@ -27,7 +27,6 @@ AGE="+120"
   -maxdepth 1 \
   -type f \
   -mtime ${AGE} \
-  -print \
   -execdir /bin/bash -c 'if [ ! -e '{}.tar.gz' ] ; then /bin/tar -czf '{}.tar.gz' '{}'; else /bin/false ; fi' \; \
   -execdir /bin/rm -f {} \;
 
