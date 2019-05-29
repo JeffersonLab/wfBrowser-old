@@ -9,8 +9,7 @@ export PATH="/bin:/usr/bin"
 # we instead want to compress the data after 3 months.
 
 # System data directory
-#SYS_DIR=/usr/opsdata/waveforms/data/rf
-SYS_DIR=/data/waveforms/data/rf
+SYS_DIR=/usr/opsdata/waveforms/data/rf
 # Age at which we want to compress - anything 93 days or older
 AGE="+93"
 
