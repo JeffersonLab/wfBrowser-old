@@ -125,8 +125,8 @@ public class Graph extends HttpServlet {
         SeriesService ss = new SeriesService();
         SeriesFilter sFilter = new SeriesFilter(null, system, null);
         SeriesSetFilter ssFilter = new SeriesSetFilter(null, system, null);
-        List<Series> seriesOptions = new ArrayList<>();
-        List<SeriesSet> seriesSetOptions = new ArrayList<>();
+        List<Series> seriesOptions;
+        List<SeriesSet> seriesSetOptions;
         try {
             seriesOptions = ss.getSeries(sFilter);
             seriesSetOptions = ss.getSeriesSets(ssFilter);
@@ -244,7 +244,6 @@ public class Graph extends HttpServlet {
         List<String> seriesSetSelections;
         switch (seriesCase) {
             case "request":
-                System.out.println("request case");
                 seriesSetSelections = new ArrayList<>();
                 if (serSetSel != null) {
                     // Only keep valid seriesSet options
@@ -328,6 +327,10 @@ public class Graph extends HttpServlet {
         try {
             locationOptions = es.getLocationNames(Arrays.asList(system));
             Collections.sort(locationOptions);
+            if (locationOptions.isEmpty()) {
+                LOGGER.log(Level.SEVERE, "Error. No location options found.  Consider adding events.");
+                throw new ServletException("Error. No location options found.  Consider adding events.");
+            }
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for location information.", ex);
             throw new ServletException("Error querying database for location information.");
@@ -350,7 +353,7 @@ public class Graph extends HttpServlet {
             locationSelections = (List<String>) session.getAttribute("graphLocationSelections");
             Iterator it = locationSelections.iterator();
             while (it.hasNext()) {
-                if (locationOptions.contains((String) it.next())) {
+                if (locationOptions.contains(it.next())) {
                     it.remove();
                 }
             }
@@ -367,7 +370,6 @@ public class Graph extends HttpServlet {
             locationMap.put(location, locationSelections.contains(location));
         }
 
-        // TODO: Add getClassification section for options, selections, and the map
         List<String> classificationOptions;
         try {
             classificationOptions = es.getClassifications(Arrays.asList(system));
@@ -394,7 +396,7 @@ public class Graph extends HttpServlet {
             classificationSelections = (List<String>) session.getAttribute("graphClassificationSelections");
             Iterator it = classificationSelections.iterator();
             while (it.hasNext()) {
-                if (classificationOptions.contains((String) it.next())) {
+                if (classificationOptions.contains(it.next())) {
                     it.remove();
                 }
             }
