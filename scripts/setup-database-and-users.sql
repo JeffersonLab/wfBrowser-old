@@ -286,7 +286,7 @@ CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
 GRANT SELECT ON waveforms.* TO 'waveforms_reader';
 
 INSERT INTO system_type (system_name) VALUES ('rf') ;
-INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'R%GSET', 'GSET', 'All cavities\' GSET');
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'R%GMES', 'GMES', 'All cavities\' GMES');
 
 
 /*
