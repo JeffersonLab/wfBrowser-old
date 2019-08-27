@@ -22,8 +22,8 @@ USE waveformstest;
 */
 
 /*
-###### For production #########
 */
+###### For production #########
 DROP USER 'waveforms_owner';
 DROP USER 'waveforms_writer';
 DROP USER 'waveforms_reader';
@@ -115,10 +115,12 @@ CREATE TABLE capture_meta (
   capture_id bigint(20) NOT NULL, 
   meta_name varchar(63) NOT NULL, 
   `type` ENUM('number', 'string', 'unarchived', 'unavailable') NOT NULL, 
-  value varchar(63), offset DOUBLE, 
-  `start` DOUBLE, PRIMARY KEY (`meta_id`), 
+  value varchar(63),
+  offset DOUBLE,
+  `start` DOUBLE,
+  PRIMARY KEY (`meta_id`),
   UNIQUE KEY `cf_meta` (`capture_id`, `meta_name`, `offset`),
-  FOREIGN KEY fk_capture_id (capture_id)
+  FOREIGN KEY fk_capture_id_2 (capture_id)
     REFERENCES capture (`capture_id`)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -146,7 +148,7 @@ CREATE TABLE event_tag (
   tag_id bigint NOT NULL,
   PRIMARY KEY (`event_tag_id`),
   UNIQUE KEY `event_tag` (`event_id`, `tag_id`),
-  FOREIGN KEY fk_event_id (event_id)
+  FOREIGN KEY fk_event_id_2 (event_id)
     REFERENCES event (`event_id`)
     ON DELETE CASCADE,
   FOREIGN KEY fk_tag_id (tag_id)
@@ -230,7 +232,7 @@ CREATE TABLE series (
   UNIQUE KEY `series_name` (series_name),
   INDEX i_series_name(series_name),
   PRIMARY KEY (series_id),
-  FOREIGN KEY fk_system_id (system_id)
+  FOREIGN KEY fk_system_id_2 (system_id)
     REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -245,7 +247,7 @@ CREATE TABLE series_sets (
   UNIQUE KEY `set_name` (set_name),
   INDEX i_set_name (set_name),
   PRIMARY KEY (set_id),
-  FOREIGN KEY fk_system_id (system_id)
+  FOREIGN KEY fk_system_id_3 (system_id)
     REFERENCES system_type (system_id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -273,17 +275,18 @@ CREATE TABLE series_set_contents (
  */
 
 /*
-####### FOR PRODUCTION -- update passwords ########
 */
+####### FOR PRODUCTION -- update passwords ########
 
 CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
-CREATE USER 'waveforms_writer' IDENTIFIED BY 'passowrd';
+CREATE USER 'waveforms_writer' IDENTIFIED BY 'password';
 GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'waveforms_writer';
 CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
 GRANT SELECT ON waveforms.* TO 'waveforms_reader';
 
-INSERT INTO system_type (system_name) VALUES ('rf');
+INSERT INTO system_type (system_name) VALUES ('rf') ;
+INSERT INTO series (system_id, pattern, series_name, description) VALUES(1, 'R%GSET', 'GSET', 'All cavities\' GSET');
 
 
 /*
