@@ -685,6 +685,9 @@ public class Event {
         double[][] data;
 
         List<Waveform> wfList = getWaveforms(seriesSet);
+        if (wfList.isEmpty()) {
+            throw new RuntimeException("Error: No waveforms found for this event matching the requested series.");
+        }
         if (areWaveformsConsistent) {
             // 2D array for hold csv content - [rows][columns]
             //  number of points only since we aren't including headers, +1 columns because of the time_offset column
@@ -1029,7 +1032,6 @@ public class Event {
      * set of txt files. This method uses the Event's List of CaptureFile
      * objects to know which files to parse.
      *
-     * @param eventArchive
      * @param includeData boolean for whether or not the waveforms should
      * include their data
      * @return
@@ -1101,7 +1103,6 @@ public class Event {
      * data. This process leads to the time column being stored multiple times
      * as each Waveform object stores its own time/value data.
      *
-     * @param wis An input stream providing the waveform data in TSV format
      * @param includeData flag for whether or not the data and not just headers
      * should be parsed
      * @return The list of waveforms that were contained in the input stream.
@@ -1193,7 +1194,6 @@ public class Event {
      * Parses all of the data files in the specified event directory. Uses the
      * provided list of filenames to know which files to process
      *
-     * @param eventDir
      * @param includeData Should the waveform objects include the data points or
      * only the header information
      * @return A List of Waveform objects representing the contents of the data
