@@ -5,3 +5,4 @@
 /lib/nblibraries.properties
 /build.xml
 *.dmp
+*.iml
