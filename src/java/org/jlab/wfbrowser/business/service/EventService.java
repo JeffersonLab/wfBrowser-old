@@ -2,11 +2,7 @@ package org.jlab.wfbrowser.business.service;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,14 +17,17 @@ import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
 import org.jlab.wfbrowser.model.CaptureFile.Metadata;
 import org.jlab.wfbrowser.model.CaptureFile.MetadataType;
 import org.jlab.wfbrowser.model.Event;
+import org.jlab.wfbrowser.model.Label;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.Waveform;
 
 /**
+ * A class for querying Events from the database.
  *
  * @author adamc
  */
 public class EventService {
+    // Note: Suppressing SqlUnused IDE warnings for this class the filter classes hide possible usages.
 
     private static final Logger LOGGER = Logger.getLogger(EventService.class.getName());
 
@@ -40,10 +39,10 @@ public class EventService {
      * @param e The Event to add to the database
      * @return The eventId of the new entry in the database corresponding to the
      * row in the event table.
-     * @throws FileNotFoundException
-     * @throws SQLException
+     * @throws IOException If problems arise while checking or accessing data on disk
+     * @throws SQLException If problems arise while accessing data from database
      */
-    public long addEvent(Event e) throws FileNotFoundException, SQLException, IOException {
+    public long addEvent(Event e) throws SQLException, IOException {
         if (!e.isDataOnDisk()) {
             throw new FileNotFoundException("Cannot add event to database if data is missing from disk.  Directory '"
                     + e.getEventDirectoryPath().toString() + "' or '" + e.getArchivePath().toString() + "' not found.");
@@ -86,7 +85,9 @@ public class EventService {
                 throw new RuntimeException("Error querying database for system ID");
             }
 
-            String insertEventSql = "INSERT INTO event (event_time_utc, location, system_id, archive, to_be_deleted, grouped, classification) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            String insertEventSql = "INSERT INTO event " +
+                    "(event_time_utc, location, system_id, archive, to_be_deleted, grouped, classification) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             pstmt = conn.prepareStatement(insertEventSql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setString(1, e.getEventTimeString());
@@ -112,6 +113,29 @@ public class EventService {
                 throw new RuntimeException("Error querying database for last inserted event_id");
             }
             pstmt.close();
+
+            // Insert label information
+            if (e.getLabel() != null) {
+                Label l = e.getLabel();
+                String labelSql = "INSERT INTO label " +
+                        "(event_id, model_name, cavity_label, cavity_confidence, fault_label, fault_confidence) " +
+                        "VALUES(?, ?, ?, ?, ?, ?)";
+                pstmt = conn.prepareStatement(labelSql);
+                pstmt.setLong(1, eventId);
+                pstmt.setString(2, l.getModelName());
+                pstmt.setString(3,l.getCavityLabel());
+                pstmt.setDouble(4,l.getCavityConfidence());
+                pstmt.setString(5, l.getFaultLabel());
+                pstmt.setDouble(6,l.getFaultConfidence());
+
+                // Insert the label record and rollback if we didn't add one row.
+                n = pstmt.executeUpdate();
+                if (n != 1) {
+                    conn.rollback();
+                    LOGGER.log(Level.SEVERE, "Error inserting label information.  Rolling back.");
+                    throw new SQLException("Error inserting label information.  Rolling back.");
+                }
+            }
 
             // Make sure we the event has capture files to add
             Map<String, CaptureFile> captureFileMap = e.getCaptureFileMap();
@@ -176,7 +200,7 @@ public class EventService {
                         pstmt.setString(3, m.getType().toString());
                         switch (m.getType()) {
                             case NUMBER:
-                                pstmt.setString(4, ((Double) m.getValue()).toString());
+                                pstmt.setString(4, m.getValue().toString());
                                 pstmt.setDouble(5, m.getStart());
                                 pstmt.setDouble(6, m.getOffset());
                                 break;
@@ -217,9 +241,9 @@ public class EventService {
     /**
      * Get the most recent event ID in the database given the applied filter
      *
-     * @param filter
-     * @return
-     * @throws SQLException
+     * @param filter An EventFilter parameter providing a finer selection of the data returned
+     * @return The most recent event ID that matches the filter requirements
+     * @throws SQLException If problems arise while accessing data in database
      */
     public Long getMostRecentEventId(EventFilter filter) throws SQLException {
         Long out = null;
@@ -257,13 +281,13 @@ public class EventService {
      * Get the most recent event in the database given the applied filter.
      * Includes data
      *
-     * @param filter
-     * @return
-     * @throws SQLException
-     * @throws java.io.IOException
+     * @param filter An event filter for narrowing down the acceptable Event responses
+     * @return The most recent event passing the filter
+     * @throws SQLException If problems arise accessing database
+     * @throws IOException If problems arise accessing waveform data on disk
      */
     public Event getMostRecentEvent(EventFilter filter) throws SQLException, IOException {
-        List<Event> eventList = getEventList(filter, 1l, true);
+        List<Event> eventList = getEventList(filter, 1L, true);
         Event out = null;
         if (!eventList.isEmpty()) {
             out = eventList.get(0);
@@ -277,28 +301,28 @@ public class EventService {
      * @param systemList A list of systems to filter on. Null or empty list
      * means do no filtering
      * @return A list of the unique location names
-     * @throws SQLException
+     * @throws SQLException If problems arise accessing data on disk
      */
     public List<String> getLocationNames(List<String> systemList) throws SQLException {
         List<String> out = new ArrayList<>();
-        String sql = "SELECT DISTINCT location"
+        StringBuilder sql = new StringBuilder("SELECT DISTINCT location"
                 + " FROM event"
-                + " JOIN system_type ON event.system_id = system_type.system_id";
+                + " JOIN system_type ON event.system_id = system_type.system_id");
         if (systemList != null && !systemList.isEmpty()) {
-            sql += " WHERE system_name IN (?";
+            sql.append(" WHERE system_name IN (?");
             for (int i = 1; i < systemList.size(); i++) {
-                sql += ",?";
+                sql.append(",?");
             }
-            sql += ")";
+            sql.append(")");
         }
-        sql += " ORDER BY location";
+        sql.append(" ORDER BY location");
 
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
         try {
             conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
+            pstmt = conn.prepareStatement(sql.toString());
             if (systemList != null && !systemList.isEmpty()) {
                 for (int i = 1; i <= systemList.size(); i++) {
                     pstmt.setString(i, systemList.get(i - 1));
@@ -321,28 +345,28 @@ public class EventService {
      * Get a list of classifications associated with a system or list of systems
      * @param systemList A list of system names
      * @return A list of classifications
-     * @throws SQLException 
+     * @throws SQLException If problems arise accessing the database
      */
     public List<String> getClassifications(List<String> systemList) throws SQLException {
         List<String> out = new ArrayList<>();
-        String sql = "SELECT DISTINCT classification"
+        StringBuilder sql = new StringBuilder("SELECT DISTINCT classification"
                 + " FROM event"
-                + " JOIN system_type ON event.system_id = system_type.system_id";
+                + " JOIN system_type ON event.system_id = system_type.system_id");
         if (systemList != null && !systemList.isEmpty()) {
-            sql += " WHERE system_name IN (?";
+            sql.append(" WHERE system_name IN (?");
             for (int i = 1; i < systemList.size(); i++) {
-                sql += ",?";
+                sql.append(",?");
             }
-            sql += ")";
+            sql.append(")");
         }
-        sql += " ORDER BY classification";
+        sql.append(" ORDER BY classification");
 
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
         try {
             conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
+            pstmt = conn.prepareStatement(sql.toString());
             if (systemList != null && !systemList.isEmpty()) {
                 for (int i = 1; i <= systemList.size(); i++) {
                     pstmt.setString(i, systemList.get(i - 1));
@@ -368,7 +392,7 @@ public class EventService {
      * named series
      * @return A list of the names of the series that are available for the
      * specified events
-     * @throws SQLException
+     * @throws SQLException If problems arise while accessing the database
      */
     public List<Series> getSeries(List<Long> eventIdList) throws SQLException {
         List<Series> out = new ArrayList<>();
@@ -379,16 +403,16 @@ public class EventService {
         // This is a little complex.  Perform a subquery / derived table on the event IDs to cut down on the amount of data we process.
         // Then join on the series and event_waveforms tables where the waveform name (PV) matches the specified pattern.  This should
         // only return rowns where we had a non-zero number of matches.
-        String sql = "SELECT series_name, series_id, system_name, pattern, description, units, COUNT(*) FROM"
-                + " (SELECT * FROM event_waveforms WHERE event_id IN (?";
+        StringBuilder sql = new StringBuilder("SELECT series_name, series_id, system_name, pattern, description, units, COUNT(*) FROM"
+                + " (SELECT * FROM event_waveforms WHERE event_id IN (?");
         for (int i = 1; i < eventIdList.size(); i++) {
-            sql += ",?";
+            sql.append(",?");
         }
-        sql += ")) derived_table"
+        sql.append(")) derived_table"
                 + " JOIN series ON derived_table.waveform_name LIKE series.pattern"
                 + " JOIN system_type ON series.system_id = system_type.system_id"
                 + " GROUP BY series_name"
-                + " ORDER BY series_name ";
+                + " ORDER BY series_name ");
 
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -396,7 +420,7 @@ public class EventService {
 
         try {
             conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
+            pstmt = conn.prepareStatement(sql.toString());
             for (int i = 1; i <= eventIdList.size(); i++) {
                 // prepared statement parameters are 1-indexed, but lists are 0-indexed
                 pstmt.setLong(i, eventIdList.get(i - 1));
@@ -422,10 +446,10 @@ public class EventService {
      * Returns the event object mapping to the event records with eventId from
      * the database. Simple wrapper that has no limit and includes data.
      *
-     * @param filter
-     * @return
-     * @throws SQLException
-     * @throws java.io.IOException
+     * @param filter EventFilter for narrowing down the acceptable rannge of Events
+     * @return The List of Events that meet the filter requirements
+     * @throws SQLException If problems arise while accessing the database
+     * @throws IOException If problems arise while accessing data on disk
      */
     public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
         return getEventList(filter, null, true);
@@ -434,9 +458,9 @@ public class EventService {
     /**
      * Returns a map of waveform names to common series names for a given event.
      *
-     * @param eventId
-     * @return
-     * @throws java.sql.SQLException
+     * @param eventId The ID of the event for which to return the waveform to series mapping.
+     * @return A map of waveform names to their corresponding series names
+     * @throws SQLException If trouble arises while accessing the database
      */
     public Map<String, String> getWaveformToSeriesMap(long eventId) throws SQLException {
         Map<String, String> waveformToSeries = new HashMap<>();
@@ -469,13 +493,13 @@ public class EventService {
      * Returns the event object mapping to the event records with eventId from
      * the database.
      *
-     * @param filter
+     * @param filter EventFilter for narrowing down which Events are returned
      * @param limit How many events to return. Null for unlimited
      * @param includeData Whether the events should include waveform data read
      * from disk
-     * @return
-     * @throws SQLException
-     * @throws java.io.IOException
+     * @return The list of Events that match the filter criteria ordered by event time.
+     * @throws SQLException If problems arise accessing the database
+     * @throws IOException If problems arise accessing waveform data on disk
      */
     public List<Event> getEventList(EventFilter filter, Long limit, boolean includeData) throws SQLException, IOException {
         Connection conn = null;
@@ -483,19 +507,23 @@ public class EventService {
         ResultSet rs = null;
 
         List<Event> eventList = new ArrayList<>();
-        Long eventId;
-        Instant eventTime;
-        String location, system, classification;
-        Boolean archive, delete, grouped;
+        long eventId;
+        Instant eventTime, labelTime;
+        String location, system, classification, cavityLabel, faultLabel, modelName;
+        Double cavityConfidence, faultConfidence;
+        boolean archive, delete, grouped;
+        Long labelId;
 
         try {
             conn = SqlUtil.getConnection();
 
-            String getEventSql = "SELECT event_id,event_time_utc,location,system_name,archive,to_be_deleted,grouped,classification"
+            String getEventSql = "SELECT event_id,event_time_utc,location,system_name,archive,to_be_deleted,grouped,classification," +
+                    "label_id,model_name,label_time_utc,cavity_label,cavity_confidence,fault_label,fault_confidence"
                     + " FROM (SELECT *, count(*) AS num_cf FROM event"
-                    + " JOIN system_type USING(system_id)"
-                    + " JOIN capture USING(event_id)"
-                    + " GROUP BY event_id"
+                    + "   JOIN system_type USING(system_id)"
+                    + "   JOIN capture USING(event_id)"
+                    + "   LEFT JOIN label USING(event_id)"
+                    + "   GROUP BY event_id"
                     + " ) AS t ";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
@@ -512,19 +540,36 @@ public class EventService {
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
-                eventTime = TimeUtil.getInstantFromDateTime(rs);
+                eventTime = TimeUtil.getInstantFromSQLDateTime(rs, "event_time_utc");
                 location = rs.getString("location");
                 system = rs.getString("system_name");
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
                 grouped = rs.getBoolean("grouped");
                 classification = rs.getString("classification");
+                labelId = rs.getLong("label_id");
+                modelName = rs.getString("model_name");
+                labelTime = TimeUtil.getInstantFromSQLDateTime(rs,"label_time_utc");
+                cavityLabel = rs.getString("cavity_label");
+                cavityConfidence = rs.getDouble("cavity_confidence");
+                faultLabel = rs.getString("fault_label");
+                faultConfidence = rs.getDouble("fault_confidence");
 
-                if (eventId == null || location == null || system == null || archive == null || grouped == null) {
+                if ( location == null || system == null ) {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, grouped, classification));
+
+                    // An event may or may not have an associated label.  If it does, there will be a label ID.  If not,
+                    // the LEFT JOIN will return null for all of the label table fields.  IDE warnings are wrong here.
+                    Label label = null;
+                    if (labelId != null) {
+                        label = new Label(labelId, labelTime, modelName, cavityLabel, faultLabel,
+                                cavityConfidence, faultConfidence);
+                    }
+                    // Add the event to the list
+                    eventList.add(new Event(eventId, eventTime, location, system, archive, delete, grouped,
+                            classification, label));
                 }
             }
             rs.close();
@@ -594,13 +639,10 @@ public class EventService {
                                 value = Double.valueOf(rs.getString("value"));
                                 break;
                             case STRING:
-                                value = rs.getString("value");
-                                break;
                             case UNAVAILABLE:
-                                value = rs.getString("value"); // Should be null
-                                break;
                             case UNARCHIVED:
-                                value = rs.getString("value"); // Should be null
+                                // Should be null
+                                value = rs.getString("value");
                                 break;
                             default:
                                 throw new SQLException("Error getting capture file metadata from database- unexpected MetadataType");
@@ -639,13 +681,13 @@ public class EventService {
                     String description = rs.getString("description");
                     String units = rs.getString("units");
                     if (waveformToSeries.get(waveformName) == null) {
-                        waveformToSeries.put(waveformName, new ArrayList<Series>());
+                        waveformToSeries.put(waveformName, new ArrayList<>());
                     }
                     waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                 }
                 rs.close();
 
-                // Have the event apply the serires mapping
+                // Have the event apply the series mapping
                 e.applySeriesMapping(waveformToSeries);
             }
             pstmt.close();
@@ -667,11 +709,11 @@ public class EventService {
      * Updates the to_be_deleted flag on the specified event in the waveform
      * database
      *
-     * @param eventId
+     * @param eventId ID of the event to modify
      * @param delete The logical value of the to_be_deleted database flag
      * @return The number of rows affected. Should only ever be one since
      * eventId should be the primary key.
-     * @throws SQLException
+     * @throws SQLException If problems arise while accessing the database
      */
     public int setEventDeleteFlag(long eventId, boolean delete) throws SQLException {
         Connection conn = null;
@@ -698,10 +740,10 @@ public class EventService {
      * it only searches for events that have the to_be_deleted flag set, but
      * there is an optional force setting that just searches for the event_id.
      *
-     * @param eventId
+     * @param eventId The ID of the event to be deleted
      * @param force Delete the event even if the to_be_deleted flag is not set
-     * @return
-     * @throws SQLException
+     * @return The number of rows modified
+     * @throws SQLException If problems arise while accessing the database
      */
     public int deleteEvent(long eventId, boolean force) throws SQLException {
         Connection conn = null;
@@ -725,6 +767,60 @@ public class EventService {
         return rowsAffected;
     }
 
+    public void setEventLabel(long eventId, Label label, boolean force) throws SQLException {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        String deleteSql = "DELETE FROM label WHERE event_id = ?";
+
+        String insertSql = "INSERT INTO label " +
+                "(event_id, model_name, cavity_label, cavity_confidence, fault_label, fault_confidence) " +
+                "VALUES(?, ?, ?, ?, ?, ?)";
+
+        try {
+            conn = SqlUtil.getConnection();
+
+            // If we may delete the older data, make sure we can roll back if the new label fails to insert.
+            if (force) {
+                conn.setAutoCommit(false);
+            }
+
+            // Delete the existing label for the given ID
+            if (force) {
+                pstmt = conn.prepareStatement(deleteSql);
+                pstmt.setLong(1, eventId);
+                pstmt.executeUpdate();
+                pstmt.close();
+            }
+
+            // Add the new label
+            try {
+                pstmt = conn.prepareStatement(insertSql);
+                pstmt.setLong(1, eventId);
+                pstmt.setString(2, label.getModelName());
+                pstmt.setString(3, label.getCavityLabel());
+                pstmt.setDouble(4, label.getCavityConfidence());
+                pstmt.setString(5, label.getFaultLabel());
+                pstmt.setDouble(6, label.getFaultConfidence());
+                pstmt.executeUpdate();
+            } catch (SQLException ex) {
+                // If the insert failed, then rollback.  If nothing was deleted, then there is no harm, and if something
+                // was deleted earlier, we get it back.
+                if (force) {
+                    conn.rollback();
+                }
+                throw ex;
+            }
+
+            // Commit the updates since we are not in autocomit mode.
+            if (force) {
+                conn.commit();
+            }
+        } finally {
+            SqlUtil.close(pstmt,conn);
+        }
+    }
+
     /**
      * Set the archive flag on an event in the database.
      *
@@ -732,7 +828,7 @@ public class EventService {
      * @param archive The value of the archive flag (true is set, false is
      * unset)
      * @return The number of rows affected (should always be 1/0)
-     * @throws SQLException
+     * @throws SQLException If problems arise while accessing the database
      */
     public int setEventArchiveFlag(long eventId, boolean archive) throws SQLException {
         Connection conn = null;
@@ -764,18 +860,17 @@ public class EventService {
     /**
      * Add a list of events to the database.
      *
-     * @param eventList
-     * @return
-     * @throws SQLException
-     * @throws java.io.FileNotFoundException
+     * @param eventList A list of Events to be added to the database
+     * @return The number of events added to the database
+     * @throws SQLException If problems arise while accessing the database
+     * @throws IOException If problems arise while accessing the waveform data on disk
      */
-    public int addEventList(List<Event> eventList) throws SQLException, FileNotFoundException, IOException {
-        long eventId;
+    public int addEventList(List<Event> eventList) throws SQLException, IOException {
         int numAdded = 0;
         for (Event e : eventList) {
             if (e != null) {
-                // eventId is an autoincremented primary key starting at 1.  It should never be < 0
-                eventId = addEvent(e);
+                // eventId is an auto-incremented primary key starting at 1.  It should never be < 0
+                addEvent(e);
                 numAdded++;
             }
         }
@@ -785,10 +880,10 @@ public class EventService {
     /**
      * Set the to_be_deleted flag on the specified events in the database.
      *
-     * @param eventIds
+     * @param eventIds List of IDs of events to modify
      * @param delete Logical value of the to_be_deleted flag set in the database
      * @return The number of affected events in the database
-     * @throws SQLException
+     * @throws SQLException If problems arise while accessing the database
      */
     public int setEventDeleteFlag(List<Long> eventIds, boolean delete) throws SQLException {
         int numDeleted = 0;
@@ -803,16 +898,40 @@ public class EventService {
     }
 
     /**
+     * Method for deleting the label associated an event
+     * @param eventId The database ID of the event to delete
+     * @return The number of rows updated
+     * @throws SQLException If a problem arises while accessing the database
+     */
+    public int deleteEventLabel(long eventId) throws SQLException {
+        String sql = "DELETE FROM label where event_id = ?";
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        int n;
+        try {
+            conn = SqlUtil.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setLong(1, eventId);
+            n = pstmt.executeUpdate();
+        } finally {
+            SqlUtil.close(conn, pstmt);
+        }
+
+        return n;
+    }
+
+    /**
      * Get a list of events from the database matching the specified filter.
      * Useful for querying what events exist without the overhead of
      * transferring all of the actual waveform data around. Only includes high
      * level information about the event which can be useful for determining
      * timelines, etc.
      *
-     * @param filter
-     * @return A list of events
-     * @throws SQLException
-     * @throws java.io.IOException
+     * @param filter EventFilter for narrowing down the which events are returned
+     * @return A list of events that do not contain waveform data
+     * @throws SQLException If problems arise while accessing the database
+     * @throws IOException If problems arise while accessing waveform data from disk
      */
     public List<Event> getEventListWithoutCaptureFiles(EventFilter filter) throws SQLException, IOException {
         List<Event> events = new ArrayList<>();
@@ -820,11 +939,13 @@ public class EventService {
         PreparedStatement pstmt = null;
         ResultSet rs = null;
 
-        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_name,classification,grouped"
+        String sql = "SELECT event_id,event_time_utc,location,archive,to_be_deleted,system_name,classification,grouped," +
+                "label_id,model_name,label_time_utc,cavity_label,cavity_confidence,fault_label,fault_confidence"
                 + " FROM (SELECT *, COUNT(*) as num_cf"
                 + " FROM event"
                 + " JOIN system_type USING(system_id)"
                 + " JOIN capture USING(event_id)"
+                + " LEFT JOIN label USING(event_id)"
                 + " GROUP BY event_id"
                 + " ) AS t ";
         try {
@@ -836,23 +957,47 @@ public class EventService {
             if (filter != null) {
                 filter.assignParameterValues(pstmt);
             }
-            System.out.println(sql);
+
             rs = pstmt.executeQuery();
             long eventId;
-            Instant eventTime;
-            String location, system, classification;
-            Boolean archive, delete, grouped;
+            Instant eventTime, labelTime;
+            String location, system, classification, modelName, cavityLabel, faultLabel;
+            boolean archive, delete, grouped;
+            Long labelId;
+            Double cavityConfidence, faultConfidence;
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
-                eventTime = TimeUtil.getInstantFromDateTime(rs);
+                eventTime = TimeUtil.getInstantFromSQLDateTime(rs, "event_time_utc");
                 system = rs.getString("system_name");
                 location = rs.getString("location");
                 archive = rs.getBoolean("archive");
                 delete = rs.getBoolean("to_be_deleted");
                 grouped = rs.getBoolean("grouped");
                 classification = rs.getString("classification");
-                // false for includeData, false for ignoreErrors
-                events.add(new Event(eventId, eventTime, location, system, archive, delete, grouped, classification));
+                labelId = rs.getLong("label_id");
+
+                // The Java SQL API tries to hide SQL nulls.  We key some behavior on this field, so make sure we
+                // get a null value if one was there.
+                if (rs.wasNull()) {
+                    labelId = null;
+                }
+                modelName = rs.getString("model_name");
+                labelTime = TimeUtil.getInstantFromSQLDateTime(rs,"label_time_utc");
+                cavityLabel = rs.getString("cavity_label");
+                cavityConfidence = rs.getDouble("cavity_confidence");
+                faultLabel = rs.getString("fault_label");
+                faultConfidence = rs.getDouble("fault_confidence");
+
+                // An event may or may not have an associated label.  If it does, there will be a label ID.  If not,
+                // the LEFT JOIN will return null for all of the label table fields.  IDE warnings are wrong here.
+                Label label = null;
+                if (labelId != null) {
+                    label = new Label(labelId, labelTime, modelName, cavityLabel, faultLabel,
+                            cavityConfidence, faultConfidence);
+                }
+                // Add the event to the list
+                events.add(new Event(eventId, eventTime, location, system, archive, delete, grouped,
+                        classification, label));
             }
             rs.close();
             pstmt.close();

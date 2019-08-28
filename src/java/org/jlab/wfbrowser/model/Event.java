@@ -1,6 +1,7 @@
 package org.jlab.wfbrowser.model;
 
 import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,10 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
+import javax.json.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -35,11 +33,14 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.utils.IOUtils;
@@ -54,7 +55,7 @@ import org.jlab.wfbrowser.model.CaptureFile.Metadata;
  * that the Event object was not read from the database. Since the database can
  * only handle microsecond resolution, we truncate event times to that here.
  * This helps with testing.
- *
+ * <p>
  * Event objects are responsible for containing all of the information defining
  * an event (location, system, timestamp, whether the event is a set of grouped
  * capture files) and also information that needs to be determined either by
@@ -78,9 +79,9 @@ public class Event {
     private final String location;           // The location of the event as determined by the harvester
     private final Instant eventTime;       // The time of the event as determined by the harvester
     private final boolean archive;        // Is the event allowed to be deleted
-    // TODO: is the delete flag needed?  Probably not.
     private final boolean delete;         // Is the event marked for deletion on next pass
     private final boolean grouped;      // Is the event a group of synchronized waveform files or a single file
+    private Label label;          // Label object estimating which cavity faulted and which fault type occurred.
     private boolean areWaveformsConsistent = true;  // If all waveforms have the same set of time offsets.  Simplies certain data operaitons.
 
     private static Path setDataDir() throws IOException {
@@ -97,8 +98,8 @@ public class Event {
      * Add a CaptureFile object to this Event's collection of capture files.
      *
      * @param captureFile The CaptureFile to be added to the Event's collection
-     * of capture files
-     * @return
+     *                    of capture files
+     * @return The previous value associated with captureFile.getFilename()
      */
     public CaptureFile addCaptureFile(CaptureFile captureFile) {
         return captureFileMap.put(captureFile.getFilename(), captureFile);
@@ -128,18 +129,19 @@ public class Event {
      * database information like the archive flag, the delete flag, the list of
      * waveforms, and the list of capture files.
      *
-     * @param eventId
-     * @param eventTime
-     * @param location
-     * @param system
-     * @param archive
-     * @param delete
-     * @param grouped
+     * @param eventId        The database ID of the event
+     * @param eventTime      The time which the event occurred
+     * @param location       The location (likely zone) where the event occurred
+     * @param system         The harvester system with which this event is associated
+     * @param archive        Archive flag.  Denotes whether the event should be permanently kep
+     * @param delete         The delete flag.  Denotes whether this event should be deleted during the next purge
+     * @param grouped        Whether or not multiple capture files are grouped together to represent this event
      * @param classification capture files
-     * @throws IOException
+     * @param label          A Label object showing which cavity faulted and it's fault type
+     * @throws IOException If problem arises while reading data from disk
      */
     public Event(long eventId, Instant eventTime, String location, String system, boolean archive, boolean delete,
-            boolean grouped, String classification) throws IOException {
+                 boolean grouped, String classification, Label label) throws IOException {
         if (eventTime == null) {
             throw new IllegalArgumentException("eventTime is required non-null");
         }
@@ -161,9 +163,18 @@ public class Event {
         this.delete = delete;
         this.grouped = grouped;
         this.classification = classification;
+        this.label = label;
 
         // Set the waveform data directory based optionally on the value in the config file
         this.dataDir = setDataDir();
+    }
+
+    public void setLabel(Label label) {
+        this.label = label;
+    }
+
+    public Label getLabel() {
+        return label;
     }
 
     /**
@@ -174,23 +185,23 @@ public class Event {
      * "optional" parameter must also be specified, since the intended use of
      * this is for adding new events to the database, which contains some flags
      * that are set only by admin users.
-     *
+     * <p>
      * If the event is ungrouped, then captureFiles must contain at least one
      * capture file. If the event is grouped, then the capture files will be
      * looked up from the filesystem and the supplied arguement will be ignored.
      *
-     * @param eventTime
-     * @param location
-     * @param system
-     * @param archive
-     * @param delete
-     * @param grouped
-     * @param classification
-     * @param captureFile
-     * @throws IOException
+     * @param eventTime      The time which the event occurred
+     * @param location       The location (likely zone) where the event occurred
+     * @param system         The harvester system with which this event is associated
+     * @param archive        Archive flag.  Denotes whether the event should be permanently kep
+     * @param delete         The delete flag.  Denotes whether this event should be deleted during the next purge
+     * @param grouped        Whether or not multiple capture files are grouped together to represent this event
+     * @param classification capture files
+     * @param label          A Label object showing which cavity faulted and it's fault type
+     * @throws IOException If problem arises reading waveform data from disk
      */
     public Event(Instant eventTime, String location, String system, boolean archive, boolean delete, boolean grouped,
-            String classification, String captureFile) throws IOException {
+                 String classification, String captureFile, Label label) throws IOException {
         if (eventTime == null) {
             throw new IllegalArgumentException("eventTime is required non-null");
         }
@@ -211,6 +222,7 @@ public class Event {
         this.delete = delete;
         this.grouped = grouped;
         this.classification = classification;
+        this.label = label;
 
         // This sets the base data dir based on the an optional config parameter.
         this.dataDir = setDataDir();
@@ -243,8 +255,8 @@ public class Event {
      * event. Should duplicate capture files exist for an IOC, we keep the first
      * file created.
      *
-     * @return
-     * @throws IOException
+     * @return A list of associated capture filenames as they were found on disk
+     * @throws IOException If a problem arises while reading capture file data from disk
      */
     private List<String> getCaptureFileNamesFromFileSystem() throws IOException {
         // Sort the file names.  They should be of the format <HARVESTER_PV>.<IOC_timestamp>.txt
@@ -326,8 +338,6 @@ public class Event {
     /**
      * Check if the waveforms have equivalent timeOffsets and update the
      * areWaveformsConsistent parameter
-     *
-     * @return void
      */
     private void updateWaveformsConsistency() {
         boolean consistent = true;
@@ -384,9 +394,9 @@ public class Event {
      * will be referenced.
      *
      * @param captureFile The filename used to create the archived path. If null
-     * or empty, reference the captureFileMap instead. NOTE: Likely needed in
-     * case where ungrouped event hasn't updated it's captureFileMap.
-     * @return
+     *                    or empty, reference the captureFileMap instead. NOTE: Likely needed in
+     *                    case where ungrouped event hasn't updated it's captureFileMap.
+     * @return A Path representing the location of the captureFile
      */
     public Path getArchivePath(String captureFile) {
         Path archivePath;
@@ -418,7 +428,7 @@ public class Event {
      * directory potentially containing capture files from lots of ungrouped
      * events.
      *
-     * @return
+     * @return A Path representing the location of the EventDirectory
      */
     public Path getEventDirectoryPath() {
         DateTimeFormatter dFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd").withZone(ZoneId.systemDefault());
@@ -445,7 +455,7 @@ public class Event {
      * seems like an unnecessary performance hit, and shouldn't be done unless
      * later proven necessary. If neither the directory or archive file are
      * found, return false.
-     *
+     * <p>
      * NOTE: this method checks that the files specified by the Event's
      * CaptureFiles exist.
      *
@@ -466,11 +476,11 @@ public class Event {
      * seems like an unnecessary performance hit, and shouldn't be done unless
      * later proven necessary. If neither the directory or archive file are
      * found, return false.
-     *
+     * <p>
      * This method checks that the supplied files names exists, and NOT that the
      * Event's CaptureFile's exists.
      *
-     * @param captureFiles
+     * @param captureFiles A list of filenames that represent the capture files to check
      * @return True if the event directory with capture files or the archive
      * file is found. False otherwise.
      */
@@ -523,13 +533,13 @@ public class Event {
      * Waveforms and CaptureFiles.
      *
      * @param captureFiles The list of capture files that should be parsed.
-     * These should be only the file names that will be found within the event
-     * directory or compressed archive file.
-     * @param includeData Whether or not to include the waveform data or just
-     * header information
-     * @throws java.io.FileNotFoundException
+     *                     These should be only the file names that will be found within the event
+     *                     directory or compressed archive file.
+     * @param includeData  Whether or not to include the waveform data or just
+     *                     header information
+     * @throws IOException If problem arises reading capture file data from disk
      */
-    private void loadCaptureFilesFromDisk(List<String> captureFiles, boolean includeData) throws FileNotFoundException, IOException {
+    private void loadCaptureFilesFromDisk(List<String> captureFiles, boolean includeData) throws IOException {
         if (!isDataOnDisk(captureFiles)) {
             LOGGER.log(Level.SEVERE, "Could not locate data on disk");
             throw new FileNotFoundException("Could not locate data on disk");
@@ -617,7 +627,7 @@ public class Event {
      * Generate a json object representing an event. Simple wrapper on
      * toJsonObject(List &;lt seriesList &;gt) that does no series filtering.
      *
-     * @return
+     * @return A JSON representation of this Event including all series.
      */
     public JsonObject toJsonObject() {
         return toJsonObject(null);
@@ -631,8 +641,8 @@ public class Event {
      * "unofficial" data through one of our data API end points.
      *
      * @param seriesSet If not null, only include waveforms who's listed
-     * seriesNames includes at least of the series in the list.
-     * @return
+     *                  seriesNames includes at least of the series in the list.
+     * @return A JSON representation of this Event with possibly some waveform data filtered out.
      */
     public JsonObject toJsonObject(Set<String> seriesSet) {
         JsonObjectBuilder job = Json.createObjectBuilder();
@@ -648,6 +658,12 @@ public class Event {
                 jab.add(captureFileMap.get(cfName).toJsonObject(seriesSet));
             }
             job.add("captureFiles", jab.build());
+            // Add the option label field
+            if (label == null) {
+                job.add("label", JsonValue.NULL);
+            } else {
+                job.add("label", label.toJsonObject());
+            }
         } else {
             // Should never try to send out a response on an "Event" that didn't come from the database.  Full stop if we try.
             throw new RuntimeException("Cannot return event without database event ID");
@@ -669,7 +685,7 @@ public class Event {
      * This method processes the list of individual waveforms in a 2D array that
      * makes additional manipulations much easier. The resulting array does not
      * contain the header information - only time offsets and data values. The
-     * rows of the arrays represent the lines of the
+     * rows of the arrays represent the lines of the capture files.  Columns are in alphabetical order with Time first.
      *
      * If the waveforms are "consistent", i.e., they have the same set of time
      * offsets, then the first set of time offsets are used and all "data"
@@ -679,7 +695,7 @@ public class Event {
      * specific series can be requested by supplying a non-null list of strings.
      *
      * @param seriesSet A set of series to include. Include all if null.
-     * @return
+     * @return A 2D array containing the requested waveform data.
      */
     public double[][] getWaveformDataAsArray(Set<String> seriesSet) {
         double[][] data;
@@ -751,8 +767,8 @@ public class Event {
      * Return the list of waveforms that match a set of series names. Order
      * should be consistent with the ordering of waveforms member
      *
-     * @param seriesSet
-     * @return
+     * @param seriesSet A Set of the names of the Series to use which selecting Waveforms to return
+     * @return A List of Waveforms that correspond to the specified series in seriesSet
      */
     public List<Waveform> getWaveforms(Set<String> seriesSet) {
         List<Waveform> wfList = new ArrayList<>();
@@ -815,8 +831,8 @@ public class Event {
      * widgets
      *
      * @param seriesSet A set of series names that should be included in the
-     * output
-     * @return
+     *                  output
+     * @return A JSON representation that is optimized for consumption by dygraphs
      */
     public JsonObject toDyGraphJsonObject(Set<String> seriesSet) {
         JsonObjectBuilder job = Json.createObjectBuilder();
@@ -892,8 +908,8 @@ public class Event {
      * Generate a string label used by dygraph clients
      *
      * @param waveformName The name of the waveform for which we are producting
-     * a dygraph label
-     * @return
+     *                     a dygraph label
+     * @return The label associated with the given waveform in the dygraphs web UI
      */
     private String getDygraphLabel(String waveformName) {
         String label;
@@ -917,7 +933,6 @@ public class Event {
     /**
      * Generate a numeric ID that can be used by dygraph clients to group
      * related waveforms
-     *
      */
     private long getDygraphId(String waveformName) {
         long id;
@@ -935,7 +950,7 @@ public class Event {
             case "test":
                 // used in test suites
                 id = Long.parseLong(waveformName.substring(4, 5));
-                break;            
+                break;
             default:
                 throw new IllegalStateException("Unrecognized system - " + system);
         }
@@ -948,8 +963,8 @@ public class Event {
      * an event has the same number of waveforms. The database should maintain
      * uniqueness of event IDs and it's related data.
      *
-     * @param o
-     * @return
+     * @param o The object to check for equality
+     * @return True if equal, otherwise false
      */
     @Override
     public boolean equals(Object o) {
@@ -989,22 +1004,22 @@ public class Event {
 
     @Override
     public String toString() {
-        String wData = null;
+        StringBuilder wData = null;
         String wSize = "null";
         List<Waveform> waveforms = getWaveforms();
         if (waveforms != null) {
-            wData = "";
+            wData = new StringBuilder();
             wSize = "" + waveforms.size();
             for (Waveform w : waveforms) {
-                wData = wData + w.toString() + "\n";
+                wData.append(w.toString()).append("\n");
             }
         }
-        String cfMap = "captureFiles: {";
+        StringBuilder cfMap = new StringBuilder("captureFiles: {");
         if (captureFileMap != null) {
             for (String filename : captureFileMap.keySet()) {
-                cfMap += "'" + filename + "': " + captureFileMap.get(filename).toString();
+                cfMap.append("'").append(filename).append("': ").append(captureFileMap.get(filename).toString());
             }
-            cfMap += "}";
+            cfMap.append("}");
         }
         return "eventId: " + eventId + "\neventTime: " + getEventTimeString() + "\nlocation: " + location + "\nsystem: " + system
                 + "\nClassification: " + classification + "\nnum Waveforms: " + wSize + "\nWaveform Data:\n" + wData + "\n" + cfMap;
@@ -1019,8 +1034,8 @@ public class Event {
      */
     private List<Double> convertArrayToList(double[] a) {
         List<Double> out = new ArrayList<>();
-        for (int i = 0; i < a.length; i++) {
-            out.add(a[i]);
+        for (double v : a) {
+            out.add(v);
         }
         return out;
     }
@@ -1033,9 +1048,8 @@ public class Event {
      * objects to know which files to parse.
      *
      * @param includeData boolean for whether or not the waveforms should
-     * include their data
-     * @return
-     * @throws IOException
+     *                    include their data
+     * @throws IOException If problem arises while reading waveform data from disk
      */
     private void parseCompressedWaveformData(List<String> captureFiles, boolean includeData) throws IOException {
         boolean foundParentDir = false;
@@ -1055,7 +1069,7 @@ public class Event {
 
         try (TarArchiveInputStream ais = new TarArchiveInputStream(
                 new GzipCompressorInputStream(Files.newInputStream(getArchivePath(captureFile), StandardOpenOption.READ)));
-                BufferedReader br = new BufferedReader(new InputStreamReader(ais))) {
+             BufferedReader br = new BufferedReader(new InputStreamReader(ais))) {
             TarArchiveEntry entry;
             while ((entry = ais.getNextTarEntry()) != null) {
                 if (entry != null) {
@@ -1104,8 +1118,7 @@ public class Event {
      * as each Waveform object stores its own time/value data.
      *
      * @param includeData flag for whether or not the data and not just headers
-     * should be parsed
-     * @return The list of waveforms that were contained in the input stream.
+     *                    should be parsed
      */
     private void parseWaveformInputStream(BufferedReader br, String filename, boolean includeData) throws IOException {
         String[] headers;
@@ -1195,10 +1208,8 @@ public class Event {
      * provided list of filenames to know which files to process
      *
      * @param includeData Should the waveform objects include the data points or
-     * only the header information
-     * @return A List of Waveform objects representing the contents of the data
-     * files in the supplied event directory
-     * @throws IOException
+     *                    only the header information
+     * @throws IOException If problem arises while access waveform data on disk
      */
     private void parseWaveformData(List<String> captureFiles, boolean includeData) throws IOException {
         // NOTE: We don't need to check that all of these files are found since an exception will be generated if the path
@@ -1219,7 +1230,7 @@ public class Event {
      * Map.
      *
      * @param captureFileName The name of the capture file to add
-     * @param waveform The waveform object to add to the capture file
+     * @param waveform        The waveform object to add to the capture file
      */
     public void addWaveform(String captureFileName, Waveform waveform) {
         if (!captureFileMap.containsKey(captureFileName)) {
@@ -1236,9 +1247,9 @@ public class Event {
      * singular capture file is tar/gziped.
      *
      * @param os OutputStream to which the data should be written
-     * @throws java.io.FileNotFoundException
+     * @throws IOException If problem arises while accessing data on disk
      */
-    public void streamCaptureFiles(OutputStream os) throws FileNotFoundException, IOException {
+    public void streamCaptureFiles(OutputStream os) throws IOException {
         if (!isDataOnDisk()) {
             LOGGER.log(Level.SEVERE, "Could not locate data on disk");
             throw new FileNotFoundException("Could not locate data on disk");

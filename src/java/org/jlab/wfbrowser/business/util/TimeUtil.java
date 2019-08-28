@@ -49,18 +49,17 @@ public class TimeUtil {
      * java.sql call to use a calendar with the UTC timezone and everything will
      * match up.
      *
-     * @param rs
-     * @return
-     * @throws SQLException
+     * @param rs The result from which to pull the DateTime
+     * @param columnName The column name of the SQL DateTime to process
+     * @return An Instant representing the SQL DateTime object according to a UTC calendar or Null if no SQL value was found
+     * @throws SQLException If problem occurs while accessing ResultSet
      */
-    public static Instant getInstantFromDateTime(ResultSet rs) throws SQLException {
+    public static Instant getInstantFromSQLDateTime(ResultSet rs, String columnName) throws SQLException {
         Instant out = null;
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
-        Timestamp ts = rs.getTimestamp("event_time_utc", cal);
+        Timestamp ts = rs.getTimestamp(columnName, cal);
         if (ts != null) {
             out = ts.toInstant();
-        } else {
-            throw new RuntimeException("Event date time field mssing in database");
         }
         return out;
     }
@@ -84,8 +83,7 @@ public class TimeUtil {
         } else {
             dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         }
-        Instant t = LocalDateTime.parse(datetime, dtf).atZone(ZoneId.systemDefault()).toInstant();
-        return t;
+        return LocalDateTime.parse(datetime, dtf).atZone(ZoneId.systemDefault()).toInstant();
     }
 
     /**
@@ -99,8 +97,7 @@ public class TimeUtil {
         if (date == null) {
             return null;
         }
-        Instant t = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atZone(ZoneId.systemDefault()).toInstant();
-        return t;
+        return LocalDateTime.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atZone(ZoneId.systemDefault()).toInstant();
     }
 
     /**

@@ -1,9 +1,6 @@
 package org.jlab.wfbrowser.presentation.controller.ajax;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -14,9 +11,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObjectBuilder;
+import javax.json.*;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -29,6 +24,7 @@ import org.jlab.wfbrowser.business.service.EventService;
 import org.jlab.wfbrowser.business.service.SeriesService;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
+import org.jlab.wfbrowser.model.Label;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.SeriesSet;
 
@@ -47,12 +43,11 @@ public class EventAjax extends HttpServlet {
      *
      * @param request servlet request
      * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
      * @throws IOException if an I/O error occurs
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+            throws IOException {
         String[] eArray = request.getParameterValues("id");
         List<Long> eventIdList = null;
         if (eArray != null) {
@@ -69,7 +64,6 @@ public class EventAjax extends HttpServlet {
         String endString = request.getParameter("end");
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
         String system = request.getParameter("system");
-        system = system == null ? null : system;
         String[] locArray = request.getParameterValues("location");
         List<String> locationList = locArray == null ? null : Arrays.asList(locArray);
         String[] clsArray = request.getParameterValues("classification");
@@ -84,7 +78,7 @@ public class EventAjax extends HttpServlet {
         Boolean archive = (arch == null) ? null : arch.equals("true");
         String del = request.getParameter("toDelete");
         Boolean delete = (del == null) ? null : del.equals("true");
-        Boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
+        boolean includeData = Boolean.parseBoolean(request.getParameter("includeData"));  // false if not supplied or not "true"
 
         String out = request.getParameter("out");
         if (out == null) {
@@ -112,9 +106,7 @@ public class EventAjax extends HttpServlet {
 
         // Add any series from the seriesSets.
         if (seriesSetList != null) {
-            if (seriesMasterSet == null) {
-                seriesMasterSet = new TreeSet<>();
-            }
+            seriesMasterSet = new TreeSet<>();
 
             // Setup the query by the SeriesSets by names
             SeriesService ss = new SeriesService();
@@ -218,7 +210,8 @@ public class EventAjax extends HttpServlet {
                 // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
                 // for now.  Only used to send over a single event to a dygraph chart widget.
                 try (PrintWriter pw = response.getWriter()) {
-                    for (Event e : eventList) {
+                    if (!eventList.isEmpty()) {
+                        Event e = eventList.get(0);
                         if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
                             pw.write(e.toCsv(seriesMasterSet));
                         } else {
@@ -262,13 +255,12 @@ public class EventAjax extends HttpServlet {
     /**
      * Handle logic for events to be added to waveform database.
      *
-     * @param request
-     * @param response
-     * @throws ServletException
-     * @throws IOException
+     * @param request Standard HttpServletRequest object
+     * @param response Standard HttpServletResponse objedct
+     * @throws IOException If problems arise while accessing data from disk
      */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String datetime = request.getParameter("datetime");
         String location = request.getParameter("location");
         String system = request.getParameter("system");
@@ -277,6 +269,7 @@ public class EventAjax extends HttpServlet {
         String delete = request.getParameter("delete");
         String grouped = request.getParameter("grouped");
         String captureFile = request.getParameter("captureFile");
+        String labelParam = request.getParameter("label");
         response.setContentType("application/json");
 
         if (datetime == null || location == null || system == null || classification == null || grouped == null) {
@@ -287,20 +280,28 @@ public class EventAjax extends HttpServlet {
             return;
         }
 
-        String userName = request.getUserPrincipal().getName();
+//        String userName = request.getUserPrincipal().getName();
+        String userName = "testUser";
 
         Instant t = TimeUtil.getInstantFromDateTimeString(datetime);
         EventService wfs = new EventService();
         String kvp;
         try {
 
-            Boolean arch = Boolean.parseBoolean(archive);
-            Boolean del = Boolean.parseBoolean(delete);
-            Boolean grp = Boolean.parseBoolean(grouped);
+            // The label parameter should be a JSON representing the cavity label (with the labels, confidences, and
+            // model info).
+            Label label = null;
+            if (labelParam != null) {
+                JsonObject json = Json.createReader(new StringReader(labelParam)).readObject();
+                label = new Label(json);
+            }
+            boolean arch = Boolean.parseBoolean(archive);
+            boolean del = Boolean.parseBoolean(delete);
+            boolean grp = Boolean.parseBoolean(grouped);
             kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" + t.toString() + " grp=" + grp
                     + " arc=" + arch + " del=" + del + " cFile=" + captureFile;
             LOGGER.log(Level.INFO, "User ''{0}'' attempting to add event {1}", new Object[]{userName, kvp});
-            Event event = new Event(t, location, system, arch, del, grp, classification, captureFile);
+            Event event = new Event(t, location, system, arch, del, grp, classification, captureFile, label);
             long id = wfs.addEvent(event);
             LOGGER.log(Level.INFO, "Event addition succeeded");
             try (PrintWriter pw = response.getWriter()) {
@@ -312,88 +313,6 @@ public class EventAjax extends HttpServlet {
                 pw.write("{\"error\": \"Problem updating database - " + e.toString() + "\"}");
                 LOGGER.log(Level.INFO, "Event addition failed - {0}", new Object[]{e.toString()});
             }
-        }
-    }
-
-    /**
-     * This method allows for modifying an existing event. The only currently
-     * allowed modifications are to the archive and delete flags.
-     *
-     * @param request
-     * @param response
-     * @throws IOException
-     */
-    @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.setContentType("application/json");
-        String id = request.getParameter("id");
-        String arch = request.getParameter("archive");
-        String del = request.getParameter("delete");
-        Long eventId;
-
-        if (id == null || id.isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.write("{\"error\": \"id must be specified and a valid long integer\"}");
-            }
-            return;
-        }
-
-        try {
-            eventId = Long.parseLong(id);
-        } catch (NumberFormatException ex) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.write("{\"error\": \"id must be a valid long integer\"}");
-            }
-            return;
-        }
-
-        if (arch == null && del == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.write("{\"error\": \"either archive or delete parameter must be specified\"}");
-            }
-            return;
-        } else if ((arch != null && del != null) && (Boolean.getBoolean(arch) && Boolean.getBoolean(del))) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.write("{\"error\": \"only archive or delete flag can be set\"}");
-            }
-            return;
-        }
-
-        Boolean archive = Boolean.parseBoolean(arch);
-        Boolean delete = Boolean.parseBoolean(del);
-
-        EventService wfs = new EventService();
-        try {
-            // Cannot set an event to both be deleted and archived
-            if (arch != null) {
-                wfs.setEventArchiveFlag(eventId, archive);
-                if (archive == true) {
-                    wfs.setEventDeleteFlag(eventId, false);
-                }
-            }
-            // Cannot set an event to both be deleted and archived
-            if (del != null) {
-                wfs.setEventDeleteFlag(eventId, delete);
-                if (delete == true) {
-                    wfs.setEventArchiveFlag(eventId, false);
-                }
-            }
-        } catch (SQLException ex) {
-            LOGGER.log(Level.WARNING, "Error updating database - {0}", ex.getMessage());
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            try (PrintWriter pw = response.getWriter()) {
-                pw.write("{\"error\":\"Error updating the database - " + ex.getMessage() + "\"}");
-            }
-            return;
-        }
-
-        response.setStatus(HttpServletResponse.SC_OK);
-        try (PrintWriter pw = response.getWriter()) {
-            pw.write("{\"message\":\"Update successful\"}");
         }
     }
 
