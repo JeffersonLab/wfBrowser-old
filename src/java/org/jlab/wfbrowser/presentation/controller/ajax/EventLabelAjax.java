@@ -39,6 +39,8 @@ public class EventLabelAjax extends HttpServlet {
      * for creating a Label object.  Only one label can exist per event.  Providing force=true will overwrite the existing
      * label with the supplied label.
      *
+     * Send a label=null parameter will delete the existing label.
+     *
      * @param request servlet request
      * @param response servlet response
      * @throws IOException if an I/O error occurs
