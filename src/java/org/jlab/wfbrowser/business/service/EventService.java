@@ -633,7 +633,7 @@ public class EventService {
                     while (rs.next()) {
                         metaId = rs.getLong("meta_id");
                         metaName = rs.getString("meta_name");
-                        type = MetadataType.valueOf(rs.getString("type"));
+                        type = MetadataType.valueOf(rs.getString("type").toUpperCase());
                         switch (type) {
                             case NUMBER:
                                 value = Double.valueOf(rs.getString("value"));
