@@ -52,8 +52,8 @@ public class EventTest {
     private static Event e1_ungrp_class1 = null;
     private static Event e2_ungrp_class1 = null;
 
-    public EventTest() {
-    }
+//    public EventTest() {
+//    }
 
     @BeforeClass
     public static void oneTimeSetUp() throws IOException, FileNotFoundException, SQLException, NamingException {
@@ -91,30 +91,30 @@ public class EventTest {
         // Setup the grouped and consistent events
         // The e1 events mapped to the unzipped files, e2 events map to the zipped files.  e1a, etc. are duplicates of e1 and tested for equality, etc.
         // These will almost certainly not match the IDs in the database, but are used/needed for testing.
-        e1_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF);
-        e1a_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF); // Should match e1 since it is an exact copy
-        e2_grp_con_noclass = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF);  // Should not match e1 since different time        
+        e1_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        e1a_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, null); // Should match e1 since it is an exact copy
+        e2_grp_con_noclass = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, null);  // Should not match e1 since different time
         e1_grp_con_noclass.setEventId(1L);
         e1a_grp_con_noclass.setEventId(1L); // Duplicate of e1
         e2_grp_con_noclass.setEventId(2L);
-        e1_grp_con_class1 = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
-        e2_grp_con_class1 = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
+        e1_grp_con_class1 = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF, null);
+        e2_grp_con_class1 = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF, null);
 
         // Setup the grouped, consistent event with metadata
-        e1_grp_con_noclass_meta = new Event(t1, grp_con_meta, "test", unarchive, noDelete, grouped, noClass, nullCF);
+        e1_grp_con_noclass_meta = new Event(t1, grp_con_meta, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
         e1_grp_con_noclass_meta.setEventId(3L);
 
         // Setup the grouped and incosistent events
-        e1_grp_incon_noclass = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
-        e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
-        e1_grp_incon_class1 = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF);
-        e2_grp_incon_class1 = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF);
+        e1_grp_incon_noclass = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        e1_grp_incon_class1 = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF, null);
+        e2_grp_incon_class1 = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF, null);
 
         // Setup the ungrouped events (consistent by default)
-        e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF);
-        e2_ungrp_noclass = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, noClass, zipCF);
-        e1_ungrp_class1 = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, class1, unzipCF);
-        e2_ungrp_class1 = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, class1, zipCF);
+        e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF, null);
+        e2_ungrp_noclass = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, noClass, zipCF, null);
+        e1_ungrp_class1 = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, class1, unzipCF, null);
+        e2_ungrp_class1 = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, class1, zipCF, null);
     }
 
     @AfterClass
@@ -173,7 +173,8 @@ public class EventTest {
                 + "\"captureFiles\":["
                 + "{\"filename\":\"test.2017_09_14_110000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test1\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.5,2.5,0.5]}]},"
                 + "{\"filename\":\"test2.2017_09_14_110000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
-                + "]"
+                + "],"
+                + "\"label\":null"
                 + "}";
         String result = e2_grp_con_noclass.toJsonObject().toString();
         assertEquals(expResult, result);
@@ -191,7 +192,8 @@ public class EventTest {
                 + "{\"filename\":\"test2.2017_09_14_100000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,"
                 + "\"metadata\":[{\"name\":\"PV1:hb\",\"type\":\"NUMBER\",\"id\":null,\"value\":\"0.056\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2.VAL\",\"type\":\"STRING\",\"id\":null,\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3_1\",\"type\":\"UNAVAILABLE\",\"id\":null,\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4-1\",\"type\":\"UNARCHIVED\",\"id\":null,\"value\":null,\"offset\":null,\"start\":null}]"
                 + ",\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
-                + "]"
+                + "],"
+                + "\"label\":null"
                 + "}";
         String result1 = e1_grp_con_noclass_meta.toJsonObject().toString();
         assertEquals(expResult1, result1);

@@ -60,7 +60,7 @@ public class EventServiceTest {
 
     @BeforeClass
     public static void oneTimeSetUp() throws NamingException, SQLException, IOException {
-        System.out.println("Start of setup");
+        System.out.println("EventServiceTest Start of setup");
 
         // Setup the data connection and connection pools
         new StandaloneJndi();
@@ -93,30 +93,30 @@ public class EventServiceTest {
         // Setup the grouped and consistent events
         // The e1 events mapped to the unzipped files, e2 events map to the zipped files.  e1a, etc. are duplicates of e1 and tested for equality, etc.
         // These will almost certainly not match the IDs in the database, but are used/needed for testing.
-        e1_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF);
-        e2_grp_con_noclass = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF);  // Should not match e1 since different time        
-        e1_grp_con_class1 = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
-        e2_grp_con_class1 = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF);
+        e1_grp_con_noclass = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        e2_grp_con_noclass = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, null);  // Should not match e1 since different time
+        e1_grp_con_class1 = new Event(t1, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF, null);
+        e2_grp_con_class1 = new Event(t2, grp_con, "test", unarchive, noDelete, grouped, class1, nullCF, null);
         eventList.add(e1_grp_con_noclass);
         eventList.add(e2_grp_con_noclass);
         eventList.add(e1_grp_con_class1);
         eventList.add(e2_grp_con_class1);
 
         // Setup the grouped and incosistent events
-        e1_grp_incon_noclass = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
-        e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF);
-        e1_grp_incon_class1 = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF);
-        e2_grp_incon_class1 = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF);
+        e1_grp_incon_noclass = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        e1_grp_incon_class1 = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF, null);
+        e2_grp_incon_class1 = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF, null);
         eventList.add(e1_grp_incon_noclass);
         eventList.add(e2_grp_incon_noclass);
         eventList.add(e1_grp_incon_class1);
         eventList.add(e2_grp_incon_class1);
 
         // Setup the ungrouped events (consistent by default)
-        e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF);
-        e2_ungrp_noclass = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, noClass, zipCF);
-        e1_ungrp_class1 = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, class1, unzipCF);
-        e2_ungrp_class1 = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, class1, zipCF);
+        e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF, null);
+        e2_ungrp_noclass = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, noClass, zipCF, null);
+        e1_ungrp_class1 = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, class1, unzipCF, null);
+        e2_ungrp_class1 = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, class1, zipCF, null);
         eventList.add(e1_ungrp_noclass);
         eventList.add(e2_ungrp_noclass);
         eventList.add(e1_ungrp_class1);
@@ -161,7 +161,7 @@ public class EventServiceTest {
         } catch (SQLException ex) {
             threwException = true;
         }
-        assertEquals(true, threwException);
+        assertTrue(threwException);
     }
 
     /**
@@ -259,7 +259,7 @@ public class EventServiceTest {
         ids.add(id);
         EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null);
         List<Event> eList = instance.getEventList(filter);
-        assertEquals(eList.get(0).isDelete(), true);
+        assertTrue(eList.get(0).isDelete());
     }
 
     /**
@@ -281,7 +281,7 @@ public class EventServiceTest {
         ids.add(id);
         EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null);
         List<Event> eList = instance.getEventList(filter);
-        assertEquals(eList.get(0).isArchive(), true);
+        assertTrue(eList.get(0).isArchive());
     }
 
     @Test
