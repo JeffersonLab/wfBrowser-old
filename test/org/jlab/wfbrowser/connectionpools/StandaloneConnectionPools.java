@@ -44,7 +44,7 @@ public class StandaloneConnectionPools implements Channel {
 
         // Port is same for all hosts
         int port = 3306;
-        String host = "devl21.acc.jlab.org";
+        String host = "localhost";
 
         String url = "jdbc:mysql://" + host + ":" + port + "/waveformstest";
 
@@ -67,7 +67,7 @@ public class StandaloneConnectionPools implements Channel {
 
         pds.setServerTimezone("America/New_York");
         
-        // These look inteteresting, but can't find any docs on them
+        // These look interesting, but can't find any docs on them
         //pds.setUseServerPreparedStmts(true); // Should be true by default?
         //pds.setAutoClosePStmtStreams(true);
         //pds.setAutoReconnect(true);
