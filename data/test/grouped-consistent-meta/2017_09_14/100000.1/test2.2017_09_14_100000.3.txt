@@ -1,0 +1,8 @@
+# PV1:hb=5.6e-2 @ -.5(-45.9)
+# PV2.VAL='ABC' @ 0(-000.4)
+# PV3_1=unavailable @ 0
+# PV4-1=not archived
+Time	test2
+1.1	1.15
+2.1	32.5
+3.1	10.5
