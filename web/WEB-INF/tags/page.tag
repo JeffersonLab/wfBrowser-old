@@ -53,7 +53,11 @@
                     <ul>
                         <li${'/graph' eq currentPath ? ' class="current-primary"' : ''}>
                             <a href="${pageContext.request.contextPath}/graph">Graph</a>
-                        </li>  
+                        </li>
+
+                        <li ${'/reports' eq currentPath ? ' class="current-primary"' : ''}>
+                            <a href="${pageContext.request.contextPath}/reports/cryomodule-faults">Reports</a>
+                        </li>
                         <c:if test='${pageContext.request.isUserInRole("ADMIN")}'>
                             <li${'/admin' eq currentPath ? ' class="current-primary"' : ''}>
                                 <a href="${pageContext.request.contextPath}/admin/series">Admin</a>
