@@ -71,18 +71,18 @@ public class Event {
 
     private static final Logger LOGGER = Logger.getLogger(Event.class.getName());
 
-    private final Path dataDir;              // Where does the data live on the filesystem.  This is the base data dir of all events, not the directory containing capture files for this event.
-    private Long eventId = null;            // The event id assigned by the database
+    private final Path dataDir;         // Where does the data live on the filesystem.  This is the base data dir of all events, not the directory containing capture files for this event.
+    private Long eventId = null;        // The event id assigned by the database
     private final SortedMap<String, CaptureFile> captureFileMap = new TreeMap<>();
-    private final String system;            // The accelerator system from which the event is triggered
-    private final String classification;    // The classification of the event as determined by the harvester
-    private final String location;           // The location of the event as determined by the harvester
-    private final Instant eventTime;       // The time of the event as determined by the harvester
-    private final boolean archive;        // Is the event allowed to be deleted
-    private final boolean delete;         // Is the event marked for deletion on next pass
+    private final String system;        // The accelerator system from which the event is triggered
+    private final String classification; // The classification of the event as determined by the harvester
+    private final String location;      // The location of the event as determined by the harvester
+    private final Instant eventTime;    // The time of the event as determined by the harvester
+    private final boolean archive;      // Is the event allowed to be deleted
+    private final boolean delete;       // Is the event marked for deletion on next pass
     private final boolean grouped;      // Is the event a group of synchronized waveform files or a single file
-    private Label label;          // Label object estimating which cavity faulted and which fault type occurred.
-    private boolean areWaveformsConsistent = true;  // If all waveforms have the same set of time offsets.  Simplies certain data operaitons.
+    private List<Label> labelList;      // List of Label object associated with the Event  - likely estimating things like fault type or location
+    private boolean areWaveformsConsistent = true;  // If all waveforms have the same set of time offsets.  Simplifies certain data operations.
 
     private static Path setDataDir() throws IOException {
         Properties props = new Properties();
@@ -137,11 +137,11 @@ public class Event {
      * @param delete         The delete flag.  Denotes whether this event should be deleted during the next purge
      * @param grouped        Whether or not multiple capture files are grouped together to represent this event
      * @param classification capture files
-     * @param label          A Label object showing which cavity faulted and it's fault type
+     * @param labelList      A List of Label objects associated with the Event
      * @throws IOException If problem arises while reading data from disk
      */
     public Event(long eventId, Instant eventTime, String location, String system, boolean archive, boolean delete,
-                 boolean grouped, String classification, Label label) throws IOException {
+                 boolean grouped, String classification, List<Label> labelList) throws IOException {
         if (eventTime == null) {
             throw new IllegalArgumentException("eventTime is required non-null");
         }
@@ -163,18 +163,16 @@ public class Event {
         this.delete = delete;
         this.grouped = grouped;
         this.classification = classification;
-        this.label = label;
+        this.labelList = labelList;
 
         // Set the waveform data directory based optionally on the value in the config file
         this.dataDir = setDataDir();
     }
 
-    public void setLabel(Label label) {
-        this.label = label;
-    }
+    public void addLabel(Label label) { this.labelList.add(label); }
 
-    public Label getLabel() {
-        return label;
+    public List<Label> getLabelList() {
+        return labelList;
     }
 
     /**
@@ -197,11 +195,11 @@ public class Event {
      * @param delete         The delete flag.  Denotes whether this event should be deleted during the next purge
      * @param grouped        Whether or not multiple capture files are grouped together to represent this event
      * @param classification capture files
-     * @param label          A Label object showing which cavity faulted and it's fault type
+     * @param labelList      A List of Label objects associated with the Event
      * @throws IOException If problem arises reading waveform data from disk
      */
     public Event(Instant eventTime, String location, String system, boolean archive, boolean delete, boolean grouped,
-                 String classification, String captureFile, Label label) throws IOException {
+                 String classification, String captureFile, List<Label> labelList) throws IOException {
         if (eventTime == null) {
             throw new IllegalArgumentException("eventTime is required non-null");
         }
@@ -222,7 +220,7 @@ public class Event {
         this.delete = delete;
         this.grouped = grouped;
         this.classification = classification;
-        this.label = label;
+        this.labelList = labelList;
 
         // This sets the base data dir based on the an optional config parameter.
         this.dataDir = setDataDir();
@@ -659,10 +657,14 @@ public class Event {
             }
             job.add("captureFiles", jab.build());
             // Add the option label field
-            if (label == null) {
-                job.add("label", JsonValue.NULL);
+            if (labelList == null) {
+                job.add("labels", JsonValue.NULL);
             } else {
-                job.add("label", label.toJsonObject());
+                jab = Json.createArrayBuilder();
+                for (Label label : labelList) {
+                    jab.add(label.toJsonObject());
+                }
+                job.add("labels", jab.build());
             }
         } else {
             // Should never try to send out a response on an "Event" that didn't come from the database.  Full stop if we try.
