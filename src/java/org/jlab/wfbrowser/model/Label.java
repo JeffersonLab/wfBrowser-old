@@ -81,6 +81,11 @@ public class Label {
         } else {
             job.add("value", value);
         }
+        if ( confidence == null) {
+            job.add("confidence", JsonValue.NULL);
+        } else {
+            job.add("confidence", confidence);
+        }
         job.add("model-name", modelName);
         return job.build();
     }
