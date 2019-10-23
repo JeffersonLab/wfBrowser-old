@@ -1,6 +1,7 @@
 package org.jlab.wfbrowser.business.service;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -8,11 +9,14 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.json.Json;
+import javax.json.JsonArray;
 import javax.naming.NamingException;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
 import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
+import org.jlab.wfbrowser.model.Label;
 import org.junit.AfterClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -33,6 +37,8 @@ public class EventServiceTest {
     // The two timstamps used for events.  t1 for unzipped, t2 for zipped.
     private static Instant t1 = null;
     private static Instant t2 = null;
+    private static Instant t3 = null;
+    private static Instant t4 = null;
 
     // Consistent, no class, grouped
     private static Event e1_grp_con_noclass = null;
@@ -52,6 +58,10 @@ public class EventServiceTest {
     private static Event e1_ungrp_class1 = null;
     private static Event e2_ungrp_class1 = null;
 
+    // Consistent, no class, grouped, with labels
+    private static Event e3_grp_con_noclass_label = null;
+    private static Event e4_grp_con_noclass_label = null;
+
     private static StandaloneConnectionPools pools;
     private static List<Event> eventList = new ArrayList<>();
 
@@ -69,6 +79,8 @@ public class EventServiceTest {
         // Create some events to add to the database - files that match these must exist on the filesystem
         t1 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the unzipped files
         t2 = LocalDateTime.of(2017, 9, 14, 11, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the zipped files
+        t3 = LocalDateTime.of(2017, 9, 14, 12, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the label tests
+        t4 = LocalDateTime.of(2017, 9, 14, 13, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the label tests
 
         // Setup the flags for the basic testing.  Make variable names match what they do.
         boolean unarchive = false;
@@ -121,6 +133,18 @@ public class EventServiceTest {
         eventList.add(e2_ungrp_noclass);
         eventList.add(e1_ungrp_class1);
         eventList.add(e2_ungrp_class1);
+
+        // Setup some grouped events with RF like labels (cavity, fault-type)
+        List<Label> labelList1 = new ArrayList<>();
+        labelList1.add(new Label(null, null, "myModel", "cavity", "7", 0.99));
+        labelList1.add(new Label(null, null, "myModel", "fault-type", "fault_2", 0.50));
+        List<Label> labelList2 = new ArrayList<>();
+        labelList2.add(new Label(null, null, "myModel", "cavity", "7", 0.90));
+        labelList2.add(new Label(null, null, "myModel", "fault-type", "fault_1", 0.45));
+        e3_grp_con_noclass_label = new Event(t3, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, labelList1);
+        e4_grp_con_noclass_label = new Event(t4, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, labelList2);
+        eventList.add(e3_grp_con_noclass_label);
+        eventList.add(e4_grp_con_noclass_label);
     }
 
     @AfterClass
@@ -244,25 +268,6 @@ public class EventServiceTest {
     }
 
     /**
-     * Test of deleteEvent method, of class EventService.
-     */
-    @Test
-    public void test4SetEventDeleteFlag() throws Exception {
-        System.out.println("deleteEvent");
-        EventService instance = new EventService();
-        long id = e1_grp_con_noclass.getEventId();
-        int expResult = 1;
-        int result = instance.setEventDeleteFlag(id, true);
-        assertEquals(expResult, result);
-
-        List<Long> ids = new ArrayList<>();
-        ids.add(id);
-        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null);
-        List<Event> eList = instance.getEventList(filter);
-        assertTrue(eList.get(0).isDelete());
-    }
-
-    /**
      * Test of setEventArchiveFlag method, of class EventService.
      */
     @Test
@@ -283,6 +288,44 @@ public class EventServiceTest {
         List<Event> eList = instance.getEventList(filter);
         assertTrue(eList.get(0).isArchive());
     }
+
+    /**
+     * Test of deleteEvent method, of class EventService.
+     */
+    @Test
+    public void test4SetEventDeleteFlag() throws Exception {
+        System.out.println("deleteEvent");
+        EventService instance = new EventService();
+        long id = e1_grp_con_noclass.getEventId();
+        int expResult = 1;
+        int result = instance.setEventDeleteFlag(id, true);
+        assertEquals(expResult, result);
+
+        List<Long> ids = new ArrayList<>();
+        ids.add(id);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null);
+        List<Event> eList = instance.getEventList(filter);
+        assertTrue(eList.get(0).isDelete());
+    }
+
+    @Test
+    public void test5GetLabelTallyAsJson() throws Exception {
+        System.out.println("Testing Tallying Label Method");
+
+        EventService es = new EventService();
+        // TODO: update with filter code
+        JsonArray exp = Json.createReader(new StringReader("[" +
+                "{\"location\":\"ungrouped\",\"label-combo\":\"NULL\",\"count\":4}," +
+                "{\"location\":\"grouped-inconsistent\",\"label-combo\":\"NULL\",\"count\":4}," +
+                "{\"location\":\"grouped-consistent\",\"label-combo\":\"7,fault_1\",\"count\":1}," +
+                "{\"location\":\"grouped-consistent\",\"label-combo\":\"NULL\",\"count\":4}," +
+                "{\"location\":\"grouped-consistent\",\"label-combo\":\"7,fault_2\",\"count\":1}" +
+                "]")).readArray();
+
+        JsonArray result = es.getLabelTallyAsJson(null);
+        assertEquals(exp.toString(), result.toString());
+    }
+
 
     @Test
     public void test6DeleteEvents() throws Exception {
