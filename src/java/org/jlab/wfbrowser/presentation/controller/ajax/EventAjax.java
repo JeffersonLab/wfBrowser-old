@@ -144,8 +144,11 @@ public class EventAjax extends HttpServlet {
         try {
             EventService es = new EventService();
             if (includeData) {
-                eventList = es.getEventList(filter, null, includeData);
+                // Since we're asking for data, we need to include capture files too.
+                eventList = es.getEventList(filter, null, true, true);
             } else {
+                // Don't get capture files or data.  This query is much faster and is useful if only interested in when
+                // and where, etc. events happened, not details about them.
                 eventList = es.getEventListWithoutCaptureFiles(filter);
             }
         } catch (SQLException ex) {
@@ -269,7 +272,8 @@ public class EventAjax extends HttpServlet {
         String delete = request.getParameter("delete");
         String grouped = request.getParameter("grouped");
         String captureFile = request.getParameter("captureFile");
-        String labelParam = request.getParameter("label");
+        String[] labelParams = request.getParameterValues("label");
+
         response.setContentType("application/json");
 
         if (datetime == null || location == null || system == null || classification == null || grouped == null) {
@@ -288,20 +292,29 @@ public class EventAjax extends HttpServlet {
         String kvp;
         try {
 
-            // The label parameter should be a JSON representing the cavity label (with the labels, confidences, and
-            // model info).
-            Label label = null;
-            if (labelParam != null) {
-                JsonObject json = Json.createReader(new StringReader(labelParam)).readObject();
-                label = new Label(json);
+            // An event can have multiple labels associated with it.  Process these into a list of Label objects.
+            List<Label> labelList = null;
+            if (labelParams != null) {
+                labelList = new ArrayList<>();
+                JsonObject json;
+                for (String labelParam : labelParams) {
+                    // The label parameter should be a JSON representing the cavity label (with the label name, value,
+                    // confidence, and model info).
+                    if (labelParam != null) {
+                        json = Json.createReader(new StringReader(labelParam)).readObject();
+                        labelList.add(new Label(json));
+                    }
+                }
             }
+
+            // Process other parameters needed to create an event
             boolean arch = Boolean.parseBoolean(archive);
             boolean del = Boolean.parseBoolean(delete);
             boolean grp = Boolean.parseBoolean(grouped);
             kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" + t.toString() + " grp=" + grp
                     + " arc=" + arch + " del=" + del + " cFile=" + captureFile;
             LOGGER.log(Level.INFO, "User ''{0}'' attempting to add event {1}", new Object[]{userName, kvp});
-            Event event = new Event(t, location, system, arch, del, grp, classification, captureFile, label);
+            Event event = new Event(t, location, system, arch, del, grp, classification, captureFile, labelList);
             long id = wfs.addEvent(event);
             LOGGER.log(Level.INFO, "Event addition succeeded");
             try (PrintWriter pw = response.getWriter()) {

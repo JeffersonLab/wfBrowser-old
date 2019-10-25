@@ -57,9 +57,9 @@ public class EventLabelAjax extends HttpServlet {
         String labelParam = request.getParameter("label");
         String forceParam = request.getParameter("force");
 
+        response.setContentType("application/json");
         // Check that we got an id parameter
         if (eventId == null || eventId.isEmpty()) {
-            response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"error\":\"id parameter required\"}");
@@ -72,7 +72,6 @@ public class EventLabelAjax extends HttpServlet {
         try {
             id = Long.parseLong(eventId);
         } catch (NumberFormatException e) {
-            response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"error\":\"Error process id - " + e.getMessage() + "\"}");
@@ -82,7 +81,6 @@ public class EventLabelAjax extends HttpServlet {
 
         // Check that we got an label parameter
         if (labelParam == null || labelParam.isEmpty()) {
-            response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"error\":\"label parameter required\"}");
@@ -99,7 +97,6 @@ public class EventLabelAjax extends HttpServlet {
                 label = new Label(Json.createReader(new StringReader(labelParam)).readObject());
             } catch (JsonException ex) {
                 LOGGER.log(Level.WARNING, "Problem processing label - " + ex.getMessage());
-                response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 try (PrintWriter pw = response.getWriter()) {
                     pw.write("{\"error\":\"Problem processing label - " + ex.getMessage() + "\"}");
@@ -115,11 +112,10 @@ public class EventLabelAjax extends HttpServlet {
             if (label == null) {
                 es.deleteEventLabel(id);
             } else {
-                es.setEventLabel(id, label, force);
+                es.addEventLabel(id, label, force);
             }
         } catch (SQLException ex) {
             LOGGER.log(Level.WARNING, "Error setting label in database.", ex);
-            response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"error\":\"Error setting label in database - " + ex.getMessage() + "\"}");
@@ -128,7 +124,6 @@ public class EventLabelAjax extends HttpServlet {
         }
 
         // Send out the response
-        response.setContentType("application/json");
         try (PrintWriter pw = response.getWriter()) {
             pw.write("{\"success\":\"Update made\"}");
         }
