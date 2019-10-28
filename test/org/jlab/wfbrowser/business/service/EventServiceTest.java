@@ -12,23 +12,28 @@ import java.util.List;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.naming.NamingException;
+
 import org.jlab.wfbrowser.business.filter.EventFilter;
+import org.jlab.wfbrowser.business.filter.LabelFilter;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
 import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Label;
 import org.junit.AfterClass;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
+
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
+
 import java.util.TreeSet;
 import java.util.SortedSet;
+
 import org.junit.Assert;
 
 /**
- *
  * @author adamc
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -172,7 +177,7 @@ public class EventServiceTest {
             e.setEventId(id);
         }
 
-        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(eventIdList, null, null, null, null, null, null, null, null, null);
 
         List<Event> result = instance.getEventList(filter);
 
@@ -197,7 +202,7 @@ public class EventServiceTest {
 
         EventService instance = new EventService();
         // Get all of the events under the test system
-        EventFilter filter = new EventFilter(null, null, null, "test", null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, "test", null, null, null, null, null, null);
         List<Event> result = instance.getEventList(filter);
         assertEquals(eventList.size(), result.size());
         SortedSet<Long> resultIds = new TreeSet<>();
@@ -216,26 +221,27 @@ public class EventServiceTest {
         List<Event> expResultLocations = new ArrayList<>();
         expResultLocations.add(e1_grp_con_noclass);
         expResultLocations.add(e2_grp_con_noclass);
+        expResultLocations.add(e3_grp_con_noclass_label);
+        expResultLocations.add(e4_grp_con_noclass_label);
         expResultLocations.add(e1_grp_con_class1);
         expResultLocations.add(e2_grp_con_class1);
 
-        EventFilter filterLocations = new EventFilter(null, null, null, null, locations, null, null, null, null);
+        EventFilter filterLocations = new EventFilter(null, null, null, null, locations, null, null, null, null, null);
         List<Event> resultLocations = instance.getEventList(filterLocations);
-
         SortedSet<Long> resultLocationsIds = new TreeSet<>();
         SortedSet<Long> expectedLocationsIds = new TreeSet<>();
         for (Event e : resultLocations) {
-            resultIds.add(e.getEventId());
+            resultLocationsIds.add(e.getEventId());
         }
         for (Event e : expResultLocations) {
-            expectedIds.add(e.getEventId());
+            expectedLocationsIds.add(e.getEventId());
         }
         assertEquals(expectedLocationsIds, resultLocationsIds);
 
-        // Get the e2_grp_incon_class1 via serveral filters
+        // Get the e2_grp_incon_class1 via several filters
         List<String> locations2 = new ArrayList<>();
         locations2.add("grouped-inconsistent");
-        EventFilter filterMulti = new EventFilter(null, t1, t2, "test", locations2, null, false, false, null);
+        EventFilter filterMulti = new EventFilter(null, t1, t2, "test", locations2, null, false, false, null, null);
         List<Event> resultsMulti = instance.getEventList(filterMulti);
         SortedSet<Long> resultsMultiIds = new TreeSet<>();
         SortedSet<Long> expMultiIds = new TreeSet<>();
@@ -248,23 +254,103 @@ public class EventServiceTest {
         expMultiIds.add(e1_grp_incon_class1.getEventId());
         expMultiIds.add(e2_grp_incon_class1.getEventId());
         assertEquals(expMultiIds, resultsMultiIds);
-        
+
         // Check that the we get waveform data back and that it matches
-        EventFilter idFilter = new EventFilter(Arrays.asList(e1_grp_con_noclass.getEventId()), null, null, null, null, null, null, null, null);
+        EventFilter idFilter = new EventFilter(Arrays.asList(e1_grp_con_noclass.getEventId()), null, null, null, null, null, null, null, null, null);
         List<Event> resultsId = instance.getEventList(idFilter);
-        List <Long> expResultsIdList = Arrays.asList(e1_grp_con_noclass.getEventId());
+        List<Long> expResultsIdList = Arrays.asList(e1_grp_con_noclass.getEventId());
         List<Long> resultsIdList = new ArrayList<>();
-        
+
         double[][] resultsData = null;
-        for(Event e : resultsId) {
+        for (Event e : resultsId) {
             if (resultsData == null) {
                 resultsData = e.getWaveformDataAsArray(null);
             }
             resultsIdList.add(e.getEventId());
         }
-       assertEquals(expResultsIdList, resultsIdList);
+        assertEquals(expResultsIdList, resultsIdList);
         Assert.assertArrayEquals(e1_grp_con_noclass.getWaveformDataAsArray(null), resultsData);
-        
+
+    }
+
+    /**
+     * Test of the use of EventFilters that use LabelFilters.
+     */
+    @Test
+    public void test2aGetEventListWithLabelFilters() throws Exception {
+        System.out.println("test2aGetEventListWithLabelFilters");
+
+        EventService es = new EventService();
+
+        List<LabelFilter> lfList1 = new ArrayList<>();
+
+        // This should filter out all of the events without a label and return just the two that have labels
+        lfList1.add(new LabelFilter(null, null, null, null, null, null));
+        EventFilter ef1 = new EventFilter(null, null, null, null, null, null, null,
+                null, null, lfList1);
+        List<Event> res1 = es.getEventList(ef1);
+        List<Event> exp1 = new ArrayList<>();
+        exp1.add(e3_grp_con_noclass_label);
+        exp1.add(e4_grp_con_noclass_label);
+        assertEquals(exp1.size(), res1.size());
+        for (int i = 0; i < exp1.size(); i++) {
+            assertEquals(exp1.get(i), res1.get(i));
+        }
+    }
+
+    /**
+     * Test of the use of EventFilters that use LabelFilters.
+     */
+    @Test
+    public void test2bGetEventListWithLabelFilters() throws Exception {
+        System.out.println("test2bGetEventListWithLabelFilters");
+
+        EventService es = new EventService();
+
+        // This should return one event with high confidence cavity label and a low confidence fault-type label. E.g.,
+        // {"id":null,"label-time_utc":null,"name":"cavity","value":"7","confidence":0.99,"model-name":"myModel"}
+        // {"id":null,"label-time_utc":null,"name":"fault-type","value":"fault_2","confidence":0.5,"model-name":"myModel"}
+
+        List<LabelFilter> lfList = new ArrayList<>();
+        lfList.add(new LabelFilter(Arrays.asList("myModel"), null, Arrays.asList("cavity"), null, 0.95, ">"));
+        lfList.add(new LabelFilter(Arrays.asList("myModel"), null, Arrays.asList("fault-type"), null, 0.57, ">"));
+        EventFilter ef = new EventFilter(null, null, null, null, null, null , null, null, null, lfList);
+
+        List<Event> res = es.getEventList(ef);
+        List<Event> exp = Arrays.asList(e3_grp_con_noclass_label);
+
+        for(Event e : res) {
+            System.out.println(e.toJsonObject().toString());
+        }
+
+        assertEquals(exp.size(), res.size());
+        for (int i = 0; i < exp.size(); i++) {
+            assertEquals(exp.get(i), res.get(i));
+        }
+    }
+
+    /**
+     * Test of the use of EventFilters that use LabelFilters.
+     */
+    @Test
+    public void test2cGetEventListWithLabelFilters() throws Exception {
+        System.out.println("test2bGetEventListWithLabelFilters");
+
+        EventService es = new EventService();
+
+        // This label filter should return all labeled events, and the other event filters should select the earlier one.
+        // TODO: The filters are returning the appropriate event list, but without all of the labels.  Figure it out.
+        List<LabelFilter> lfList = new ArrayList<>();
+        lfList.add(new LabelFilter(null, null, null, null, null, null));
+        EventFilter ef = new EventFilter(null, t3.plusMillis(-100), t3.plusMillis(100), null, null, null, null, null, null, lfList);
+
+        List<Event> res = es.getEventList(ef);
+        List<Event> exp = Arrays.asList(e3_grp_con_noclass_label);
+
+        assertEquals(exp.size(), res.size());
+        for (int i = 0; i < exp.size(); i++) {
+            assertEquals(exp.get(i), res.get(i));
+        }
     }
 
     /**
@@ -284,7 +370,7 @@ public class EventServiceTest {
         // Verify the flag has been set
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null, null);
         List<Event> eList = instance.getEventList(filter);
         assertTrue(eList.get(0).isArchive());
     }
@@ -303,7 +389,7 @@ public class EventServiceTest {
 
         List<Long> ids = new ArrayList<>();
         ids.add(id);
-        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(ids, null, null, null, null, null, null, null, null, null);
         List<Event> eList = instance.getEventList(filter);
         assertTrue(eList.get(0).isDelete());
     }
@@ -331,7 +417,7 @@ public class EventServiceTest {
     public void test6DeleteEvents() throws Exception {
         System.out.println("Deleting Test Events");
         EventService instance = new EventService();
-        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null, null, null);
         List<Event> allEvents = instance.getEventList(filter);
         assertEquals(eventList.size(), allEvents.size());
 

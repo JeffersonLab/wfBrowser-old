@@ -136,7 +136,7 @@ public class EventAjax extends HttpServlet {
         }
 
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete, minCaptureFiles);
+        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete, minCaptureFiles, null);
 
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.

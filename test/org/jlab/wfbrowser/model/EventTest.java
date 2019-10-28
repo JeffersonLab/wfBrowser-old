@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
 import javax.naming.NamingException;
 import org.jlab.wfbrowser.business.filter.EventFilter;
@@ -109,7 +110,10 @@ public class EventTest {
 
         // Create an event with a label
         e1_grp_con_noclass_meta_label = new Event(t1, grp_con_meta, "test", unarchive, noDelete, grouped, noClass, nullCF,
-                new Label(1L, t1, "testModel", "myCavity", "myFault", 0.99, 0.99));
+                Arrays.asList(new Label[]{
+                        new Label(1L, t1, "testModel", "cavity", "myCavity", 0.99),
+                        new Label(1L, t1, "testModel", "fault-type", "myFault",0.99)
+                }));
         e1_grp_con_noclass_meta_label.setEventId(4L);
 
         // Setup the grouped and incosistent events
@@ -149,7 +153,7 @@ public class EventTest {
         es.addEvent(e1_grp_con_noclass_meta);
 
         // Delete every event in the test database.  It should just be the two added above
-        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null, null, null);
         List<Event> all = es.getEventList(filter);
         for (Event e : all) {
             es.deleteEvent(e.getEventId(), true);
@@ -182,7 +186,7 @@ public class EventTest {
                 + "{\"filename\":\"test.2017_09_14_110000.1.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test1\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.5,2.5,0.5]}]},"
                 + "{\"filename\":\"test2.2017_09_14_110000.3.txt\",\"sample_start\":1.1,\"sample_end\":3.1,\"sample_step\":1.0,\"metadata\":[],\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
                 + "],"
-                + "\"label\":null"
+                + "\"labels\":null"
                 + "}";
         String result = e2_grp_con_noclass.toJsonObject().toString();
         assertEquals(expResult, result);
@@ -201,7 +205,7 @@ public class EventTest {
                 + "\"metadata\":[{\"name\":\"PV1:hb\",\"type\":\"NUMBER\",\"id\":null,\"value\":\"0.056\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2.VAL\",\"type\":\"STRING\",\"id\":null,\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3_1\",\"type\":\"UNAVAILABLE\",\"id\":null,\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4-1\",\"type\":\"UNARCHIVED\",\"id\":null,\"value\":null,\"offset\":null,\"start\":null}]"
                 + ",\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
                 + "],"
-                + "\"label\":null"
+                + "\"labels\":null"
                 + "}";
         String result1 = e1_grp_con_noclass_meta.toJsonObject().toString();
         assertEquals(expResult1, result1);
@@ -220,10 +224,10 @@ public class EventTest {
                 + "\"metadata\":[{\"name\":\"PV1:hb\",\"type\":\"NUMBER\",\"id\":null,\"value\":\"0.056\",\"offset\":-0.5,\"start\":-45.9},{\"name\":\"PV2.VAL\",\"type\":\"STRING\",\"id\":null,\"value\":\"ABC\",\"offset\":0.0,\"start\":-0.4},{\"name\":\"PV3_1\",\"type\":\"UNAVAILABLE\",\"id\":null,\"value\":null,\"offset\":0.0,\"start\":null},{\"name\":\"PV4-1\",\"type\":\"UNARCHIVED\",\"id\":null,\"value\":null,\"offset\":null,\"start\":null}]"
                 + ",\"waveforms\":[{\"waveformName\":\"test2\",\"series\":[],\"timeOffsets\":[1.1,2.1,3.1],\"values\":[1.15,32.5,10.5]}]}"
                 + "],"
-                + "\"label\":{"
-                + "\"id\":1,\"label-time_utc\":\"2017-09-14 14:00:00.1\",\"cavity-label\":\"myCavity\",\"fault-label\":\"myFault\","
-                + "\"model-name\":\"testModel\",\"cavity-confidence\":0.99,\"fault-confidence\":0.99"
-                + "}"
+                + "\"labels\":["
+                + "{\"id\":1,\"label-time_utc\":\"2017-09-14 14:00:00.1\",\"name\":\"cavity\",\"value\":\"myCavity\",\"confidence\":0.99,\"model-name\":\"testModel\"},"
+                + "{\"id\":1,\"label-time_utc\":\"2017-09-14 14:00:00.1\",\"name\":\"fault-type\",\"value\":\"myFault\",\"confidence\":0.99,\"model-name\":\"testModel\"}"
+                + "]"
                 + "}";
         String result2 = e1_grp_con_noclass_meta_label.toJsonObject().toString();
         assertEquals(expResult2, result2);

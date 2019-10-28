@@ -632,9 +632,9 @@ public class EventService {
                     + " FROM (SELECT *, count(*) AS num_cf FROM event"
                     + "   JOIN system_type USING(system_id)"
                     + "   JOIN capture USING(event_id)"
-                    + "   LEFT JOIN label USING(event_id)"
                     + "   GROUP BY event_id"
-                    + " ) AS t ";
+                    + " ) AS t "
+                    + "   LEFT JOIN label USING(event_id)";
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
             }
@@ -647,6 +647,8 @@ public class EventService {
             if (filter != null) {
                 filter.assignParameterValues(pstmt);
             }
+
+            System.out.println(getEventSql);
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
@@ -670,17 +672,19 @@ public class EventService {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-
+                    System.out.println("event_id: " + eventId);
                     // The SQL query (with left join) duplicates the left table for every match on the right.  Here
                     // the left join is the event info and the right is the label.  Create an event with the label the
                     // first time, and subsequent entries should just add the label info.
                     if (eventMap.containsKey(eventId)) {
+                        System.out.println("Added label id: " + labelId);
                         eventMap.get(eventId).addLabel(new Label(labelId, labelTime, modelName, labelName, labelValue, labelConfidence));
                     } else {
                         // An event may or may not have label(s) associated with it.  If no label is associated,
                         // then there are no labels, so we don't need a list.
                         List<Label> labelList = null;
                         if (labelId != null) {
+                            System.out.println("New event/label - label id: " + labelId);
                             labelList = new ArrayList<>();
                             labelList.add(new Label(labelId, labelTime, modelName, labelName, labelValue, labelConfidence));
                         }
@@ -927,7 +931,6 @@ public class EventService {
                 pstmt.setString(3, label.getName());
                 pstmt.setString(4, label.getValue());
                 pstmt.setDouble(5, label.getConfidence());
-                System.out.println(label.toJsonObject().toString());
                 pstmt.executeUpdate();
             } catch (SQLException ex) {
                 // If the insert failed, then rollback.  If nothing was deleted, then there is no harm, and if something

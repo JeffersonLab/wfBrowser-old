@@ -169,7 +169,9 @@ public class Event {
         this.dataDir = setDataDir();
     }
 
-    public void addLabel(Label label) { this.labelList.add(label); }
+    public void addLabel(Label label) {
+        this.labelList.add(label);
+    }
 
     public List<Label> getLabelList() {
         return labelList;
@@ -989,6 +991,17 @@ public class Event {
         isEqual = isEqual && (system.equals(e.getSystem()));
         isEqual = isEqual && (classification.equals(e.getClassification()));
         isEqual = isEqual && (archive == e.isArchive());
+        isEqual = isEqual && ((labelList == null) == (e.getLabelList() == null)); // check that both are or are not null
+        if (labelList != null) {
+            isEqual = isEqual && (labelList.size() == e.getLabelList().size()); // check that both are of the same size
+        }
+
+        // Now go down the list of labels to see if they match - but only if we're still equal
+        if (isEqual && labelList != null) {
+            for (int i = 0; i < labelList.size(); i++) {
+                isEqual = isEqual && labelList.get(i).equals(e.getLabelList().get(i));
+            }
+        }
         return isEqual;
     }
 
@@ -1000,6 +1013,7 @@ public class Event {
         hash = 11 * hash + Objects.hashCode(this.location);
         hash = 11 * hash + Objects.hashCode(this.system);
         hash = 11 * hash + Objects.hashCode(this.classification);
+        hash = 11 * hash + Objects.hashCode(this.labelList);
         hash = 11 * hash + (this.archive ? 1 : 0);
         return hash;
     }
@@ -1023,8 +1037,18 @@ public class Event {
             }
             cfMap.append("}");
         }
-        return "eventId: " + eventId + "\neventTime: " + getEventTimeString() + "\nlocation: " + location + "\nsystem: " + system
-                + "\nClassification: " + classification + "\nnum Waveforms: " + wSize + "\nWaveform Data:\n" + wData + "\n" + cfMap;
+
+        String labList = "";
+        if (labelList != null && !labelList.isEmpty()){
+            labList = "labelList: [";
+            for(Label label : labelList) {
+                labList += label.toJsonObject().toString() + ",";
+            }
+            labList += "]";
+        }
+        return "eventId: " + eventId + "\neventTime: " + getEventTimeString() + "\nlocation: " + location + "\nsystem: " +
+                system + "\nClassification: " + classification + "\nnum Waveforms: " + wSize + "\nWaveform Data:\n" +
+                wData + "\n" + cfMap + "\n" + labList;
     }
 
     /**

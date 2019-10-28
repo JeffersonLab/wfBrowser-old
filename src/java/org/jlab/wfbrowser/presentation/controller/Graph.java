@@ -424,7 +424,7 @@ public class Graph extends HttpServlet {
                 // Query the event id with the other constraints that were determined so far (location, start/end, etc.).  If we don't get
                 // anything, then get the default entry for that set of constrains minus the event Id
                 id = Long.parseLong(eventId);
-                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
+                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles, null);
                 List<Event> currentEventList = es.getEventList(currentFilter);
                 if (currentEventList == null || currentEventList.isEmpty()) {
                     currentEvent = null;
@@ -441,7 +441,7 @@ public class Graph extends HttpServlet {
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
             try {
-                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
+                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles, null);
                 currentEvent = es.getMostRecentEvent(eFilter);
 
                 // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
@@ -464,7 +464,7 @@ public class Graph extends HttpServlet {
         // Get a list of events that are to be displayed in the timeline - should not be in session since this might change
         List<Event> eventList;
         try {
-            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
+            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles, null);
             eventList = es.getEventListWithoutCaptureFiles(eFilter);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);

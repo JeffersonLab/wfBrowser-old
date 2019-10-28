@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.jlab.wfbrowser.business.util.TimeUtil;
 
 /**
@@ -30,6 +31,7 @@ public class EventFilter {
     private final Boolean archive;
     private final Boolean delete;
     private final Integer minCaptureFiles;
+    private final List<LabelFilter> labelFilterList;
 
     /**
      * Construct the basic filter object and save the individual filter values.  If minCaptureFiles != null, then query must join capture table with count(*) AS num_cf
@@ -44,9 +46,10 @@ public class EventFilter {
      * @param archive
      * @param delete
      * @param minCaptureFiles
+     * @param labelFilterList
      */
     public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, List<String> locationList, List<String> classificationList, Boolean archive,
-            Boolean delete, Integer minCaptureFiles) {
+                       Boolean delete, Integer minCaptureFiles, List<LabelFilter> labelFilterList) {
         this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
@@ -56,6 +59,7 @@ public class EventFilter {
         this.archive = archive;
         this.delete = delete;
         this.minCaptureFiles = minCaptureFiles;
+        this.labelFilterList = labelFilterList;
     }
 
     /**
@@ -121,11 +125,32 @@ public class EventFilter {
             }
         }
 
+        // Working with the LabelFilters is a little different since these will be ORed together.  Internally they are
+        // AND'ed so this provides a little extra flexibility in what can be specified.
+        if (labelFilterList != null && !labelFilterList.isEmpty()) {
+            // Setup the WHERE clause as needed.  Needed since this may be the only filter applied.
+            if (filters.isEmpty()) {
+                filter = " WHERE (";
+            } else {
+                filter += " AND (";
+            }
+
+            filter += labelFilterList.get(0).getWhereClauseContent();
+
+            if (labelFilterList.size() > 1) {
+                for (int i = 1; i < labelFilterList.size(); i++) {
+                    filter += " OR " + labelFilterList.get(i).getWhereClauseContent();
+                }
+            }
+            filter += ")";
+        }
+
         return filter;
     }
 
     /**
      * Assign the filter parameter values to the prepared statement.
+     *
      * @param stmt
      * @throws SQLException
      */
@@ -162,8 +187,13 @@ public class EventFilter {
         if (delete != null) {
             stmt.setInt(i++, delete ? 1 : 0);
         }
-        if(minCaptureFiles != null) {
+        if (minCaptureFiles != null) {
             stmt.setInt(i++, minCaptureFiles);
+        }
+        if (labelFilterList != null && !labelFilterList.isEmpty()) {
+            for (LabelFilter labelFilter : labelFilterList) {
+                i = labelFilter.assignParameterValues(stmt, i);
+            }
         }
     }
 }

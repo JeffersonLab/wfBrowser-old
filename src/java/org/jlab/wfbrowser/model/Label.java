@@ -4,6 +4,7 @@ import org.jlab.wfbrowser.business.util.TimeUtil;
 
 import javax.json.*;
 import java.time.Instant;
+import java.util.Objects;
 
 public class Label {
     private final Long id;                  // The database ID associated with this label
@@ -54,6 +55,8 @@ public class Label {
         return modelName;
     }
 
+    public Long getId() {return id;}
+
     public String getName() {
         return name;
     }
@@ -89,4 +92,22 @@ public class Label {
         job.add("model-name", modelName);
         return job.build();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Label label = (Label) o;
+        // Skipping id and label_time since they are database dependent and make it hard to test
+        return modelName.equals(label.modelName) &&
+                name.equals(label.name) &&
+                value.equals(label.value) &&
+                Objects.equals(confidence, label.confidence);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(modelName, name, value, confidence);
+    }
+
 }
