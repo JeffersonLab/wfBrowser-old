@@ -12,7 +12,6 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.json.*;
-import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -37,7 +36,6 @@ public class EventAjax extends HttpServlet {
 
     private final static Logger LOGGER = Logger.getLogger(EventAjax.class.getName());
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
      * Allows users to query for event data
      *
@@ -110,10 +108,10 @@ public class EventAjax extends HttpServlet {
 
             // Setup the query by the SeriesSets by names
             SeriesService ss = new SeriesService();
-            SeriesSetFilter sfilter = new SeriesSetFilter(null, null, seriesSetList);
+            SeriesSetFilter sFilter = new SeriesSetFilter(null, null, seriesSetList);
             try {
                 // For each SeriesSet return, add the names of it's contained series to the master set
-                List<SeriesSet> seriesSets = ss.getSeriesSets(sfilter);
+                List<SeriesSet> seriesSets = ss.getSeriesSets(sFilter);
                 for (SeriesSet set : seriesSets) {
                     for (Series series : set.getSet()) {
                         seriesMasterSet.add(series.getName()); // Not null
@@ -136,7 +134,7 @@ public class EventAjax extends HttpServlet {
         }
 
         // Enforce an rf system filter since this is likely to be an interface for only RF systems for some time
-        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete, minCaptureFiles, null);
+        EventFilter filter = new EventFilter(eventIdList, begin, end, system, locationList, classificationList, archive, delete, minCaptureFiles);
 
         // Output data in the request format.  CSV probably only makes sense if you wanted the data, but not reason to not support
         // the no data case.
@@ -259,7 +257,7 @@ public class EventAjax extends HttpServlet {
      * Handle logic for events to be added to waveform database.
      *
      * @param request Standard HttpServletRequest object
-     * @param response Standard HttpServletResponse objedct
+     * @param response Standard HttpServletResponse object
      * @throws IOException If problems arise while accessing data from disk
      */
     @Override
@@ -311,8 +309,9 @@ public class EventAjax extends HttpServlet {
             boolean arch = Boolean.parseBoolean(archive);
             boolean del = Boolean.parseBoolean(delete);
             boolean grp = Boolean.parseBoolean(grouped);
-            kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" + t.toString() + " grp=" + grp
-                    + " arc=" + arch + " del=" + del + " cFile=" + captureFile;
+            kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" +
+                    (t==null ? "null" : t.toString()) + " grp=" + grp + " arc=" + arch + " del=" + del + " cFile=" +
+                    captureFile;
             LOGGER.log(Level.INFO, "User ''{0}'' attempting to add event {1}", new Object[]{userName, kvp});
             Event event = new Event(t, location, system, arch, del, grp, classification, captureFile, labelList);
             long id = wfs.addEvent(event);
