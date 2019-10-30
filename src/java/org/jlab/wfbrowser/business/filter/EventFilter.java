@@ -31,7 +31,6 @@ public class EventFilter {
     private final Boolean archive;
     private final Boolean delete;
     private final Integer minCaptureFiles;
-    private final List<LabelFilter> labelFilterList;
 
     /**
      * Construct the basic filter object and save the individual filter values.  If minCaptureFiles != null, then query must join capture table with count(*) AS num_cf
@@ -46,10 +45,9 @@ public class EventFilter {
      * @param archive
      * @param delete
      * @param minCaptureFiles
-     * @param labelFilterList
      */
     public EventFilter(List<Long> eventIdList, Instant begin, Instant end, String system, List<String> locationList, List<String> classificationList, Boolean archive,
-                       Boolean delete, Integer minCaptureFiles, List<LabelFilter> labelFilterList) {
+                       Boolean delete, Integer minCaptureFiles) {
         this.eventIdList = eventIdList;
         this.begin = begin;
         this.end = end;
@@ -59,7 +57,6 @@ public class EventFilter {
         this.archive = archive;
         this.delete = delete;
         this.minCaptureFiles = minCaptureFiles;
-        this.labelFilterList = labelFilterList;
     }
 
     /**
@@ -73,12 +70,12 @@ public class EventFilter {
         List<String> filters = new ArrayList<>();
 
         if (eventIdList != null && !eventIdList.isEmpty()) {
-            String eventIdFilter = "event_id IN (?";
+            StringBuilder eventIdFilter = new StringBuilder("event_id IN (?");
             for (int i = 1; i < eventIdList.size(); i++) {
-                eventIdFilter += ",?";
+                eventIdFilter.append(",?");
             }
-            eventIdFilter += ")";
-            filters.add(eventIdFilter);
+            eventIdFilter.append(")");
+            filters.add(eventIdFilter.toString());
         }
         if (begin != null) {
             filters.add("event_time_utc >= ?");
@@ -90,20 +87,20 @@ public class EventFilter {
             filters.add("system_name = ?");
         }
         if (locationList != null && !locationList.isEmpty()) {
-            String locationFilter = "location IN (?";
+            StringBuilder locationFilter = new StringBuilder("location IN (?");
             for (int i = 1; i < locationList.size(); i++) {
-                locationFilter += ",?";
+                locationFilter.append(",?");
             }
-            locationFilter += ")";
-            filters.add(locationFilter);
+            locationFilter.append(")");
+            filters.add(locationFilter.toString());
         }
         if (classificationList != null && !classificationList.isEmpty()) {
-            String classificationFilter = "classification IN (?";
+            StringBuilder classificationFilter = new StringBuilder("classification IN (?");
             for (int i = 1; i < classificationList.size(); i++) {
-                classificationFilter += ",?";
+                classificationFilter.append(",?");
             }
-            classificationFilter += ")";
-            filters.add(classificationFilter);
+            classificationFilter.append(")");
+            filters.add(classificationFilter.toString());
         }
         if (archive != null) {
             filters.add("archive = ?");
@@ -124,35 +121,14 @@ public class EventFilter {
                 }
             }
         }
-
-        // Working with the LabelFilters is a little different since these will be ORed together.  Internally they are
-        // AND'ed so this provides a little extra flexibility in what can be specified.
-        if (labelFilterList != null && !labelFilterList.isEmpty()) {
-            // Setup the WHERE clause as needed.  Needed since this may be the only filter applied.
-            if (filters.isEmpty()) {
-                filter = " WHERE (";
-            } else {
-                filter += " AND (";
-            }
-
-            filter += labelFilterList.get(0).getWhereClauseContent();
-
-            if (labelFilterList.size() > 1) {
-                for (int i = 1; i < labelFilterList.size(); i++) {
-                    filter += " OR " + labelFilterList.get(i).getWhereClauseContent();
-                }
-            }
-            filter += ")";
-        }
-
         return filter;
     }
 
     /**
      * Assign the filter parameter values to the prepared statement.
      *
-     * @param stmt
-     * @throws SQLException
+     * @param stmt The prepared statement that the filter should operate on
+     * @throws SQLException If issue binding parameters
      */
     public void assignParameterValues(PreparedStatement stmt) throws SQLException {
         int i = 1;
@@ -189,11 +165,6 @@ public class EventFilter {
         }
         if (minCaptureFiles != null) {
             stmt.setInt(i++, minCaptureFiles);
-        }
-        if (labelFilterList != null && !labelFilterList.isEmpty()) {
-            for (LabelFilter labelFilter : labelFilterList) {
-                i = labelFilter.assignParameterValues(stmt, i);
-            }
         }
     }
 }
