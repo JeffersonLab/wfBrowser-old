@@ -1048,7 +1048,7 @@ public class Event {
         }
         return "eventId: " + eventId + "\neventTime: " + getEventTimeString() + "\nlocation: " + location + "\nsystem: " +
                 system + "\nClassification: " + classification + "\nnum Waveforms: " + wSize + "\nWaveform Data:\n" +
-                wData + "\n" + cfMap + "\n" + labList;
+                wData + "\n" + cfMap + "\n" + labList + "\n";
     }
 
     /**
