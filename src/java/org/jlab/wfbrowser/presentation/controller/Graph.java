@@ -8,7 +8,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -325,7 +324,7 @@ public class Graph extends HttpServlet {
         EventService es = new EventService();
         List<String> locationOptions;
         try {
-            locationOptions = es.getLocationNames(Arrays.asList(system));
+            locationOptions = es.getLocationNames(Collections.singletonList(system));
             Collections.sort(locationOptions);
             if (locationOptions.isEmpty()) {
                 LOGGER.log(Level.SEVERE, "Error. No location options found.  Consider adding events.");
@@ -372,7 +371,7 @@ public class Graph extends HttpServlet {
 
         List<String> classificationOptions;
         try {
-            classificationOptions = es.getClassifications(Arrays.asList(system));
+            classificationOptions = es.getClassifications(Collections.singletonList(system));
             Collections.sort(classificationOptions);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for classification information.", ex);
@@ -424,7 +423,7 @@ public class Graph extends HttpServlet {
                 // Query the event id with the other constraints that were determined so far (location, start/end, etc.).  If we don't get
                 // anything, then get the default entry for that set of constrains minus the event Id
                 id = Long.parseLong(eventId);
-                EventFilter currentFilter = new EventFilter(Arrays.asList(id), begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles, null);
+                EventFilter currentFilter = new EventFilter(Collections.singletonList(id), begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
                 List<Event> currentEventList = es.getEventList(currentFilter);
                 if (currentEventList == null || currentEventList.isEmpty()) {
                     currentEvent = null;
@@ -441,7 +440,7 @@ public class Graph extends HttpServlet {
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
             try {
-                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles, null);
+                EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
                 currentEvent = es.getMostRecentEvent(eFilter);
 
                 // Still possible the user specified parameters with no events.  Only redirect if we have something to redirect to.
@@ -464,7 +463,7 @@ public class Graph extends HttpServlet {
         // Get a list of events that are to be displayed in the timeline - should not be in session since this might change
         List<Event> eventList;
         try {
-            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles, null);
+            EventFilter eFilter = new EventFilter(null, begin, end, system, locationSelections, classificationSelections, null, null, minCaptureFiles);
             eventList = es.getEventListWithoutCaptureFiles(eFilter);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
@@ -473,36 +472,35 @@ public class Graph extends HttpServlet {
 
         // If a redirect was found to be needed, build the URL based on variables set above and redirect to it.
         if (redirectNeeded) {
-            String redirectUrl = request.getContextPath() + "/graph?"
+            StringBuilder redirectUrl = new StringBuilder(request.getContextPath() + "/graph?"
                     + "eventId=" + URLEncoder.encode((id == null ? "" : "" + id), "UTF-8")
                     + "&system=" + URLEncoder.encode(system, "UTF-8")
                     + "&begin=" + URLEncoder.encode(beginString, "UTF-8")
-                    + "&end=" + URLEncoder.encode(endString, "UTF-8");
+                    + "&end=" + URLEncoder.encode(endString, "UTF-8"));
             for (String location : locationSelections) {
-                redirectUrl += "&location=" + URLEncoder.encode(location, "UTF-8");
+                redirectUrl.append("&location=").append(URLEncoder.encode(location, "UTF-8"));
             }
             for (String classification : classificationSelections) {
-                redirectUrl += "&classification=" + URLEncoder.encode(classification, "UTF-8");
+                redirectUrl.append("&classification=").append(URLEncoder.encode(classification, "UTF-8"));
             }
             for (String series : seriesSelections) {
-                redirectUrl += "&series=" + URLEncoder.encode(series, "UTF-8");
+                redirectUrl.append("&series=").append(URLEncoder.encode(series, "UTF-8"));
             }
             for (String seriesSet : seriesSetSelections) {
-                redirectUrl += "&seriesSet=" + URLEncoder.encode(seriesSet, "UTF-8");
+                redirectUrl.append("&seriesSet=").append(URLEncoder.encode(seriesSet, "UTF-8"));
             }
             if (minCaptureFiles != null) {
-                redirectUrl += "&minCF=" + URLEncoder.encode(minCaptureFiles.toString(), "UTF-8");
+                redirectUrl.append("&minCF=").append(URLEncoder.encode(minCaptureFiles.toString(), "UTF-8"));
             }
 
-            response.sendRedirect(response.encodeRedirectURL(redirectUrl));
+            response.sendRedirect(response.encodeRedirectURL(redirectUrl.toString()));
             return;
         }
 
         // Put together a simple set of all of the series names that are to be shown in the graphs.  The series parameters are specified
-        // by name so that is  straightforward.  We have to loookup the seriesSet and process the objects to get the series names
+        // by name so that is  straightforward.  We have to look up the seriesSet and process the objects to get the series names
         // they include.  We already have a full list of all SeriesSet objects in the series Set objects so just use that.
-        Set<String> seriesMasterSet = new TreeSet<>();
-        seriesMasterSet.addAll(seriesSelections);
+        Set<String> seriesMasterSet = new TreeSet<>(seriesSelections);
         for (String sName : seriesSetSelections) {
             for (SeriesSet seriesSet : seriesSetOptions) {
                 if (seriesSet.getName().equals(sName)) {
