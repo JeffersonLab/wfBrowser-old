@@ -60,7 +60,7 @@ public class EventTest {
 //    }
 
     @BeforeClass
-    public static void oneTimeSetUp() throws IOException, FileNotFoundException, SQLException, NamingException {
+    public static void oneTimeSetUp() throws IOException, SQLException, NamingException {
         System.out.println("Start of setup");
 
         // Setup the data connection and connection pools
@@ -73,8 +73,6 @@ public class EventTest {
 
         // Setup the flags for the basic testing.  Make variable names match what they do.
         boolean unarchive = false;
-        boolean archive = true;
-        boolean delete = true;
         boolean noDelete = false;
         boolean grouped = true;
         boolean ungrouped = false;
@@ -146,14 +144,14 @@ public class EventTest {
 
         // Don't add e1a since it is a duplicate and should fail 
         EventService es = new EventService();
-//        es.addEvent(e1_grp_con_noclass);
         es.addEvent(e2_grp_con_noclass);
         System.out.println(e1_grp_con_noclass_meta.getArchivePath());
         System.out.println(e1_grp_con_noclass_meta.getEventDirectoryPath());
         es.addEvent(e1_grp_con_noclass_meta);
 
         // Delete every event in the test database.  It should just be the two added above
-        EventFilter filter = new EventFilter(null, null, null, null, null, null, null, null, null, null);
+        EventFilter filter = new EventFilter(null, null, null, null, null,
+                null, null, null, null);
         List<Event> all = es.getEventList(filter);
         for (Event e : all) {
             es.deleteEvent(e.getEventId(), true);
