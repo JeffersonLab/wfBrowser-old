@@ -4,14 +4,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.*;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jlab.wfbrowser.business.filter.EventFilter;
+import org.jlab.wfbrowser.business.filter.LabelFilter;
 import org.jlab.wfbrowser.business.util.SqlUtil;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.CaptureFile.CaptureFile;
@@ -242,45 +240,6 @@ public class EventService {
     }
 
     /**
-     * Get the most recent event ID in the database given the applied filter
-     *
-     * @param filter An EventFilter parameter providing a finer selection of the data returned
-     * @return The most recent event ID that matches the filter requirements
-     * @throws SQLException If problems arise while accessing data in database
-     */
-    public Long getMostRecentEventId(EventFilter filter) throws SQLException {
-        Long out = null;
-        String sql = "SELECT event_id FROM ("
-                + " SELECT *, count(*) AS num_cf FROM event"
-                + " JOIN system_type ON event.system_id = system_type.system_id"
-                + " JOIN capture ON event.event_id = capture.event_id"
-                + " GROUP BY event_id"
-                + " ) AS t";
-        if (filter != null) {
-            sql += filter.getWhereClause();
-        }
-        sql += " ORDER BY event_time_utc DESC LIMIT 1";
-
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-        try {
-            conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            if (filter != null) {
-                filter.assignParameterValues(pstmt);
-            }
-            rs = pstmt.executeQuery();
-            if (rs.next()) {
-                out = rs.getLong("event_id");
-            }
-        } finally {
-            SqlUtil.close(rs, pstmt, conn);
-        }
-        return out;
-    }
-
-    /**
      * Get the most recent event in the database given the applied filter.
      * Includes data
      *
@@ -405,9 +364,9 @@ public class EventService {
             return out;
         }
 
-        // This is a little complex.  Perform a subquery / derived table on the event IDs to cut down on the amount of data we process.
+        // This is a little complex.  Perform a sub-query / derived table on the event IDs to cut down on the amount of data we process.
         // Then join on the series and event_waveforms tables where the waveform name (PV) matches the specified pattern.  This should
-        // only return rowns where we had a non-zero number of matches.
+        // only return rows where we had a non-zero number of matches.
         StringBuilder sql = new StringBuilder("SELECT series_name, series_id, system_name, pattern, description, units, COUNT(*) FROM"
                 + " (SELECT * FROM event_waveforms WHERE event_id IN (?");
         for (int i = 1; i < eventIdList.size(); i++) {
@@ -451,47 +410,13 @@ public class EventService {
      * Returns the event object mapping to the event records with eventId from
      * the database. Simple wrapper that has no limit and includes data.
      *
-     * @param filter EventFilter for narrowing down the acceptable rannge of Events
+     * @param filter EventFilter for narrowing down the acceptable range of Events
      * @return The List of Events that meet the filter requirements
      * @throws SQLException If problems arise while accessing the database
      * @throws IOException  If problems arise while accessing data on disk
      */
     public List<Event> getEventList(EventFilter filter) throws SQLException, IOException {
         return getEventList(filter, null, true, true);
-    }
-
-    /**
-     * Returns a map of waveform names to common series names for a given event.
-     *
-     * @param eventId The ID of the event for which to return the waveform to series mapping.
-     * @return A map of waveform names to their corresponding series names
-     * @throws SQLException If trouble arises while accessing the database
-     */
-    public Map<String, String> getWaveformToSeriesMap(long eventId) throws SQLException {
-        Map<String, String> waveformToSeries = new HashMap<>();
-        String sql = "SELECT waveform_name, series_name"
-                + " FROM event_waveforms"
-                + " JOIN series ON event_waveform_name LIKE series.pattern"
-                + " WHERE event_id = ?";
-
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-
-        try {
-            conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            pstmt.setLong(1, eventId);
-            rs = pstmt.executeQuery();
-            while (rs.next()) {
-                String waveformName = rs.getString("waveform_name");
-                String seriesName = rs.getString("series_name");
-                waveformToSeries.put(waveformName, seriesName);
-            }
-        } finally {
-            SqlUtil.close(rs, pstmt, conn);
-        }
-        return waveformToSeries;
     }
 
 
@@ -648,7 +573,6 @@ public class EventService {
                 filter.assignParameterValues(pstmt);
             }
 
-            System.out.println(getEventSql);
             rs = pstmt.executeQuery();
             while (rs.next()) {
                 eventId = rs.getLong("event_id");
@@ -667,24 +591,20 @@ public class EventService {
                 labelValue = rs.getString("label_value");
                 labelConfidence = rs.getDouble("label_confidence");
 
-
                 if (location == null || system == null) {
                     // All of these should have NOT NULL constraints on them.  Verify that something hasn't gone wrong
                     throw new SQLException("Error querying event information from database");
                 } else {
-                    System.out.println("event_id: " + eventId);
                     // The SQL query (with left join) duplicates the left table for every match on the right.  Here
                     // the left join is the event info and the right is the label.  Create an event with the label the
                     // first time, and subsequent entries should just add the label info.
                     if (eventMap.containsKey(eventId)) {
-                        System.out.println("Added label id: " + labelId);
                         eventMap.get(eventId).addLabel(new Label(labelId, labelTime, modelName, labelName, labelValue, labelConfidence));
                     } else {
                         // An event may or may not have label(s) associated with it.  If no label is associated,
                         // then there are no labels, so we don't need a list.
                         List<Label> labelList = null;
                         if (labelId != null) {
-                            System.out.println("New event/label - label id: " + labelId);
                             labelList = new ArrayList<>();
                             labelList.add(new Label(labelId, labelTime, modelName, labelName, labelValue, labelConfidence));
                         }
@@ -703,6 +623,7 @@ public class EventService {
                         + " FROM capture"
                         + " WHERE event_id = ?";
                 pstmt = conn.prepareStatement(captureSql, Statement.RETURN_GENERATED_KEYS);
+                System.out.println("About to load up capture file info");
                 for (Event e : eventMap.values()) {
                     pstmt.setLong(1, e.getEventId());
                     rs = pstmt.executeQuery();
@@ -720,10 +641,12 @@ public class EventService {
                     rs.close();
                 }
                 pstmt.close();
+                System.out.println("Finished loading capture file info");
 
                 // For each event, get the recently constructed CaptureFiles, then add waveforms without data to them.  We'll add data later if it was requested.
                 String waveformSql = "SELECT cwf_id, waveform_name FROM capture_wf WHERE capture_id = ?";
                 pstmt = conn.prepareStatement(waveformSql);
+                System.out.println("About to load up waveform descriptions");
                 for (Event e : eventMap.values()) {
                     String waveformName;
                     Long cwfId;
@@ -739,10 +662,12 @@ public class EventService {
                     }
                 }
                 pstmt.close();
+                System.out.println("Finished loading waveform descriptions");
 
                 // Load up the capture file metadata
                 String metaSql = "SELECT meta_id, meta_name, type, value, start, offset FROM capture_meta WHERE capture_id = ?";
                 pstmt = conn.prepareStatement(metaSql);
+                System.out.println("About to load metadata info");
                 for (Event e : eventMap.values()) {
                     Long metaId;
                     String metaName;
@@ -777,6 +702,7 @@ public class EventService {
                         }
                     }
                 }
+                System.out.println("Finished loading metadata");
 
                 // Determine the rules for labeling waveform series (GMES vs DETA2, not Cav1, Cav2, ...)
                 String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
@@ -789,6 +715,7 @@ public class EventService {
                         + " ORDER BY waveform_name";
                 pstmt = conn.prepareStatement(mapSql);
                 // Get the waveform data for each event's CaptureFile, then figure out the waveform to series mapping and apply it.
+                System.out.println("About to map series info to waveforms");
                 for (Event e : eventMap.values()) {
                     // Get the mapping
                     Map<String, List<Series>> waveformToSeries = new HashMap<>();
@@ -802,9 +729,7 @@ public class EventService {
                         String systemName = rs.getString("system_name");
                         String description = rs.getString("description");
                         String units = rs.getString("units");
-                        if (waveformToSeries.get(waveformName) == null) {
-                            waveformToSeries.put(waveformName, new ArrayList<>());
-                        }
+                        waveformToSeries.computeIfAbsent(waveformName, k -> new ArrayList<>());
                         waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                     }
                     rs.close();
@@ -813,12 +738,15 @@ public class EventService {
                     e.applySeriesMapping(waveformToSeries);
                 }
                 pstmt.close();
+                System.out.println("Finished mapping series info to waveforms");
 
                 // Now get the data if requested
                 if (includeData) {
+                    System.out.println("About to load up actual waveform data");
                     for (Event e : eventMap.values()) {
                         e.loadWaveformDataFromDisk();
                     }
+                    System.out.println("Finished loading up actual waveform data");
                 }
             }
         } finally {
@@ -827,9 +755,7 @@ public class EventService {
 
         // Convert this map to a list for external consumption.  We only needed to track them by ID when constructing
         // events from the database
-        List<Event> eventList = new ArrayList<>();
-        eventList.addAll(eventMap.values());
-        return eventList;
+        return new ArrayList<>(eventMap.values());
     }
 
     /**
@@ -987,26 +913,6 @@ public class EventService {
     }
 
     /**
-     * Add a list of events to the database.
-     *
-     * @param eventList A list of Events to be added to the database
-     * @return The number of events added to the database
-     * @throws SQLException If problems arise while accessing the database
-     * @throws IOException  If problems arise while accessing the waveform data on disk
-     */
-    public int addEventList(List<Event> eventList) throws SQLException, IOException {
-        int numAdded = 0;
-        for (Event e : eventList) {
-            if (e != null) {
-                // eventId is an auto-incremented primary key starting at 1.  It should never be < 0
-                addEvent(e);
-                numAdded++;
-            }
-        }
-        return numAdded;
-    }
-
-    /**
      * Set the to_be_deleted flag on the specified events in the database.
      *
      * @param eventIds List of IDs of events to modify
@@ -1057,50 +963,62 @@ public class EventService {
      * Return format is a Map keyed on location whose values are Maps keyed on label combinations (cavity,fault-type) whose values are
      * the of the occurrence.
      */
-    public Map<String, Map<String, Long>> getLabelTally(EventFilter filter) throws SQLException {
+    public Map<String, Map<String, Long>> getLabelTally(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
 
-        Map<String, Map<String, Long>> out = new HashMap<>();
+        // Keep this sorted so we have a predictable output ordering.  This is <location, <valueComboString, count>> where
+        // value combo string is <fault_value>,<cavity_value>, ... if more label_names exist.
+        Map<String, Map<String, Long>> out = new TreeMap<>();
 
-        // TODO: Implement a label component in EventFilter and replace the where clause with the filter functions
-        String sql = "select location, label_combo, count(label_combo) AS count " +
-                "        from (select location, group_concat(IFNULL(label_value, \"NULL\") ORDER BY label_name ASC) AS label_combo " +
-                "                from event " +
-                "                LEFT JOIN label on event.event_id = label.event_id " +
-                "                where label_name = \"cavity\" " +
-                "                or label_name = \"fault-type\" " +
-                "                or label_name IS NULL " +
-                "                group by event.event_id, location " +
-                "                order by location, label_name DESC " +
-                "        ) as t " +
-                "        GROUP BY location, label_combo;";
+        // Only want to query the database once
+        List<Event> eventList = getEventList(eventFilter, null, false, false);
 
-        // Basic database objects
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
+        // Get the different filtered sets and collect their union
+        if (lfList != null && !lfList.isEmpty()) {
 
-        // Declare result objects
-        String location;
-        String labelCombo;
-        Long count;
-
-        try {
-            conn = SqlUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                location = rs.getString("location");
-                labelCombo = rs.getString("label_combo");
-                count = rs.getLong("count");
-
-                if (!out.containsKey(location)) {
-                    out.put(location, new HashMap<>());
-                }
-                out.get(location).put(labelCombo, count);
+            // Build up a set so that events don't get duplicated
+            Set<Event> events = new HashSet<>();
+            for(LabelFilter lf : lfList) {
+                events.addAll(lf.filterEvents(eventList));
             }
-        } finally {
-            SqlUtil.close(rs, pstmt, conn);
+
+            // Convert back to a List since that's what the downstream code is expecting.
+            eventList = new ArrayList<>(events);
+        }
+
+        // Now process the events and tally up the label combinations.  As of this writing, there was only RF-related cavity and fault-type
+        // label names, so sorting them puts them in the right order.
+        for (Event e: eventList) {
+            if (!out.containsKey(e.getLocation())) {
+                out.put(e.getLocation(), new TreeMap<>());
+            }
+
+            // Sort the label values by their label name using the TreeMap structure
+            SortedMap<String, String> names = new TreeMap<>(Collections.reverseOrder());
+
+            // If the event doesn't have any labels, give it a name/value pair of "NULL"/"NULL".  Not sure what else
+            // to put here since we can't use actual null key.
+            if (e.getLabelList() == null || e.getLabelList().isEmpty()) {
+                names.put("NULL","NULL");
+            } else {
+                // Go through the event's labels add their name/value pairs to the tree
+                for (Label l : e.getLabelList()) {
+                    if (l == null) {
+                        continue;
+                    }
+                    names.put(l.getName(), l.getValue());
+                }
+            }
+
+            // Convert them into the CSV strings that make tallying simpler
+            List<String> nList = new ArrayList<>(names.values());  // This should add them in the order that we want (fault-type, cavity)
+            String comboString = String.join(",", nList);
+
+            // Tally the combo strings by location
+            if (out.get(e.getLocation()).containsKey(comboString)) {
+                out.get(e.getLocation()).put(comboString, out.get(e.getLocation()).get(comboString) + 1L);
+            } else {
+                out.get(e.getLocation()).put(comboString, 1L);
+            }
         }
 
         return out;
@@ -1117,12 +1035,13 @@ public class EventService {
      * ...
      * ]
      *
-     * @param filter
-     * @return
-     * @throws SQLException
+     * @param eventFilter An event filter.  Applied first via database SQL
+     * @param lfList A list of LabelFilters.  Applied after eventFilter, and the result is the union-ed if multiple
+     *               LabelFilters are supplied
+     * @return A JsonArray where each element is an object with location, label-combo, and count parameters
      */
-    public JsonArray getLabelTallyAsJson(EventFilter filter) throws SQLException {
-        Map<String, Map<String, Long>> tallyMap = getLabelTally(filter);
+    public JsonArray getLabelTallyAsJson(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
+        Map<String, Map<String, Long>> tallyMap = getLabelTally(eventFilter, lfList);
 
         JsonArrayBuilder jab = Json.createArrayBuilder();
         for (String location : tallyMap.keySet()) {
