@@ -7,20 +7,21 @@
    Each event should only have a single label for each type of label (e.g., single cavity label and a single fault type
    label).  Reports may search this table by label name (all cav 1 faults) and/or confidences (everything over 0.50) so index accordingly.
  */
-CREATE TABLE label (
-                                       label_id BIGINT NOT NULL AUTO_INCREMENT,
-                                       event_id BIGINT(20) NOT NULL,
-                                       model_name VARCHAR(127) NOT NULL,
-                                       label_time_utc DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                       label_name ENUM('cavity', 'fault-type') NOT NULL,
-                                       label_value VARCHAR(127),
-                                       label_confidence DECIMAL(3,2) UNSIGNED ZEROFILL,
-                                       UNIQUE KEY `event_label_name_id` (event_id, label_name),
-                                       INDEX i_label_name (label_name),
-                                       INDEX i_label_value (label_value),
-                                       INDEX i_cavity_confidence (label_confidence),
-                                       PRIMARY KEY (label_id),
-                                       FOREIGN KEY (event_id)
-                                           REFERENCES event (event_id)
-                                           ON DELETE CASCADE
-                ) ENGINE=InnoDB;
+CREATE TABLE label
+(
+    label_id         BIGINT                        NOT NULL AUTO_INCREMENT,
+    event_id         BIGINT(20)                    NOT NULL,
+    model_name       VARCHAR(127)                  NOT NULL,
+    label_time_utc   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    label_name       ENUM ('cavity', 'fault-type') NOT NULL,
+    label_value      VARCHAR(127),
+    label_confidence DECIMAL(3, 2) UNSIGNED ZEROFILL,
+    UNIQUE KEY `event_label_name_id` (event_id, label_name),
+    INDEX i_label_name (label_name),
+    INDEX i_label_value (label_value),
+    INDEX i_cavity_confidence (label_confidence),
+    PRIMARY KEY (label_id),
+    FOREIGN KEY (event_id)
+        REFERENCES event (event_id)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
