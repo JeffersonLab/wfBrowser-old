@@ -623,7 +623,6 @@ public class EventService {
                         + " FROM capture"
                         + " WHERE event_id = ?";
                 pstmt = conn.prepareStatement(captureSql, Statement.RETURN_GENERATED_KEYS);
-                System.out.println("About to load up capture file info");
                 for (Event e : eventMap.values()) {
                     pstmt.setLong(1, e.getEventId());
                     rs = pstmt.executeQuery();
@@ -641,12 +640,10 @@ public class EventService {
                     rs.close();
                 }
                 pstmt.close();
-                System.out.println("Finished loading capture file info");
 
                 // For each event, get the recently constructed CaptureFiles, then add waveforms without data to them.  We'll add data later if it was requested.
                 String waveformSql = "SELECT cwf_id, waveform_name FROM capture_wf WHERE capture_id = ?";
                 pstmt = conn.prepareStatement(waveformSql);
-                System.out.println("About to load up waveform descriptions");
                 for (Event e : eventMap.values()) {
                     String waveformName;
                     Long cwfId;
@@ -662,12 +659,10 @@ public class EventService {
                     }
                 }
                 pstmt.close();
-                System.out.println("Finished loading waveform descriptions");
 
                 // Load up the capture file metadata
                 String metaSql = "SELECT meta_id, meta_name, type, value, start, offset FROM capture_meta WHERE capture_id = ?";
                 pstmt = conn.prepareStatement(metaSql);
-                System.out.println("About to load metadata info");
                 for (Event e : eventMap.values()) {
                     Long metaId;
                     String metaName;
@@ -702,7 +697,6 @@ public class EventService {
                         }
                     }
                 }
-                System.out.println("Finished loading metadata");
 
                 // Determine the rules for labeling waveform series (GMES vs DETA2, not Cav1, Cav2, ...)
                 String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
@@ -715,7 +709,6 @@ public class EventService {
                         + " ORDER BY waveform_name";
                 pstmt = conn.prepareStatement(mapSql);
                 // Get the waveform data for each event's CaptureFile, then figure out the waveform to series mapping and apply it.
-                System.out.println("About to map series info to waveforms");
                 for (Event e : eventMap.values()) {
                     // Get the mapping
                     Map<String, List<Series>> waveformToSeries = new HashMap<>();
@@ -740,15 +733,12 @@ public class EventService {
                     e.applySeriesMapping(waveformToSeries);
                 }
                 pstmt.close();
-                System.out.println("Finished mapping series info to waveforms");
 
                 // Now get the data if requested
                 if (includeData) {
-                    System.out.println("About to load up actual waveform data");
                     for (Event e : eventMap.values()) {
                         e.loadWaveformDataFromDisk();
                     }
-                    System.out.println("Finished loading up actual waveform data");
                 }
             }
         } finally {
