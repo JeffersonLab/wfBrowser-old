@@ -729,7 +729,9 @@ public class EventService {
                         String systemName = rs.getString("system_name");
                         String description = rs.getString("description");
                         String units = rs.getString("units");
-                        waveformToSeries.computeIfAbsent(waveformName, k -> new ArrayList<>());
+                        if (waveformToSeries.get(waveformName) == null) {
+                            waveformToSeries.put(waveformName, new ArrayList<>());
+                        }
                         waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
                     }
                     rs.close();
