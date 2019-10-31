@@ -17,15 +17,15 @@
     </context-param>
     <context-param>
         <param-name>resourceVersionNumber</param-name>
-        <param-value>11</param-value>
+        <param-value>12</param-value>
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
-        <param-value>1.1.2</param-value>
+        <param-value>1.2</param-value>
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>March 13, 2018</param-value>
+        <param-value>Oct 31, 2019</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
@@ -81,20 +81,34 @@
             <transport-guarantee>CONFIDENTIAL</transport-guarantee>
         </user-data-constraint>
     </security-constraint>
-    <security-constraint>
-        <display-name>Restrict who can add events</display-name>
-        <web-resource-collection>
-            <web-resource-name>Ajax Event POST</web-resource-name>
-            <description/>
-            <url-pattern>/ajax/event</url-pattern>
-            <http-method>POST</http-method>
-        </web-resource-collection>
-        <auth-constraint>
-            <description/>
-            <role-name>ADMIN</role-name>
-            <role-name>EVENTPOST</role-name>
-        </auth-constraint>
-    </security-constraint>
+        <security-constraint>
+            <display-name>Restrict who can add events</display-name>
+            <web-resource-collection>
+                <web-resource-name>Ajax Event POST</web-resource-name>
+                <description/>
+                <url-pattern>/ajax/event</url-pattern>
+                <http-method>POST</http-method>
+            </web-resource-collection>
+            <auth-constraint>
+                <description/>
+                <role-name>ADMIN</role-name>
+                <role-name>EVENTPOST</role-name>
+            </auth-constraint>
+        </security-constraint>
+        <security-constraint>
+            <display-name>Restrict who can label events</display-name>
+            <web-resource-collection>
+                <web-resource-name>Ajax Event Label POST</web-resource-name>
+                <description/>
+                <url-pattern>/ajax/event-label</url-pattern>
+                <http-method>POST</http-method>
+            </web-resource-collection>
+            <auth-constraint>
+                <description/>
+                <role-name>ADMIN</role-name>
+                <role-name>EVENTPOST</role-name>
+            </auth-constraint>
+        </security-constraint>
     <security-constraint>
         <display-name>Enforce Admin on setup pages</display-name>
         <web-resource-collection>
