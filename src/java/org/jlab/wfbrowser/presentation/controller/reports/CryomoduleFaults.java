@@ -123,8 +123,11 @@ public class CryomoduleFaults extends HttpServlet {
             LabelService ls = new LabelService();
             Map<String, List<String>> labelOptions = ls.getDistinctLabels(Collections.singletonList("fault-type"), "rf");
             JsonArrayBuilder jab = Json.createArrayBuilder();
-            for (String value : labelOptions.get("fault-type")) {
-                jab.add(value);
+            // In case we don't have any fault-type labels yet.
+            if (labelOptions.containsKey("fault-type")) {
+                for (String value : labelOptions.get("fault-type")) {
+                    jab.add(value);
+                }
             }
             faultLabelOptions = jab.build();
         } catch (SQLException ex) {
