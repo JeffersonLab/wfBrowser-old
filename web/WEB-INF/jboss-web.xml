@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-web>
+    <context-root>/wfbrowser</context-root>
+    <resource-ref>
+        <res-ref-name>jdbc/waveforms_rw</res-ref-name>
+        <jndi-name>java:/jdbc/waveforms_rw</jndi-name>
+    </resource-ref>
+    <resource-ref>
+        <res-ref-name>mail/jlab</res-ref-name>
+        <jndi-name>java:/mail/jlab</jndi-name>
+    </resource-ref>
+</jboss-web>
