@@ -29,12 +29,9 @@
                 <h1><span id="page-header-logo"></span> <span id="page-header-text"><c:out value="${initParam.appName}"/></span></h1>
                 <div id="auth">
                     <c:choose>
-                        <c:when test="${fn:startsWith(currentPath, '/login')}">
-                            <%-- Don't show login/logout when on login page itself! --%>
-                        </c:when>
                         <c:when test="${pageContext.request.userPrincipal ne null}">
                             <div id="username-container">
-                                <c:out value="${pageContext.request.userPrincipal}"/>
+                                <c:out value="${requestScope.simpleRemoteUser}"/>
                             </div>
                             <form id="logout-form" action="${pageContext.request.contextPath}/logout" method="post">
                                 <button type="submit" value="Logout">Logout</button>
@@ -42,7 +39,7 @@
                             </form>
                         </c:when>
                         <c:otherwise>
-                            <c:url value="/login" var="loginUrl">
+                            <c:url value="/sso" var="loginUrl">
                                 <c:param name="returnUrl" value="${domainRelativeReturnUrl}"/>
                             </c:url>
                             <a id="login-link" href="${loginUrl}">Login</a> <!--(<a id="auto-login" href="#">Auto</a>)-->
@@ -57,7 +54,7 @@
                         <li ${fn:startsWith(currentPath, '/reports') ? ' class="current-primary"' : ''}>
                             <a href="${pageContext.request.contextPath}/reports/cryomodule-faults">Reports</a>
                         </li>
-                        <c:if test='${pageContext.request.isUserInRole("ADMIN")}'>
+                        <c:if test='${pageContext.request.isUserInRole("wfb_admin")}'>
                             <li${'/admin' eq currentPath ? ' class="current-primary"' : ''}>
                                 <a href="${pageContext.request.contextPath}/admin/series">Admin</a>
                             </li>
@@ -85,7 +82,7 @@
             jlab.contextPath = "${pageContext.request.contextPath}";
             // THIS VARIABLE SHOULD ONLY BE USED FOR UI PURPOSES AND NOT FOR ANY REAL SECURITY
             jlab.isUserAdmin = false;
-            <c:if test='${pageContext.request.isUserInRole("ADMIN")}'>
+            <c:if test='${pageContext.request.isUserInRole("wfb_admin")}'>
             jlab.isUserAdmin = true;
             </c:if>
         </script>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
     <welcome-file-list>
         <welcome-file>index.html</welcome-file>
     </welcome-file-list>
@@ -65,50 +66,48 @@
         </cookie-config>
         <tracking-mode>COOKIE</tracking-mode>
     </session-config>
-    <welcome-file-list>
-        <welcome-file>overview</welcome-file>
-    </welcome-file-list>
+    
     <security-constraint>
-        <display-name>Enforce SSL on login</display-name>
+        <display-name>Enforce Authenticated on SSO Redirect Page</display-name>
         <web-resource-collection>
-            <web-resource-name>Secure Login</web-resource-name>
-            <description/>
-            <url-pattern>/login</url-pattern>
-            <url-pattern>/login/*</url-pattern>
+            <web-resource-name>SSO Page</web-resource-name>
+            <url-pattern>/sso</url-pattern>
         </web-resource-collection>
+        <auth-constraint>
+            <role-name>ipausers</role-name>
+        </auth-constraint>
         <user-data-constraint>
-            <description/>
             <transport-guarantee>CONFIDENTIAL</transport-guarantee>
         </user-data-constraint>
     </security-constraint>
-        <security-constraint>
-            <display-name>Restrict who can add events</display-name>
-            <web-resource-collection>
-                <web-resource-name>Ajax Event POST</web-resource-name>
-                <description/>
-                <url-pattern>/ajax/event</url-pattern>
-                <http-method>POST</http-method>
-            </web-resource-collection>
-            <auth-constraint>
-                <description/>
-                <role-name>ADMIN</role-name>
-                <role-name>EVENTPOST</role-name>
-            </auth-constraint>
-        </security-constraint>
-        <security-constraint>
-            <display-name>Restrict who can label events</display-name>
-            <web-resource-collection>
-                <web-resource-name>Ajax Event Label POST</web-resource-name>
-                <description/>
-                <url-pattern>/ajax/event-label</url-pattern>
-                <http-method>POST</http-method>
-            </web-resource-collection>
-            <auth-constraint>
-                <description/>
-                <role-name>ADMIN</role-name>
-                <role-name>EVENTPOST</role-name>
-            </auth-constraint>
-        </security-constraint>
+    <security-constraint>
+        <display-name>Restrict who can add events</display-name>
+        <web-resource-collection>
+            <web-resource-name>Ajax Event POST</web-resource-name>
+            <description/>
+            <url-pattern>/ajax/event</url-pattern>
+            <http-method>POST</http-method>
+        </web-resource-collection>
+        <auth-constraint>
+            <description/>
+            <role-name>wfb_admin</role-name>
+            <role-name>wfb_eventpost</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <security-constraint>
+        <display-name>Restrict who can label events</display-name>
+        <web-resource-collection>
+            <web-resource-name>Ajax Event Label POST</web-resource-name>
+            <description/>
+            <url-pattern>/ajax/event-label</url-pattern>
+            <http-method>POST</http-method>
+        </web-resource-collection>
+        <auth-constraint>
+            <description>Restrict to only admins or those given explicit permission</description>
+            <role-name>wfb_admin</role-name>
+            <role-name>wfb_eventpost</role-name>
+        </auth-constraint>
+    </security-constraint>
     <security-constraint>
         <display-name>Enforce Admin on setup pages</display-name>
         <web-resource-collection>
@@ -118,23 +117,19 @@
         </web-resource-collection>
         <auth-constraint>
             <description/>
-            <role-name>ADMIN</role-name>
+            <role-name>wfb_admin</role-name>
         </auth-constraint>
     </security-constraint>
     <login-config>
-        <auth-method>FORM</auth-method>
-        <realm-name>aceRealm</realm-name>
-        <form-login-config>
-            <form-login-page>/login</form-login-page>
-            <form-error-page>/login</form-error-page>
-        </form-login-config>
+        <auth-method>KEYCLOAK</auth-method>
+        <realm-name>jlab</realm-name>
     </login-config>
     <security-role>
-        <description/>
-        <role-name>ADMIN</role-name>
+        <description>Role that provides admin permissions for the app.</description>
+        <role-name>wfb_admin</role-name>
     </security-role>
     <security-role>
         <description>Role that provides permissions necessary for posting a new event</description>
-        <role-name>EVENTPOST</role-name>
+        <role-name>wfb_eventpost</role-name>
     </security-role>
 </web-app>
