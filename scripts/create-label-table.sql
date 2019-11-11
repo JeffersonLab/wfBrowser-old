@@ -7,6 +7,7 @@
    Each event should only have a single label for each type of label (e.g., single cavity label and a single fault type
    label).  Reports may search this table by label name (all cav 1 faults) and/or confidences (everything over 0.50) so index accordingly.
  */
+USE waveforms;
 CREATE TABLE label
 (
     label_id         BIGINT                        NOT NULL AUTO_INCREMENT,
