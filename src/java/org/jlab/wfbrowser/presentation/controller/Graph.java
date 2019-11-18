@@ -413,8 +413,6 @@ public class Graph extends HttpServlet {
             classificationMap.put(classification, classificationSelections.contains(classification));
         }
 
-        System.out.println("HERE after classifications===================================");
-
         // Process the eventId request parameter.  Use the id if in the request or use the most recent event in time window 
         // specified as a default.  DON'T save the event object in the session since this will cause the application server to hold
         // on to hundreds of megabytes of data per session.  It's simple enough to go look it up since we're saving the eventId.
@@ -439,8 +437,6 @@ public class Graph extends HttpServlet {
             }
         }
 
-        System.out.println("HERE after events stuff===================================");
-
         // If the eventId in the request was not in location or date range specified OR was not specified at all
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
@@ -460,8 +456,6 @@ public class Graph extends HttpServlet {
                 throw new ServletException("File not found:  Error locating event data on disk.", ex);
             }
         }
-
-        System.out.println("HERE after most recent event stuff===================================");
 
 
         if (currentEvent == null) {
