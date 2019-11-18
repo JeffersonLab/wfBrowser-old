@@ -1,5 +1,6 @@
 package org.jlab.wfbrowser.presentation.controller;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
@@ -331,7 +332,7 @@ public class Graph extends HttpServlet {
                 throw new ServletException("Error. No location options found.  Consider adding events.");
             }
         } catch (SQLException ex) {
-            LOGGER.log(Level.SEVERE, "Error querying database for location information.", ex);
+            LOGGER.log(Level.SEVERE, "Error querying database for location information.");
             throw new ServletException("Error querying database for location information.");
         }
         Map<String, Boolean> locationMap = new TreeMap<>();
@@ -412,6 +413,8 @@ public class Graph extends HttpServlet {
             classificationMap.put(classification, classificationSelections.contains(classification));
         }
 
+        System.out.println("HERE after classifications===================================");
+
         // Process the eventId request parameter.  Use the id if in the request or use the most recent event in time window 
         // specified as a default.  DON'T save the event object in the session since this will cause the application server to hold
         // on to hundreds of megabytes of data per session.  It's simple enough to go look it up since we're saving the eventId.
@@ -436,6 +439,8 @@ public class Graph extends HttpServlet {
             }
         }
 
+        System.out.println("HERE after events stuff===================================");
+
         // If the eventId in the request was not in location or date range specified OR was not specified at all
         if (currentEvent == null) {
             // Use a default value of the most recent event within the specified time window
@@ -450,8 +455,14 @@ public class Graph extends HttpServlet {
             } catch (SQLException ex) {
                 LOGGER.log(Level.SEVERE, "Error querying database for event information.", ex);
                 throw new ServletException("Error querying database for event information.");
+            } catch (FileNotFoundException ex) {
+                LOGGER.log(Level.SEVERE, "File not found:  Error locating event data on disk.", ex);
+                throw new ServletException("File not found:  Error locating event data on disk.", ex);
             }
         }
+
+        System.out.println("HERE after most recent event stuff===================================");
+
 
         if (currentEvent == null) {
             id = null;
