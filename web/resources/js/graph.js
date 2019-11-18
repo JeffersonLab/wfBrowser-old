@@ -771,9 +771,9 @@ $(function () {
     jlab.wfb.timeline = jlab.wfb.makeTimeline(timelineDiv, groups, items);
     // Having a weird problem where chrome won't display timeline unless the div is resized.
     // This is a hack, but it works
-    var timeLineWidth = window.getComputedStyle(css).width;
-    timeline.setAttribute("style", "width:"+timeLineWidth+1);
-    timeline.setAttribute("style", "width:"+timeLineWidth);
+    var timeLineWidth = window.getComputedStyle(timelineDiv).width;
+    timelineDiv.setAttribute("style", "width:"+timeLineWidth+1);
+    timelineDiv.setAttribute("style", "");
 
     jlab.wfb.timeline.setOptions({'zoomKey': 'ctrlKey'});
 
