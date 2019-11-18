@@ -282,8 +282,7 @@ public class EventAjax extends HttpServlet {
             return;
         }
 
-//        String userName = request.getUserPrincipal().getName();
-        String userName = "testUser";
+        String userName = request.getUserPrincipal().getName();
 
         Instant t = TimeUtil.getInstantFromDateTimeString(datetime);
         EventService wfs = new EventService();
