@@ -38,10 +38,12 @@ public class CryomoduleFaults extends HttpServlet {
         String confString = request.getParameter("conf");
         String confOpString = request.getParameter("confOp");
         String[] locationStrings = request.getParameterValues("location");
+        String isLabeledString = request.getParameter("isLabeled");
 
         Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
         List<String> locationSelections = locationStrings == null ? null : Arrays.asList(locationStrings);
+        boolean isLabeled = Boolean.parseBoolean(isLabeledString);
 
         boolean redirectNeeded = false;
         Double confidence;
@@ -116,7 +118,7 @@ public class CryomoduleFaults extends HttpServlet {
             EventFilter ef = new EventFilter(null, begin, end, "rf", locationSelections, null, null, null, null);
             List<LabelFilter> lfList = new ArrayList<>();
             lfList.add(new LabelFilter(null, null, null, confidence, confOpString));
-            lfList.add(new LabelFilter(false));
+            lfList.add(new LabelFilter(isLabeled));
             tallyArray = es.getLabelTallyAsJson(ef, lfList);
 
             // Get the valid options for an RF label
@@ -143,6 +145,7 @@ public class CryomoduleFaults extends HttpServlet {
         request.setAttribute("confOpString", confOpString);
         request.setAttribute("beginString", beginString);
         request.setAttribute("endString", endString);
+        request.setAttribute("isLabeled", isLabeled);
         request.getRequestDispatcher("/WEB-INF/views/reports/cryomodule-faults.jsp").forward(request, response);
     }
 }
