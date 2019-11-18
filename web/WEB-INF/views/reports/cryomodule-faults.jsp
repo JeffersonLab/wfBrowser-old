@@ -16,21 +16,26 @@
                 grid-gap: 4px;
                 gap: 4px;
             }
+
             #barchart-wrapper {
                 padding: 2px;
             }
+
             .barchart {
                 border: #4c4c4c solid 1px;
                 padding-right: 2.5%;
             }
+
             .key-value-list {
                 display: inline-block;
                 vertical-align: top;
             }
-            #barcharts-title{
+
+            #barcharts-title {
                 text-align: center;
                 font-weight: bold;
             }
+
             input[type="submit"] {
                 display: block;
             }
@@ -68,6 +73,11 @@
 
             // Assume valid cavity labels to display are here.
             var cavity_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "multi", "none"];
+
+            // Adjust the labels if we are only dealing with labeled examples
+            if (jlab.wfb.isLabeled) {
+                cavity_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "multi"];
+            }
 
             // Inspect the label_summary object for high level info
             var num_charts = label_summary.length;
@@ -308,6 +318,11 @@
                             </select>
                         </div>
                     </li>
+                    <li>
+                        <div class="li-key"><label for="isLabel-input">Labeled Only</label></div>
+                        <div class="li-value"><input id="isLabel-input" type="checkbox" name="isLabeled"
+                                                     <c:if test="${requestScope.isLabeled}">checked</c:if> ></div>
+                    </li>
                 </ul>
                 <input type="submit" value="Submit">
             </fieldset>
@@ -321,6 +336,7 @@
             var jlab = jlab || {};
             jlab.wfb = jlab.wfb || {};
 
+            jlab.wfb.isLabeled = ${requestScope.isLabeled};
             jlab.wfb.begin = "${requestScope.beginString}";
             jlab.wfb.end = "${requestScope.endString}";
             jlab.wfb.locationSelections = [<c:forEach var="location" items="${locationSelections}" varStatus="status">'${location}'<c:if test="${!status.last}">, </c:if></c:forEach>];
