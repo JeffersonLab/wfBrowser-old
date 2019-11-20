@@ -19,7 +19,7 @@ CAT='/bin/cat'
 SCRIPT_DIR=$($DIRNAME "$0")
 
 # Which version of the script is this.  Needed to comply with certified rules
-SCRIPT_VERSION='v1.1.1'
+SCRIPT_VERSION='v1.2'
 
 # Who to notifiy in case of error
 #EMAIL_ADDRESS='accharvester@jlab.org'
@@ -36,12 +36,12 @@ curl_config="${SCRIPT_DIR}/../../cfg/add_event1.0.cfg"
 # CLIENT_ID - keycloak client that we are authenticating against
 
 # PRODUCTION
-#SERVER="waveforms.acc.jlab.org"
+#SERVER="accweb.acc.jlab.org"
 #KEYCLOAK_SERVER="accweb.acc.jlab.org"
 #CLIENT_ID="accweb-auth-util"
 
 # TESTING
-SERVER="waveformstest.acc.jlab.org"
+SERVER="accwebtest.acc.jlab.org"
 KEYCLOAK_SERVER="accwebtest.acc.jlab.org"
 CLIENT_ID="accwebtest-auth-util"
 
@@ -108,7 +108,7 @@ do_keycloak_auth () {
     # A failed auth attempt will return exit_val == 0, but have a null access_token.  Instead you get
     # error and error_description fields.  Print the response and return 1 for caller to handle.
     token=$(echo $result | $JQ -r '.access_token')
-    if [ "null" == "$token" ] ; then
+    if [ "null" == "$token" -o -z "$token" ] ; then
         echo $result 
         return 1
     fi
