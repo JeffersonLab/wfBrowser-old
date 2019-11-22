@@ -174,7 +174,7 @@ public class RFFaultTable extends HttpServlet {
 
                     // Model should be the same, but lets do this just in case
                     String model;
-                    if (cModel != fModel) {
+                    if (cModel != null && !cModel.equals(fModel)) {
                         model = cModel + "/" + fModel;
                     } else {
                         model = cModel;
