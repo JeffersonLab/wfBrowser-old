@@ -3,6 +3,8 @@
 <%@taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@taglib prefix="t" tagdir="/WEB-INF/tags" %>
+<c:url var="domainRelativeReturnUrl" scope="request" context="/"
+       value="${requestScope['javax.servlet.forward.request_uri']}${requestScope['javax.servlet.forward.query_string'] ne null ? '?'.concat(requestScope['javax.servlet.forward.query_string']) : ''}"/>
 <c:set var="title" value="RF Fault Table"/>
 <t:report-page title="${title}">
     <jsp:attribute name="stylesheets">
@@ -14,6 +16,32 @@
 
             input[type="submit"] {
                 display: block;
+            }
+
+            #download-wrapper {
+                position: relative;
+            }
+
+            #download-button a {
+                position: absolute;
+                right: 10px;
+                bottom: -5px;
+                border: gray 1px solid;
+                background-color: lightgray;
+                color: #1a1a1a;
+                padding: 2px;
+                float: right;
+                box-shadow: #aaaaaa;
+            }
+
+            #download-button a:hover {
+                background-color: aliceblue;
+                border: deepskyblue 1px solid;
+            }
+
+            #download-button a:active {
+                background-color: lightblue;
+                border: deepskyblue 1px solid;
             }
         </style>
     </jsp:attribute>
@@ -64,6 +92,13 @@
     </jsp:attribute>
     <jsp:body>
         <h2>Fault Counts By Cavity and Type</h2>
+        <div id="download-wrapper">
+            <c:set var="fBegin" value="${fn:replace(beginString, ' ', '_')}"></c:set>
+            <c:set var="fEnd" value="${fn:replace(endString, ' ', '_')}"></c:set>
+            <div id="download-button">
+                <a href="${domainRelativeReturnUrl}&out=csv" download="rf-faults-${fBegin}-${fEnd}.csv">Download CSV</a>
+            </div>
+        </div>
         <form id="control-form">
             <fieldset>
                 <legend>Report Controls</legend>
@@ -125,7 +160,9 @@
         </form>
         <div id="table-wrapper">
             <c:choose>
-                <c:when test="${empty eventList}"><center><strong>No Events Found</strong></center></c:when>
+                <c:when test="${empty eventList}">
+                    <center><strong>No Events Found</strong></center>
+                </c:when>
                 <c:otherwise>
                     <table class="data-table stripped-table">
                         <thead>
