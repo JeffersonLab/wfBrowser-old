@@ -968,18 +968,18 @@ public class EventService {
         if (lfList != null && !lfList.isEmpty()) {
 
             // Build up a set so that events don't get duplicated
-            Set<Event> events = new HashSet<>();
-            for(LabelFilter lf : lfList) {
-                events.addAll(lf.filterEvents(eventList));
+            List<Event> events = eventList;
+            for (LabelFilter lf : lfList) {
+                events = lf.filterEvents(events);
             }
 
-            // Convert back to a List since that's what the downstream code is expecting.
-            eventList = new ArrayList<>(events);
+            // Remove duplicates by adding to a set and then back to a list.
+            eventList = new ArrayList<>(new HashSet<>(events));
         }
 
         // Now process the events and tally up the label combinations.  As of this writing, there was only RF-related cavity and fault-type
         // label names, so sorting them puts them in the right order.
-        for (Event e: eventList) {
+        for (Event e : eventList) {
             if (!out.containsKey(e.getLocation())) {
                 out.put(e.getLocation(), new TreeMap<>());
             }
@@ -990,7 +990,7 @@ public class EventService {
             // If the event doesn't have any labels, give it a name/value pair of "NULL"/"NULL".  Not sure what else
             // to put here since we can't use actual null key.
             if (e.getLabelList() == null || e.getLabelList().isEmpty()) {
-                names.put("NULL","NULL");
+                names.put("NULL", "NULL");
             } else {
                 // Go through the event's labels add their name/value pairs to the tree
                 for (Label l : e.getLabelList()) {
@@ -1028,8 +1028,8 @@ public class EventService {
      * ]
      *
      * @param eventFilter An event filter.  Applied first via database SQL
-     * @param lfList A list of LabelFilters.  Applied after eventFilter, and the result is the union-ed if multiple
-     *               LabelFilters are supplied
+     * @param lfList      A list of LabelFilters.  Applied after eventFilter, and the result is the union-ed if multiple
+     *                    LabelFilters are supplied
      * @return A JsonArray where each element is an object with location, label-combo, and count parameters
      */
     public JsonArray getLabelTallyAsJson(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
