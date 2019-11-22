@@ -93,7 +93,7 @@ public class CryomoduleFaults extends HttpServlet {
         }
 
         // The map gets used by the view for tracking valid options and which options have been selected
-        Map<String, Boolean> locationSelectionMap = new HashMap<>();
+        Map<String, Boolean> locationSelectionMap = new TreeMap<>();
         for (String loc : locationOptions) {
             locationSelectionMap.put(loc, locationSelections.contains(loc));
         }
