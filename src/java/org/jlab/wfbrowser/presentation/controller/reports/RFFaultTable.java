@@ -5,6 +5,7 @@ import org.jlab.wfbrowser.business.filter.LabelFilter;
 import org.jlab.wfbrowser.business.service.EventService;
 import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
+import org.jlab.wfbrowser.model.Label;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -12,6 +13,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -36,6 +38,7 @@ public class RFFaultTable extends HttpServlet {
         String confOpString = request.getParameter("confOp");
         String[] locationStrings = request.getParameterValues("location");
         String isLabeledString = request.getParameter("isLabeled");
+        String out = request.getParameter("out");
 
         Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
@@ -132,6 +135,58 @@ public class RFFaultTable extends HttpServlet {
 
         // Sort the list here so that it is displayed in a reasonable order on the client
         Collections.sort(eventList);
+
+        // If out is csv, then return the table as a CSV.  Otherwise show the report page
+        if (out != null && out.equals("csv")) {
+            response.setContentType("text/csv");
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("timestamp,location,cavity-label,cavity-confidence,fault-type-label,fault-type-confidence,label-model\n");
+                for (Event e : eventList) {
+                    List<String> output = new ArrayList<>();
+
+                    output.add(e.getEventTime().toString());
+                    output.add(e.getLocation());
+
+                    String cLabel = "N/A";
+                    String cConf = "N/A";
+                    String cModel = "N/A";
+                    String fLabel = "N/A";
+                    String fConf = "N/A";
+                    String fModel = "N/A";
+                    if (e.getLabelList() != null) {
+                        for (Label l : e.getLabelList()) {
+                            if (l.getName().equals("cavity")) {
+                                cLabel = l.getValue();
+                                cConf = l.getConfidence().toString();
+                                cModel = l.getModelName();
+                            }
+                            if (l.getName().equals("fault-type")) {
+                                fLabel = l.getValue();
+                                fConf = l.getConfidence().toString();
+                                fModel = l.getModelName();
+                            }
+                        }
+                    }
+                    output.add(cLabel);
+                    output.add(cConf);
+                    output.add(fLabel);
+                    output.add(fConf);
+
+                    // Model should be the same, but lets do this just in case
+                    String model;
+                    if (cModel != fModel) {
+                        model = cModel + "/" + fModel;
+                    } else {
+                        model = cModel;
+                    }
+                    output.add(model);
+
+                    // Combine all of the output and write it out
+                    pw.write(String.join(",", output) + "\n");
+                }
+            }
+            return;
+        }
 
         request.setAttribute("locationSelectionMap", locationSelectionMap);
         request.setAttribute("locationSelections", locationSelections);
