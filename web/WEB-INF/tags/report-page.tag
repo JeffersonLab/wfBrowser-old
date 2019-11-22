@@ -17,7 +17,8 @@
                     <h2 id="left-column-header">Reports</h2>
                     <nav id="secondary-nav">
                         <ul>
-                            <li${'/reports/cryomodule-faults' eq currentPath ? ' class="current-secondary"' : ''}><a href="${pageContext.request.contextPath}/reports/cryomodule-faults">Cryomodule Faults</a></li>
+                            <li${'/reports/rf-label-summary' eq currentPath ? ' class="current-secondary"' : ''}><a href="${pageContext.request.contextPath}/reports/rf-label-summary">RF Label Summary</a></li>
+                            <li${'/reports/rf-fault-table' eq currentPath ? ' class="current-secondary"' : ''}><a href="${pageContext.request.contextPath}/reports/rf-fault-table">RF Fault Table</a></li>
                         </ul>
                     </nav>
                 </section>
