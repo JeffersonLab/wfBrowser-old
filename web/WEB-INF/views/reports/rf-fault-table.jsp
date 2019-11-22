@@ -91,7 +91,7 @@
 
     </jsp:attribute>
     <jsp:body>
-        <h2>Fault Counts By Cavity and Type</h2>
+        <h2>RF Fault Table</h2>
         <div id="download-wrapper">
             <c:set var="fBegin" value="${fn:replace(beginString, ' ', '_')}"></c:set>
             <c:set var="fEnd" value="${fn:replace(endString, ' ', '_')}"></c:set>
