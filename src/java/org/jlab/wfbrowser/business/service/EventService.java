@@ -955,7 +955,7 @@ public class EventService {
      * Return format is a Map keyed on location whose values are Maps keyed on label combinations (cavity,fault-type) whose values are
      * the of the occurrence.
      */
-    public Map<String, Map<String, Long>> getLabelTally(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
+    public Map<String, Map<String, Long>> getLabelTally(EventFilter eventFilter, List<LabelFilter> lfList, boolean includeUnlabeled) throws SQLException, IOException {
 
         // Keep this sorted so we have a predictable output ordering.  This is <location, <valueComboString, count>> where
         // value combo string is <fault_value>,<cavity_value>, ... if more label_names exist.
@@ -973,8 +973,15 @@ public class EventService {
                 events = lf.filterEvents(events);
             }
 
+            // Create a set to remove duplicate events that may be introduced by the unlabeled
+            Set<Event> eventSet = new HashSet<>(events);
+            if (includeUnlabeled) {
+                LabelFilter lf = new LabelFilter(false);
+                eventSet.addAll(lf.filterEvents(eventList));
+            }
+
             // Remove duplicates by adding to a set and then back to a list.
-            eventList = new ArrayList<>(new HashSet<>(events));
+            eventList = new ArrayList<>(eventSet);
         }
 
         // Now process the events and tally up the label combinations.  As of this writing, there was only RF-related cavity and fault-type
@@ -1032,8 +1039,8 @@ public class EventService {
      *                    LabelFilters are supplied
      * @return A JsonArray where each element is an object with location, label-combo, and count parameters
      */
-    public JsonArray getLabelTallyAsJson(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
-        Map<String, Map<String, Long>> tallyMap = getLabelTally(eventFilter, lfList);
+    public JsonArray getLabelTallyAsJson(EventFilter eventFilter, List<LabelFilter> lfList, boolean includeUnlabeled) throws SQLException, IOException {
+        Map<String, Map<String, Long>> tallyMap = getLabelTally(eventFilter, lfList, includeUnlabeled);
 
         JsonArrayBuilder jab = Json.createArrayBuilder();
         for (String location : tallyMap.keySet()) {
