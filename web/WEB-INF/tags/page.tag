@@ -56,7 +56,7 @@
                             <a href="${pageContext.request.contextPath}/graph">Graph</a>
                         </li>
                         <li ${fn:startsWith(currentPath, '/reports') ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/reports/cryomodule-faults">Reports</a>
+                            <a href="${pageContext.request.contextPath}/reports/rf-label-summary">Reports</a>
                         </li>
                         <c:if test='${pageContext.request.isUserInRole("wfb_admin")}'>
                             <li${'/admin' eq currentPath ? ' class="current-primary"' : ''}>
