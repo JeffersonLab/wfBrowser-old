@@ -25,10 +25,10 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@WebServlet(name = "CryomoduleFaults", urlPatterns = {"/reports/cryomodule-faults"})
-public class CryomoduleFaults extends HttpServlet {
+@WebServlet(name = "RFLabelSummary", urlPatterns = {"/reports/rf-label-summary"})
+public class RFLabelSummary extends HttpServlet {
 
-    private static final Logger LOGGER = Logger.getLogger(CryomoduleFaults.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(RFLabelSummary.class.getName());
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -100,7 +100,7 @@ public class CryomoduleFaults extends HttpServlet {
 
         // Redirect if needed.  Make sure we grab all of our user selections to make this bookmark-able
         if (redirectNeeded) {
-            StringBuilder redirectUrl = new StringBuilder(request.getContextPath() + "/reports/cryomodule-faults?" +
+            StringBuilder redirectUrl = new StringBuilder(request.getContextPath() + "/reports/rf-label-summary?" +
                     "begin=" + URLEncoder.encode(beginString, "UTF-8") +
                     "&end=" + URLEncoder.encode(endString, "UTF-8"));
             redirectUrl.append("&conf=").append(URLEncoder.encode(confString, "UTF-8")).append("&confOp=").append(URLEncoder.encode(confOpString, "UTF-8"));
@@ -118,8 +118,10 @@ public class CryomoduleFaults extends HttpServlet {
             EventFilter ef = new EventFilter(null, begin, end, "rf", locationSelections, null, null, null, null);
             List<LabelFilter> lfList = new ArrayList<>();
             lfList.add(new LabelFilter(null, null, null, confidence, confOpString));
-            lfList.add(new LabelFilter(isLabeled));
-            tallyArray = es.getLabelTallyAsJson(ef, lfList);
+
+            // Filter out unlabeled only if requested - request param is "should I only display labeled" while service
+            // param is "should I include unlabeled" since most LabelFilters will remove any unlabeled events
+            tallyArray = es.getLabelTallyAsJson(ef, lfList, !isLabeled);
 
             // Get the valid options for an RF label
             LabelService ls = new LabelService();
@@ -146,6 +148,6 @@ public class CryomoduleFaults extends HttpServlet {
         request.setAttribute("beginString", beginString);
         request.setAttribute("endString", endString);
         request.setAttribute("isLabeled", isLabeled);
-        request.getRequestDispatcher("/WEB-INF/views/reports/cryomodule-faults.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/reports/rf-label-summary.jsp").forward(request, response);
     }
 }
