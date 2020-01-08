@@ -96,11 +96,16 @@ public class SeriesService {
             pstmt.setString(5, units);
             int n = pstmt.executeUpdate();
             if (n < 1) {
-                throw new SQLException("Error adding series to database.  No change made");
+                String msg = "Error adding series to database.  No change made";
+                LOGGER.log(Level.SEVERE, msg);
+                throw new SQLException(msg);
             } else if (n > 1) {
                 conn.rollback();
-                throw new SQLException("Error adding series to database.  More than one row updated");
+                String msg = "Error adding series to database.  More than one row updated";
+                LOGGER.log(Level.SEVERE, msg);
+                throw new SQLException(msg);
             }
+            conn.commit();
         } finally {
             SqlUtil.close(pstmt, conn);
         }
@@ -129,12 +134,12 @@ public class SeriesService {
             if (n < 1) {
                 conn.rollback();
                 String msg = "Error adding series to database.  No change made.";
-                LOGGER.log(Level.WARNING, msg);
+                LOGGER.log(Level.SEVERE, msg);
                 throw new SQLException(msg);
             } else if (n > 1) {
                 conn.rollback();
                 String msg = "Error adding series to database.  More than one row would be updated.  No changes made.";
-                LOGGER.log(Level.WARNING, msg);
+                LOGGER.log(Level.SEVERE, msg);
                 throw new SQLException(msg);
             }
             conn.commit();
@@ -234,6 +239,7 @@ public class SeriesService {
                 LOGGER.log(Level.WARNING, msg);
                 throw new SQLException(msg);
             }
+            conn.commit();
         } finally {
             SqlUtil.close(pstmt, conn);
         }
@@ -264,6 +270,7 @@ public class SeriesService {
                 LOGGER.log(Level.WARNING, msg);
                 throw new SQLException(msg);
             }
+            conn.commit();
         } finally {
             SqlUtil.close(pstmt, conn);
         }
