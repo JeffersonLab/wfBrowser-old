@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObjectBuilder;
@@ -30,6 +32,7 @@ import org.jlab.wfbrowser.model.Series;
 @WebServlet(name = "SeriesAjax", urlPatterns = {"/ajax/series"})
 public class SeriesAjax extends HttpServlet {
 
+    private static final Logger LOGGER = Logger.getLogger(SeriesAjax.class.getName());
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
      * Handles the HTTP <code>GET</code> method.
@@ -133,11 +136,15 @@ public class SeriesAjax extends HttpServlet {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter pw = response.getWriter()) {
                 pw.write("{\"error\":\"Error updating database - " + e.getMessage() + "\"}");
+                LOGGER.log(Level.SEVERE, "Error updating database - " + e.getMessage());
             }
+            return;
         }
 
         try (PrintWriter pw = response.getWriter()) {
+            response.setContentType("application/json");
             pw.write("{\"message\":\"Series lookup successfully added to the database.\"}");
+            LOGGER.log(Level.INFO, "Added series '" + name + "', '" + pattern + "', '" + units + "', '" + description + "', '" + system);
         }
     }
 
