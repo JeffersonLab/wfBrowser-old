@@ -28,6 +28,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.filter.SeriesFilter;
 import org.jlab.wfbrowser.business.filter.SeriesSetFilter;
@@ -39,8 +40,7 @@ import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.SeriesSet;
 
 /**
- *
- * @author ryans
+ * @author adamc
  */
 @WebServlet(name = "Graph", urlPatterns = {"/graph"})
 public class Graph extends HttpServlet {
@@ -50,10 +50,10 @@ public class Graph extends HttpServlet {
     /**
      * Handles the HTTP <code>GET</code> method.
      *
-     * @param request servlet request
+     * @param request  servlet request
      * @param response servlet response
      * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
+     * @throws IOException      if an I/O error occurs
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -68,7 +68,7 @@ public class Graph extends HttpServlet {
         String eventId = request.getParameter("eventId");
         String system = request.getParameter("system");
         String minCF = request.getParameter("minCF");
-        
+
         Integer minCaptureFiles = null;
         if (minCF != null && !minCF.isEmpty()) {
             minCaptureFiles = Integer.parseInt(minCF);
@@ -170,29 +170,16 @@ public class Graph extends HttpServlet {
                             redirectNeeded = true;
                         }
                     }
-
-                    // We may have removed all of their choices - add one back
-                    if (seriesSelections.isEmpty()) {
-                        redirectNeeded = true;
-                        if (!seriesOptions.isEmpty()) {
-                            seriesSelections.add(seriesOptions.get(0).getName());
-                        } else {
-                            LOGGER.log(Level.WARNING, "No series returned from database.  Cannot determine what data to display.");
-                            throw new RuntimeException("No series returned from database.  Cannot determine what data to display.");
-                        }
-                    }
                 }
-
                 break;
+
             case "session":
                 if (session.getAttribute("graphSeriesSelections") == null) {
                     seriesSelections = new TreeSet<>();
                 } else {
-                    redirectNeeded = true;
                     seriesSelections = (Set<String>) session.getAttribute("graphSeriesSelections");
                     // Go through the specified series and keep only valid options
                     Iterator it = seriesSelections.iterator();
-                    boolean anyRemoved = false;
                     while (it.hasNext()) {
                         String next = (String) it.next();
                         boolean valid = false;
@@ -204,32 +191,15 @@ public class Graph extends HttpServlet {
                         if (!valid) {
                             it.remove();
                             redirectNeeded = true;
-                            anyRemoved = true;
                         }
                     }
-
-                    // If the session had only invalid selections that we removed, put back a single valid series to make sure we've viewable situation.
-                    if (anyRemoved && seriesSelections.isEmpty()) {
-                        if (!seriesOptions.isEmpty()) {
-                            seriesSelections.add(seriesOptions.get(0).getName());
-                        } else {
-                            LOGGER.log(Level.WARNING, "No series returned from database.  Cannot determine what data to display.");
-                            throw new RuntimeException("No series returned from database.  Cannot determine what data to display.");
-                        }
-                    }
-                    session.setAttribute("graphSeriesSelections", seriesSelections);
                 }
                 break;
+
             default:
-                // No request params and no session objects - so we pick the first series available
+                // No request params and no session objects.  Don't do anything besides create an empty datastructure.
+                // Code after seriesSet switch sets defaults if values are missing.
                 seriesSelections = new TreeSet<>();
-                redirectNeeded = true;
-                if (!seriesOptions.isEmpty()) {
-                    seriesSelections.add(seriesOptions.get(0).getName());
-                } else {
-                    LOGGER.log(Level.WARNING, "No series returned from database.  Cannot determine what data to display.");
-                    throw new RuntimeException("No series returned from database.  Cannot determine what data to display.");
-                }
                 break;
         }
         session.setAttribute("graphSeriesSelections", seriesSelections);
@@ -267,7 +237,6 @@ public class Graph extends HttpServlet {
                 } else {
                     seriesSetSelections = (List<String>) session.getAttribute("graphSeriesSetSelections");
                     Iterator it = seriesSetSelections.iterator();
-                    boolean anyRemoved = false;
                     while (it.hasNext()) {
                         String next = (String) it.next();
                         boolean found = false;
@@ -279,17 +248,6 @@ public class Graph extends HttpServlet {
                         if (!found) {
                             it.remove();
                             redirectNeeded = true;
-                            anyRemoved = true;
-                        }
-                    }
-
-                    // If the session specified a set, and we removed all of them, put a valid one back.
-                    if (seriesSetSelections.isEmpty() && anyRemoved) {
-                        if (!seriesSetOptions.isEmpty()) {
-                            seriesSetSelections.add(seriesSetOptions.get(0).getName());
-                        } else {
-                            LOGGER.log(Level.WARNING, "No series sets returned from database.  Cannot determine what data to display.");
-                            throw new RuntimeException("No series sets returned from database.  Cannot determine what data to display.");
                         }
                     }
                 }
@@ -308,12 +266,30 @@ public class Graph extends HttpServlet {
             seriesSetMap.put(seriesSet.getName(), seriesSetSelections.contains(seriesSet.getName()));
         }
 
+        // In case we haven't selected and series or series sets AND we're dealing with the RF system, pick a special
+        // default series set to display.
+        if (seriesSetSelections.isEmpty() && seriesSelections.isEmpty()) {
+            if (system.equals("rf")) {
+                if (seriesSetOptions == null || seriesSetOptions.isEmpty()) {
+                    LOGGER.log(Level.WARNING, "No series sets returned from database.  Cannot determine what data to display.");
+                    throw new RuntimeException("No series sets returned from database.  Cannot determine what data to display.");
+                } else {
+                    for (SeriesSet sSet : seriesSetOptions) {
+                        if (sSet.getName().equals("GDR Trip")) {
+                            seriesSetSelections.add("GDR Trip");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         // There is the possibility that we somehow stumble into the case where the session contains two empty lists
-        // for series and series sets.  If so, add a series.
+        // for series and series sets.  If so, add the first series in the set.
         if (seriesSetSelections.isEmpty() && seriesSelections.isEmpty()) {
             if (seriesOptions == null || seriesOptions.isEmpty()) {
-                LOGGER.log(Level.WARNING, "No series sets returned from database.  Cannot determine what data to display.");
-                throw new RuntimeException("No series sets returned from database.  Cannot determine what data to display.");
+                LOGGER.log(Level.WARNING, "No series returned from database.  Cannot determine what data to display.");
+                throw new RuntimeException("No series returned from database.  Cannot determine what data to display.");
             } else {
                 seriesSelections.add(seriesOptions.get(0).getName());
                 seriesMap.put(seriesOptions.get(0).getName(), Boolean.TRUE);
