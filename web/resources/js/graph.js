@@ -19,7 +19,7 @@ jlab.wfb.timeline = null;
  * This map is used to apply a consistent set of colors based on a dygraph ID.  dygraph IDs are 1 indexed, so id-1 -> color
  * @type Array
  */
-jlab.wfb.dygraphIdToColorArray = ["#7FC97F", "#BEAED4", "#FDC086", "#000000", "#386CB0", "#F0027F", "#BF5B17", "#666666"];
+jlab.wfb.dygraphIdToColorArray = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#444444', '#a65628', '#e077ae'];
 
 
 /**
@@ -30,7 +30,7 @@ jlab.wfb.dygraphIdToColorArray = ["#7FC97F", "#BEAED4", "#FDC086", "#000000", "#
 jlab.wfb.convertUTCDateStringToLocalDate = function (dateString) {
     var date = new Date(dateString);
     return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(),
-            date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
+        date.getMinutes(), date.getSeconds(), date.getMilliseconds()));
 };
 
 /**
@@ -62,7 +62,7 @@ jlab.wfb.getPrevItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group === curr.group);
+            return (item.group === curr.group);
         }
     });
 
@@ -91,7 +91,7 @@ jlab.wfb.getNextItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group === curr.group);
+            return (item.group === curr.group);
         }
     });
 
@@ -120,7 +120,7 @@ jlab.wfb.getFirstItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group === curr.group);
+            return (item.group === curr.group);
         }
     });
 
@@ -147,7 +147,7 @@ jlab.wfb.getLastItem = function (items, id) {
     var curr = items.get(id);
     var subset = items.get({
         filter: function (item) {
-            return(item.group === curr.group);
+            return (item.group === curr.group);
         }
     });
 
@@ -165,8 +165,7 @@ jlab.wfb.getLastItem = function (items, id) {
 };
 
 
-
-/* 
+/*
  * eventId - The waveform eventId to query information for
  * chartId - typically a number, is appended to "graph-chart-" to create the id of a div that acts as the dygraph container
  * $graphPanel - jQuery object that is the parent object of all dygraph containers
@@ -176,7 +175,7 @@ jlab.wfb.getLastItem = function (items, id) {
  * returns the dygraph object
  */
 jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series, seriesArray) {
-    if (typeof series === "undefied" || series === null) {
+    if (typeof series === "undefined" || series === null) {
         window.console && console.log("Required argument series not supplied to jlab.wfb.makeGraph");
         return;
     }
@@ -234,14 +233,14 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     graphOptions.title = series + " (" + units + ")";
     graphOptions.labels = labels;
     $graphPanel.append("<div class=" + containerClass + "><div id=graph-chart-" + chartId + " class='graph-chart'></div>"
-            + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div></div>");
+        + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div></div>");
     graphOptions.labelsDiv = document.getElementById("graph-legend-" + chartId);
     var g = new Dygraph(
-            // containing div
-            document.getElementById("graph-chart-" + chartId),
-            data,
-            graphOptions
-            );
+        // containing div
+        document.getElementById("graph-chart-" + chartId),
+        data,
+        graphOptions
+    );
 
     // This event handler allows the users to highlight/unhighlight a single series
     var onclick = function (ev) {
@@ -259,7 +258,7 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
 
 
 /**
- * This function is responsible for updating the window's URL and form controls to match the currently displayed page.  
+ * This function is responsible for updating the window's URL and form controls to match the currently displayed page.
  * It also updates the history so that the last displayed event is what will be displayed on a "back" button event
  * @returns {undefined}
  */
@@ -267,10 +266,10 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
 
     // Update the URL so someone could navigate back to or bookmark or copy paste the URL 
     var url = jlab.contextPath + "/graph"
-            + "?begin=" + jlab.wfb.begin.replace(/ /, '+').encodeXml()
-            + "&end=" + jlab.wfb.end.replace(/ /, '+').encodeXml()
-            + "&eventId=" + jlab.wfb.currentEvent.id
-            + "&system=" + jlab.wfb.system;
+        + "?begin=" + jlab.wfb.begin.replace(/ /, '+').encodeXml()
+        + "&end=" + jlab.wfb.end.replace(/ /, '+').encodeXml()
+        + "&eventId=" + jlab.wfb.currentEvent.id
+        + "&system=" + jlab.wfb.system;
     for (var i = 0; i < jlab.wfb.seriesSelections.length; i++) {
         url += "&series=" + jlab.wfb.seriesSelections[i];
     }
@@ -280,7 +279,7 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
     for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
         url += "&location=" + jlab.wfb.locationSelections[i];
     }
-    if ( jlab.wfb.minCF !== "") {
+    if (jlab.wfb.minCF !== "") {
         url += "&minCF=" + jlab.wfb.minCF;
     }
 
@@ -293,7 +292,7 @@ jlab.wfb.updateBrowserUrlAndControls = function () {
  * This closure is used to update the display dygraphs of event series data.  If an object is supplied, then the function assumes it is an
  * event object of the form returned by the wfbrowser ajax event end point.  If an ID is supplied, it downloads the corresponding event
  * from that ajax endpoint.  This function is responsible for calling any routines to keep the page state in sync with the display.
- * @type Function 
+ * @type Function
  */
 jlab.wfb.loadNewGraphs = (function () {
     var $graphPanel = $("#graph-panel");
@@ -333,7 +332,12 @@ jlab.wfb.loadNewGraphs = (function () {
             // Make sure the jlab.wfb.timeline matches the current event
             jlab.wfb.timeline.setSelection(currEventId);
 
-            var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {id: eventId, out: "dygraph", includeData: true, requester: "graph"});
+            var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {
+                id: eventId,
+                out: "dygraph",
+                includeData: true,
+                requester: "graph"
+            });
             promise.done(function (json) {
                 // Sanity check - make sure the id we get back is what we asked for.
                 if (json.events[0].id !== currEventId) {
@@ -393,10 +397,10 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
 
     var date = jlab.wfb.convertUTCDateStringToLocalDate(event.datetime_utc);
     var headerHtml = "<div class='graph-panel-header'>" +
-            "<div class='graph-panel-title-wrapper'><div class='graph-panel-title'></div></div>" +
-            "<div class='graph-panel-date-wrapper'><span class='graph-panel-visibility-controls'><fieldset><legend>Visibility</legend></fieldset></span><span class='graph-panel-prev-controls'></span>" +
-            "<span class='graph-panel-date'></span>" +
-            "<span class='graph-panel-next-controls'></span><span class='graph-panel-action-controls'><button class='download'>Download</button></span></div>";
+        "<div class='graph-panel-title-wrapper'><div class='graph-panel-title'></div></div>" +
+        "<div class='graph-panel-date-wrapper'><span class='graph-panel-visibility-controls'><fieldset><legend>Visibility</legend></fieldset></span><span class='graph-panel-prev-controls'></span>" +
+        "<span class='graph-panel-date'></span>" +
+        "<span class='graph-panel-next-controls'></span><span class='graph-panel-action-controls'><button class='download'>Download</button></span></div>";
     $graphPanel.prepend(headerHtml);
 
     $("#graph-panel .graph-panel-title").prepend(event.location);
@@ -518,14 +522,18 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     }
 
     var graphOptions = {
+        axes: {
+            x: {pixelsPerLabel: 30},
+            y: {pixelsPerLabel: 20}
+        },
         legend: "always",
         labelsSeparateLines: true,
-        highlightCircleSize: 2,
-        strokeWidth: 1,
+        highlightCircleSize: 3,
+        strokeWidth: 2,
         highlightSeriesOpts: {
             strokeWidth: 2,
-            strokeBorderWidth: 1,
-            highlightCircleSize: 5
+            strokeBorderWidth: 2,
+            highlightCircleSize: 7
         }
     };
 
@@ -538,7 +546,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
         Dygraph.synchronize(graphs, {range: false});
     }
 
-    // Set a listener that toggles visibility on series
+// Set a listener that toggles visibility on series
     $(".cavity-toggle").on("click", function () {
         var label = $(this).data("label");
         for (var i = 0; i < graphs.length; i++) {
@@ -558,7 +566,8 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     });
 
     return graphs;
-};
+}
+;
 
 /*
  * Setup the timeline widget
@@ -756,7 +765,10 @@ $(function () {
     // Setup the groups for the timeline
     var groupArray = new Array(jlab.wfb.locationSelections.length);
     for (var i = 0; i < jlab.wfb.locationSelections.length; i++) {
-        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]), content: jlab.wfb.locationSelections[i]};
+        groupArray[i] = {
+            id: jlab.wfb.locationToGroupMap.get(jlab.wfb.locationSelections[i]),
+            content: jlab.wfb.locationSelections[i]
+        };
     }
     var groups = new vis.DataSet(groupArray);
 
@@ -772,7 +784,7 @@ $(function () {
     // Having a weird problem where chrome won't display timeline unless the div is resized.
     // This is a hack, but it works
     var timeLineWidth = window.getComputedStyle(timelineDiv).width;
-    timelineDiv.setAttribute("style", "width:"+timeLineWidth+1);
+    timelineDiv.setAttribute("style", "width:" + timeLineWidth + 1);
     timelineDiv.setAttribute("style", "");
 
     jlab.wfb.timeline.setOptions({'zoomKey': 'ctrlKey'});
