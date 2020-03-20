@@ -681,7 +681,15 @@ public class Event implements Comparable<Event> {
      * @return The event timestamp string.
      */
     public String getEventTimeString() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").withZone(ZoneOffset.UTC);
+        return getEventTimeString(ZoneOffset.UTC);
+    }
+
+    public String getEventTimeStringLocal() {
+        return getEventTimeString(ZoneId.systemDefault());
+    }
+
+    public String getEventTimeString(ZoneId zone) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").withZone(zone);
         return formatter.format(eventTime);
     }
 
