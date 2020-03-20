@@ -179,7 +179,7 @@
                         <tbody>
                         <c:forEach var="event" items="${eventList}">
                             <tr>
-                                <td>${event.eventTimeString}</td>
+                                <td>${event.eventTimeStringLocal}</td>
                                 <td>${event.location}</td>
                                 <c:choose>
                                     <c:when test="${event.labelList == null || empty event.labelList}">
