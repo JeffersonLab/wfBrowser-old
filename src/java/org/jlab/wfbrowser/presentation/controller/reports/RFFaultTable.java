@@ -134,7 +134,7 @@ public class RFFaultTable extends HttpServlet {
         }
 
         // Sort the list here so that it is displayed in a reasonable order on the client
-        Collections.sort(eventList);
+        Collections.sort(eventList, Collections.reverseOrder());
 
         // If out is csv, then return the table as a CSV.  Otherwise show the report page
         if (out != null && out.equals("csv")) {
