@@ -16,21 +16,26 @@
                 grid-gap: 4px;
                 gap: 4px;
             }
+
             #barchart-wrapper {
                 padding: 2px;
             }
+
             .barchart {
                 border: #4c4c4c solid 1px;
                 padding-right: 2.5%;
             }
+
             .key-value-list {
                 display: inline-block;
                 vertical-align: top;
             }
-            #barcharts-title{
+
+            #barcharts-title {
                 text-align: center;
                 font-weight: bold;
             }
+
             input[type="submit"] {
                 display: block;
             }
@@ -68,6 +73,11 @@
 
             // Assume valid cavity labels to display are here.
             var cavity_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "multi", "none"];
+
+            // Adjust the labels if we are only dealing with labeled examples
+            if (jlab.wfb.isLabeled) {
+                cavity_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "multi"];
+            }
 
             // Inspect the label_summary object for high level info
             var num_charts = label_summary.length;
@@ -143,7 +153,6 @@
                             line: {color: "rgba(67,67,67,1", width: 1}
                         }
                     });
-                    console.log(zone + " -- " + fault + " -- " + fault_color_map[fault]);
                     plot_data[zone].layout = {
 
                         yaxis: {
@@ -218,10 +227,6 @@
             }
 
             var container = document.getElementById("barchart-container");
-            //console.log(JSON.stringify(plot_data));
-            //
-            console.log(JSON.stringify(jlab.wfb.locationSelections));
-            // for (var zone in jlab.wfb.locationSelections) {
             jlab.wfb.locationSelections.forEach(function (zone) {
                 console.log(zone);
                 var chart = document.createElement("div");
@@ -232,13 +237,28 @@
                 // If we didn't get any data for this one, print out a friendly message
                 if (!plot_data.hasOwnProperty(zone)) {
                     var chart_div = document.getElementById("chart-" + zone);
-                    chart_div.innerHTML = "<center><bold>No data recieved for zone " + zone + "</bold></center>";
+                    chart_div.innerHTML = "<center><bold>No data received for zone " + zone + "</bold></center>";
                 } else {
                     Plotly.plot(chart, plot_data[zone].data, plot_data[zone].layout, plotly_config);
                 }
             });
+
+            // Function for processing control-form on submit
+            var submitHandler = function(){
+            // function submitHandler(event){
+                // Servlet is expecting a boolean, but we show a checkbox widget which sends "on" or nothing.
+                // Update the hidden field that is associated with this checkbox.
+                var isLabeledCheckBox = document.getElementById("isLabeled-checkbox-input");
+                var isLabeled = document.getElementById("isLabeled-input");
+                isLabeled.setAttribute("value", isLabeledCheckBox.checked);
+            };
         </script>
         <script>
+            // Setup the form's submit handler
+            var form = document.getElementById('control-form');
+
+            form.addEventListener('submit', submitHandler);
+
             jlab.wfb.$startPicker = $('#start-date-picker');
             jlab.wfb.$endPicker = $('#end-date-picker');
             jlab.wfb.$startPicker.val(jlab.wfb.begin);
@@ -260,7 +280,7 @@
     </jsp:attribute>
     <jsp:body>
         <h2>Fault Counts By Cavity and Type</h2>
-        <form>
+        <form id="control-form">
             <fieldset>
                 <legend>Report Controls</legend>
                 <ul class="key-value-list">
@@ -308,6 +328,12 @@
                             </select>
                         </div>
                     </li>
+                    <li>
+                        <div class="li-key"><label for="isLabeled-checkbox-input">Labeled Only</label></div>
+                        <div class="li-value"><input id="isLabeled-checkbox-input" type="checkbox"
+                                                     <c:if test="${requestScope.isLabeled}">checked</c:if> ></div>
+                        <input id="isLabeled-input" name="isLabeled" type="hidden">
+                    </li>
                 </ul>
                 <input type="submit" value="Submit">
             </fieldset>
@@ -321,6 +347,7 @@
             var jlab = jlab || {};
             jlab.wfb = jlab.wfb || {};
 
+            jlab.wfb.isLabeled = ${requestScope.isLabeled};
             jlab.wfb.begin = "${requestScope.beginString}";
             jlab.wfb.end = "${requestScope.endString}";
             jlab.wfb.locationSelections = [<c:forEach var="location" items="${locationSelections}" varStatus="status">'${location}'<c:if test="${!status.last}">, </c:if></c:forEach>];

@@ -67,7 +67,7 @@ import org.jlab.wfbrowser.model.CaptureFile.Metadata;
  *
  * @author adamc
  */
-public class Event {
+public class Event implements Comparable<Event> {
 
     private static final Logger LOGGER = Logger.getLogger(Event.class.getName());
 
@@ -681,7 +681,15 @@ public class Event {
      * @return The event timestamp string.
      */
     public String getEventTimeString() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").withZone(ZoneOffset.UTC);
+        return getEventTimeString(ZoneOffset.UTC);
+    }
+
+    public String getEventTimeStringLocal() {
+        return getEventTimeString(ZoneId.systemDefault());
+    }
+
+    public String getEventTimeString(ZoneId zone) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").withZone(zone);
         return formatter.format(eventTime);
     }
 
@@ -690,7 +698,7 @@ public class Event {
      * makes additional manipulations much easier. The resulting array does not
      * contain the header information - only time offsets and data values. The
      * rows of the arrays represent the lines of the capture files.  Columns are in alphabetical order with Time first.
-     *
+     * <p>
      * If the waveforms are "consistent", i.e., they have the same set of time
      * offsets, then the first set of time offsets are used and all "data"
      * values are added in order. If the waveforms are not "consistent", then a
@@ -1039,9 +1047,9 @@ public class Event {
         }
 
         String labList = "";
-        if (labelList != null && !labelList.isEmpty()){
+        if (labelList != null && !labelList.isEmpty()) {
             labList = "labelList: [";
-            for(Label label : labelList) {
+            for (Label label : labelList) {
                 labList += label.toJsonObject().toString() + ",";
             }
             labList += "]";
@@ -1318,4 +1326,55 @@ public class Event {
         }
     }
 
+    /**
+     * Provide a method to allow for sorting of events in collections.  Consistent with equals and hashCode, excluding
+     * labelList
+     *
+     * @param e
+     * @return
+     */
+    @Override
+    public int compareTo(Event e) {
+        if (e == null) {
+            return 1;
+        }
+
+        // Check timestamp
+        if (e.getEventTime().isBefore(getEventTime())) {
+            return 1;
+        } else if (e.getEventTime().isAfter(getEventTime())) {
+            return -1;
+        }
+
+        // Check system
+        if (e.getSystem().compareTo(getSystem()) > 0) {
+            return 1;
+        } else if (e.getSystem().compareTo(getSystem()) < 0) {
+            return -1;
+        }
+
+        // Check location
+        if (e.getLocation().compareTo(getLocation()) > 0) {
+            return 1;
+        } else if (e.getLocation().compareTo(getLocation()) < 0) {
+            return -1;
+        }
+
+        // Check classification
+        if (e.getClassification().compareTo(getClassification()) > 0) {
+            return 1;
+        } else if (e.getClassification().compareTo(getClassification()) < 0) {
+            return -1;
+        }
+
+        // Check archive
+        if (e.isArchive() == true && isArchive() == false) {
+            return 1;
+        } else if (e.isArchive() == false && isArchive() == true) {
+            return -1;
+        }
+
+        // At this point, if we haven't found a difference consider them equal
+        return 0;
+    }
 }

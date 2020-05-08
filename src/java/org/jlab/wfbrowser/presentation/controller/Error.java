@@ -48,7 +48,7 @@ public class Error extends HttpServlet {
         System.err.println("Request URI: " + requestUri);
 
         String contentType = response.getContentType();
-        if (contentType.startsWith("application/json")) {
+        if (contentType != null && contentType.startsWith("application/json")) {
             try (PrintWriter pw = response.getWriter()) {
                 pw.print("{\"error\":\"" + message + "\"}");
             }

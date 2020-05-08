@@ -394,7 +394,7 @@ public class EventServiceTest {
                 "{\"location\":\"ungrouped\",\"label-combo\":\"NULL\",\"count\":4}" +
                 "]")).readArray();
 
-        JsonArray result = es.getLabelTallyAsJson(null, null);
+        JsonArray result = es.getLabelTallyAsJson(null, null, true);
         assertEquals(exp.toString(), result.toString());
     }
 

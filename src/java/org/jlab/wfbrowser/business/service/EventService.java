@@ -955,7 +955,7 @@ public class EventService {
      * Return format is a Map keyed on location whose values are Maps keyed on label combinations (cavity,fault-type) whose values are
      * the of the occurrence.
      */
-    public Map<String, Map<String, Long>> getLabelTally(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
+    public Map<String, Map<String, Long>> getLabelTally(EventFilter eventFilter, List<LabelFilter> lfList, boolean includeUnlabeled) throws SQLException, IOException {
 
         // Keep this sorted so we have a predictable output ordering.  This is <location, <valueComboString, count>> where
         // value combo string is <fault_value>,<cavity_value>, ... if more label_names exist.
@@ -968,18 +968,25 @@ public class EventService {
         if (lfList != null && !lfList.isEmpty()) {
 
             // Build up a set so that events don't get duplicated
-            Set<Event> events = new HashSet<>();
-            for(LabelFilter lf : lfList) {
-                events.addAll(lf.filterEvents(eventList));
+            List<Event> events = eventList;
+            for (LabelFilter lf : lfList) {
+                events = lf.filterEvents(events);
             }
 
-            // Convert back to a List since that's what the downstream code is expecting.
-            eventList = new ArrayList<>(events);
+            // Create a set to remove duplicate events that may be introduced by the unlabeled
+            Set<Event> eventSet = new HashSet<>(events);
+            if (includeUnlabeled) {
+                LabelFilter lf = new LabelFilter(false);
+                eventSet.addAll(lf.filterEvents(eventList));
+            }
+
+            // Remove duplicates by adding to a set and then back to a list.
+            eventList = new ArrayList<>(eventSet);
         }
 
         // Now process the events and tally up the label combinations.  As of this writing, there was only RF-related cavity and fault-type
         // label names, so sorting them puts them in the right order.
-        for (Event e: eventList) {
+        for (Event e : eventList) {
             if (!out.containsKey(e.getLocation())) {
                 out.put(e.getLocation(), new TreeMap<>());
             }
@@ -990,7 +997,7 @@ public class EventService {
             // If the event doesn't have any labels, give it a name/value pair of "NULL"/"NULL".  Not sure what else
             // to put here since we can't use actual null key.
             if (e.getLabelList() == null || e.getLabelList().isEmpty()) {
-                names.put("NULL","NULL");
+                names.put("NULL", "NULL");
             } else {
                 // Go through the event's labels add their name/value pairs to the tree
                 for (Label l : e.getLabelList()) {
@@ -1028,12 +1035,12 @@ public class EventService {
      * ]
      *
      * @param eventFilter An event filter.  Applied first via database SQL
-     * @param lfList A list of LabelFilters.  Applied after eventFilter, and the result is the union-ed if multiple
-     *               LabelFilters are supplied
+     * @param lfList      A list of LabelFilters.  Applied after eventFilter, and the result is the union-ed if multiple
+     *                    LabelFilters are supplied
      * @return A JsonArray where each element is an object with location, label-combo, and count parameters
      */
-    public JsonArray getLabelTallyAsJson(EventFilter eventFilter, List<LabelFilter> lfList) throws SQLException, IOException {
-        Map<String, Map<String, Long>> tallyMap = getLabelTally(eventFilter, lfList);
+    public JsonArray getLabelTallyAsJson(EventFilter eventFilter, List<LabelFilter> lfList, boolean includeUnlabeled) throws SQLException, IOException {
+        Map<String, Map<String, Long>> tallyMap = getLabelTally(eventFilter, lfList, includeUnlabeled);
 
         JsonArrayBuilder jab = Json.createArrayBuilder();
         for (String location : tallyMap.keySet()) {

@@ -75,6 +75,7 @@ public class SeriesDeleteAjax extends HttpServlet {
         }
         
         try (PrintWriter pw = response.getWriter()) {
+            response.setContentType("application/json");
             pw.print("{\"message\":\"Successful deletion\"}");
         }
     }

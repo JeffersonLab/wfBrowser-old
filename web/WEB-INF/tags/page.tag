@@ -14,16 +14,16 @@
         <title><c:out value="${initParam.appShortName}"/> - ${title}</title>
         <link rel="shortcut icon" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/img/favicon.ico"/>
         <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-ui/1.10.3/theme/smoothness/jquery-ui.min.css"/>
-        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.css"/>         
-        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-plugins/select2/3.5.2/select2.css"/>        
-        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jlab-theme/smoothness/1.6/css/smoothness.min.css"/>        
-        <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/css/wfbrowser.css"/>        
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.css"/>
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jquery-plugins/select2/3.5.2/select2.css"/>
+        <link rel="stylesheet" type="text/css" href="${initParam.cdnContextPath}/jlab-theme/smoothness/1.6/css/smoothness.min.css"/>
+        <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/css/wfbrowser.css"/>
         <jsp:invoke fragment="stylesheets"/>
     </head>
     <body class="${param.print eq 'Y' ? 'print ' : ''} ${param.fullscreen eq 'Y' ? 'fullscreen' : ''}">
         <c:if test="${initParam.notification ne null}">
             <div id="notification-bar"><c:out value="${initParam.notification}"/></div>
-        </c:if>        
+        </c:if>
         <div id="page">
             <header>
                 <h1><span id="page-header-logo"></span> <span id="page-header-text"><c:out value="${initParam.appName}"/></span></h1>
@@ -42,7 +42,11 @@
                             <c:url value="/sso" var="loginUrl">
                                 <c:param name="returnUrl" value="${domainRelativeReturnUrl}"/>
                             </c:url>
-                            <a id="login-link" href="${loginUrl}">Login</a> <!--(<a id="auto-login" href="#">Auto</a>)-->
+                            <c:url value="/sso" var="suUrl">
+                                <c:param name="kc_idp_hint" value="kc_idp_hint=ace-su-keycloak-oidc"/>
+                                <c:param name="returnUrl" value="${domainRelativeReturnUrl}"/>
+                            </c:url>
+                            <a id="login-link" href="${loginUrl}">Login</a> (<a id="SU" href="${suUrl}">SU</a>)
                         </c:otherwise>
                     </c:choose>
                 </div>
@@ -52,7 +56,7 @@
                             <a href="${pageContext.request.contextPath}/graph">Graph</a>
                         </li>
                         <li ${fn:startsWith(currentPath, '/reports') ? ' class="current-primary"' : ''}>
-                            <a href="${pageContext.request.contextPath}/reports/cryomodule-faults">Reports</a>
+                            <a href="${pageContext.request.contextPath}/reports/rf-label-summary">Reports</a>
                         </li>
                         <c:if test='${pageContext.request.isUserInRole("wfb_admin")}'>
                             <li${'/admin' eq currentPath ? ' class="current-primary"' : ''}>
@@ -63,9 +67,9 @@
                             <a href="${pageContext.request.contextPath}/help">Help</a>
                         </li>
                     </ul>
-                </nav>                
+                </nav>
             </header>
-            <div id="content">     
+            <div id="content">
                 <div id="content-liner">
                     <jsp:doBody/>
                 </div>
@@ -73,11 +77,11 @@
             </div>
         </div>
         <script type="text/javascript" src="${initParam.cdnContextPath}/jquery/1.10.2.min.js"></script>
-        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-ui/1.10.3/jquery-ui.min.js"></script>  
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-ui/1.10.3/jquery-ui.min.js"></script>
         <script type="text/javascript" src="${initParam.cdnContextPath}/uri/uri-1.14.1.min.js"></script>
-        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.js"></script>          
-        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-plugins/select2/3.5.2/select2.min.js"></script>        
-        <script type="text/javascript" src="${initParam.cdnContextPath}/jlab-theme/smoothness/1.6/js/smoothness.min.js"></script>        
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-plugins/timepicker/jquery-ui-timepicker-1.3.1.js"></script>
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jquery-plugins/select2/3.5.2/select2.min.js"></script>
+        <script type="text/javascript" src="${initParam.cdnContextPath}/jlab-theme/smoothness/1.6/js/smoothness.min.js"></script>
         <script type="text/javascript">
             jlab.contextPath = "${pageContext.request.contextPath}";
             // THIS VARIABLE SHOULD ONLY BE USED FOR UI PURPOSES AND NOT FOR ANY REAL SECURITY
@@ -87,6 +91,6 @@
             </c:if>
         </script>
         <script type="text/javascript" src="${pageContext.request.contextPath}/resources/js/wfbrowser.js"></script>
-        <jsp:invoke fragment="scripts"/>        
+        <jsp:invoke fragment="scripts"/>
     </body>
 </html>
