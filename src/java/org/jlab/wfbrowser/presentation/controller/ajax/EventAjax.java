@@ -181,16 +181,18 @@ public class EventAjax extends HttpServlet {
         JsonArrayBuilder jab;
         switch (out) {
             case "json":
-                job = Json.createObjectBuilder();
-                jab = Json.createArrayBuilder();
-                for (Event e : eventList) {
-                    jab.add(e.toJsonObject(seriesMasterSet));
-                }
-                job.add("events", jab.build());
+
+//                job = Json.createObjectBuilder();
+//                jab = Json.createArrayBuilder();
+//                for (Event e : eventList) {
+//                    jab.add(e.toJsonObject(seriesMasterSet));
+//                }
+//                job.add("events", jab.build());
 
                 response.setContentType("application/json");
                 try (PrintWriter pw = response.getWriter()) {
-                    pw.print(job.build().toString());
+//                    pw.print(job.build().toString());
+                    pw.print(EventService.convertEventListToJson(eventList).toString());
                 }
                 break;
             case "dygraph":

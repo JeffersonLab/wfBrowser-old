@@ -1056,4 +1056,20 @@ public class EventService {
         }
         return jab.build();
     }
+
+    /** Simple method for converting a List<Events> to a JSON object
+     *
+     * @param eventList A List of Events to be converted to JSON
+     * @return A JSON object
+     */
+    static public JsonObject convertEventListToJson(List<Event> eventList) {
+        JsonObjectBuilder job = Json.createObjectBuilder();
+        JsonArrayBuilder jab = Json.createArrayBuilder();
+        for (Event e : eventList) {
+            jab.add(e.toJsonObject(seriesMasterSet));
+        }
+        job.add("events", jab.build());
+
+        return job.build();
+    }
 }
