@@ -1070,12 +1070,13 @@ public class EventService {
             }
         }
 
-        HashSet<Event> eventSet = new HashSet<>(events);
         if (includeUnlabeled) {
+            HashSet<Event> eventSet = new HashSet<>(events);
             LabelFilter lf = new LabelFilter(false);
             eventSet.addAll(lf.filterEvents(eventList));
+            events = new ArrayList<>(eventSet);
         }
 
-        return new ArrayList<>(eventSet);
+        return events;
     }
 }
