@@ -192,7 +192,7 @@ public class EventAjax extends HttpServlet {
                 response.setContentType("application/json");
                 try (PrintWriter pw = response.getWriter()) {
 //                    pw.print(job.build().toString());
-                    pw.print(EventService.convertEventListToJson(eventList).toString());
+                    pw.print(EventService.convertEventListToJson(eventList, seriesMasterSet).toString());
                 }
                 break;
             case "dygraph":
