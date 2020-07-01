@@ -71,8 +71,7 @@ jlab.wfb.Categorizer = function(levels, name_mapper){
         var n = levels.length;
         var out = new Array(n);
         for (var i = 0; i < n; i++) {
-            var tick = {v: i, label: levels[i]};
-            out[i] = tick;
+            out[i] = {v: i, label: levels[i]};
         }
         return out;
     };
@@ -84,7 +83,7 @@ jlab.wfb.Categorizer = function(levels, name_mapper){
         'get_numeric_value': get_numeric_value,
         'ticker': ticker
     };
-}
+};
 
 
 var alpha = 0.5;
@@ -166,7 +165,7 @@ var fault_mapper = jlab.wfb.Categorizer(["Single_Cav", "Multi_Cav", "Quench", "E
     "No_Label": "No_Label"
 });
 
-// Returns a string representing the LINAC based on zone name
+// Returns a string representing the Linac based on zone name
 jlab.wfb.get_linac = function(zone){
     var linac = zone.substring(0,2);
     if (linac == '0L') {
@@ -253,7 +252,6 @@ jlab.wfb.process_event_data_to_heatmaps = function(event_data, column_mapper, ro
 jlab.wfb.process_event_data = function (event_data, columns, values, column_mapper, value_mapper, labeled_only=true) {
     var events = event_data.events;
     var n_columns = column_mapper.levels.length;
-    var n_values = value_mapper.levels.length;
 
     var value_by_column = [];
     events.forEach(function (event) {
@@ -397,9 +395,9 @@ jlab.wfb.plot_heatmaps = function(div, data, cavity_mapper, fault_mapper) {
     div.appendChild(row_div);
     var x = cavity_mapper.levels.map(function(level){ return isNaN(level) ? level:  "cav " + level;});
     var y = fault_mapper.levels;
-    var yvals = new Array(y.length);
+    var y_values = new Array(y.length);
     for(var i=0; i<y.length; i++) {
-        yvals[i] = i;
+        y_values[i] = i;
     }
 
     Object.keys(data).sort().forEach(function(key){
@@ -440,7 +438,7 @@ jlab.wfb.plot_heatmaps = function(div, data, cavity_mapper, fault_mapper) {
                 yaxis: {
                     showticklabels: true,
                     ticktext: y,
-                    tickvals: yvals,
+                    tickvals: y_values,
                     tickmode: 'array',
                     ticks: '',
                     automargin: true
