@@ -102,7 +102,7 @@
                 var cavity_dp_div = document.getElementById("cavity-dotplot-wrapper");
                 var hm_div = document.getElementById("heatmaps-container");
                 jlab.wfb.create_plots(jlab.wfb.events, fault_dp_div, cavity_dp_div, hm_div, jlab.wfb.isLabeled,
-                    jlab.wfb.reportMode, jlab.wfb.colorBy);
+                    jlab.wfb.reportMode);
             };
 
             if (

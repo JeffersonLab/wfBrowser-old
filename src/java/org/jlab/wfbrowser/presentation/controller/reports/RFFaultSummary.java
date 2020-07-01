@@ -41,7 +41,6 @@ public class RFFaultSummary extends HttpServlet {
         String[] locationStrings = request.getParameterValues("location");
         String isLabeledString = request.getParameter("isLabeled");
         String reportMode = request.getParameter("reportMode");
-        String colorBy = request.getParameter("colorBy");
 
         Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
@@ -115,8 +114,7 @@ public class RFFaultSummary extends HttpServlet {
                     "begin=" + URLEncoder.encode(beginString, "UTF-8") +
                     "&end=" + URLEncoder.encode(endString, "UTF-8") +
                     "&reportMode=" + URLEncoder.encode(reportMode, "UTF-8") +
-                    "&isLabeled=" + URLEncoder.encode(String.valueOf(isLabeled), "UTF-8") +
-                    "&colorBy=" + URLEncoder.encode(colorBy, "UTF-8"));
+                    "&isLabeled=" + URLEncoder.encode(String.valueOf(isLabeled), "UTF-8"));
             redirectUrl.append("&conf=").append(URLEncoder.encode(confString, "UTF-8")).append("&confOp=").append(URLEncoder.encode(confOpString, "UTF-8"));
             for (String location : locationSelections) {
                 redirectUrl.append("&location=").append(URLEncoder.encode(location, "UTF-8"));
@@ -149,7 +147,6 @@ public class RFFaultSummary extends HttpServlet {
         request.setAttribute("endString", endString);
         request.setAttribute("isLabeled", isLabeled);
         request.setAttribute("reportMode", reportMode);
-        request.setAttribute("colorBy", colorBy);
         request.getRequestDispatcher("/WEB-INF/views/reports/rf-fault-summary.jsp").forward(request, response);
     }
 }
