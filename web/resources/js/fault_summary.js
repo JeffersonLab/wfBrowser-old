@@ -286,20 +286,23 @@ jlab.wfb.process_event_data = function (event_data, columns, values, column_mapp
         } else {
             // This effectively causes cavity to be the default value selection.  Should probably be different than
             // default column type.
-            var label_name = (columns == "fault" ? "fault-type" : "cavity");
+            var label_name = (values == "fault" ? "fault-type" : "cavity");
             if (event.labels === null) {
-                column = null;
+                value = null;
             } else {
                 event.labels.forEach(function (label) {
                     if (label.name == label_name) {
-                        column = label.value;
+                        value = label.value;
                     }
                 });
             }
         }
+
+
         // Convert the raw strings into corresponding index value
         var column_number = column_mapper.get_numeric_value(column);
         var value_number = value_mapper.get_numeric_value(value);
+        console.log(value_mapper.levels, value_number, value)
 
         // Construct the point and add it to the output dotplot data.
         point[0] = new Date(event.datetime_utc + "Z");
@@ -315,33 +318,67 @@ jlab.wfb.process_event_data = function (event_data, columns, values, column_mapp
 // data - dygraph data needed for the plot in javascript native format (2D array)
 // column_mapper - A Categorizer for the columns (colored series) of data to be displayed
 // value_mapper - A Categorizer for the values (rows) of data to be displayed
-jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper) {
-    var plot_div = null, legend_div = null;
-    for (var i = 0; i < div.childNodes.length; i++) {
-        if (div.childNodes[i].className == "dotplot-container") {
-            plot_div = div.childNodes[i];
-        }
-        if (div.childNodes[i].className == "dotplot-legend") {
-            legend_div = div.childNodes[i];
-        }
+jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title) {
+
+    // Setup the HTML divs to contain the plot structure
+    var wrapper_div = document.createElement("div");
+    wrapper_div.classList.add("dotplot-wrapper");
+    var title_div = document.createElement("div");
+    title_div.classList.add("chart-title");
+    title_div.textContent = title;
+    var legend_div = document.createElement("div");
+    legend_div.classList.add('dotplot-legend');
+    var plot_div = document.createElement("div");
+    plot_div.classList.add("dotplot-container");
+
+    div.appendChild(wrapper_div);
+    wrapper_div.appendChild(title_div);
+    wrapper_div.appendChild(legend_div);
+    wrapper_div.appendChild(plot_div);
+
+    // Setup the plot that goes in that HTML structure
+    colors = ['rgb(159,1,98)', 'rgb(0,159,129)', 'rgb(200, 130, 175)', 'rgb(132,0,205)', 'rgb(0,141,249)',
+        'rgb(0,194,249)', 'rgb(164,1,34)', 'rgb(226,1,52)', 'rgb(255,110,58)', 'rgb(255,195,59)'];
+    if (column_mapper.levels.length > 10) {
+        colors = ['rgb(159,1,98)', 'rgb(0,159,129)', 'rgb(255, 90, 175)', 'rgb(0,252,207)', 'rgb(132,0,205)', 'rgb(0,141,249)',
+            'rgb(0,194,249)', 'rgb(255,178,253)', 'rgb(164,1,34)', 'rgb(226,1,52)', 'rgb(255,110,58)', 'rgb(255,195,59)'];
     }
-    if (plot_div === null || legend_div === null) {
-        console.log("Error locating required dotplot divs for " + div.attributes);
-        return;
-    }
+    // colors = ['rgb(0,0,0)', 'rgb(80,80,80)', 'rgb(170, 170, 170)', 'rgb(252,140,0)', 'rgb(132,0,205)', 'rgb(0,141,249)',
+    //     'rgb(0,194,249)', 'rgb(255,178,253)', 'rgb(164,1,34)', 'rgb(226,1,52)', 'rgb(255,110,58)', 'rgb(255,195,59)'];
 
     var labels = [].concat.apply([], [["Timestamp"], Object.values(column_mapper.levels).filter(distinct)]);
     var config = {
         labelsDiv: legend_div,
         drawPoints: true,
-        strokeWidth: 0.0,
+        strokeWidth: 0,
         pointSize: 4,
+        highlightSeriesBackgroundAlpha: 0.25,
+        highlightSeriesOpts: {
+            strokeWidth: 0,
+            strokeBorderWidth: 2,
+            highlightCircleSize: 6,
+        },
         highlightCircleSize: 6,
         labels: labels,
         colors: colors,
         legend: "always",
-        pointClickCallback: function (e, p) {
-            console.log(e, p);
+        legendFormatter: function (data) {
+            if (data.x == null) {
+                // This happens when there's no selection and {legend: 'always'} is set.
+                return data.series.map(function(series) { return series.dashHTML +
+                    ' <span style="font-weight: bold; color: '+ series.color + '">' + series.labelHTML + '</span>' }).join(' ');
+            }
+
+            var html = this.getLabels()[0] + ': ' + data.xHTML;
+            data.series.forEach(function(series) {
+                if (!series.isVisible) return;
+                var labeledData = series.labelHTML + ': ' + series.yHTML;
+                if (series.isHighlighted) {
+                    labeledData = '<span style="font-weight: bold; color: ' + series.color + '">' + series.labelHTML + "(" + value_mapper.levels[Math.round(series.yHTML)] + ')</span>';
+                }
+                html += '<br>' + series.dashHTML + ' ' + labeledData;
+            });
+            return html;
         },
         axes: {
             x: {
@@ -413,6 +450,14 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
 
             var plot_div = row_div.appendChild(document.createElement('div'));
             plot_div.style.width = plot_width + '%';
+
+            // Modified Plotly "Blues" scale that removes some of the continuous gradation at both extremes.  The idea
+            // is that we want to detect non-zero values easily, and anything at the high end requires attention.  This
+            // scheme focuses nuanced differentiation in the middle, where users may want to apply some individual
+            // judgement.
+            var blue_scale = [[0, 'rgb(247,247,255)'], [1/4, 'rgb(158,202,225)'], [2/4, 'rgb(107,174,214)'],
+                [3/4, 'rgb(8,81,156)'], [1, 'rgb(8,48,107)']]
+
             var plot_data = [
                 {
                     x: x,
@@ -424,7 +469,8 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
                     zmax: max,
                     type: 'heatmap',
                     hoverongaps: false,
-                    showscale: true
+                    showscale: true,
+                    colorscale: blue_scale
                 }
             ];
             var layout = {
@@ -458,12 +504,18 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
     });
 };
 
-jlab.wfb.create_plots = function (event_data, fault_dp_div, cavity_dp_div, heatmap_div, labeled_only, facet_on) {
-    var fault_data = jlab.wfb.process_event_data(event_data, "fault", 'zone', fault_mapper, zone_mapper, labeled_only);
-    jlab.wfb.plot_dotplot(fault_dp_div, fault_data, fault_mapper, zone_mapper);
+jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, report_mode) {
+    console.log(report_mode)
+    if (report_mode == "zone") {
+        var cf_data = jlab.wfb.process_event_data(event_data, "fault", 'cavity', fault_mapper, cavity_mapper, labeled_only);
+        jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline");
+    } else {
+        var fault_data = jlab.wfb.process_event_data(event_data, "fault", 'zone', fault_mapper, zone_mapper, labeled_only);
+        jlab.wfb.plot_dotplot(dp_div, fault_data, fault_mapper, zone_mapper, "Fault Types By Zone");
 
-    var cavity_data = jlab.wfb.process_event_data(event_data, "cavity", 'zone', cavity_mapper, zone_mapper, labeled_only);
-    jlab.wfb.plot_dotplot(cavity_dp_div, cavity_data, cavity_mapper, zone_mapper);
+        var cavity_data = jlab.wfb.process_event_data(event_data, "cavity", 'zone', cavity_mapper, zone_mapper, labeled_only);
+        jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone");
+    }
 
     var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on);
     jlab.wfb.plot_heatmaps(heatmap_div, heatmaps, cavity_mapper, fault_mapper);

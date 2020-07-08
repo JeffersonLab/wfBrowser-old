@@ -62,7 +62,8 @@
         <script type="text/javascript"
                 src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/plotly-v1.50.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"></script>
-        <script type="text/javascript"src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/fault_summary.js"></script>
+        <script type="text/javascript"
+                src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/fault_summary.js"></script>
 
         <script>
             // Function for processing control-form on submit
@@ -97,12 +98,11 @@
             };
             jlab.wfb.$locationSelector.select2(select2Options);
 
-            jlab.wfb.ready_callback = function() {
-                var fault_dp_div = document.getElementById("fault-dotplot-wrapper");
-                var cavity_dp_div = document.getElementById("cavity-dotplot-wrapper");
+            jlab.wfb.ready_callback = function () {
+                var dp_div = document.getElementById("dotplot-panel");
                 var hm_div = document.getElementById("heatmaps-container");
-                jlab.wfb.create_plots(jlab.wfb.events, fault_dp_div, cavity_dp_div, hm_div, jlab.wfb.isLabeled,
-                    jlab.wfb.reportMode);
+                jlab.wfb.create_plots(jlab.wfb.events, dp_div, hm_div, jlab.wfb.isLabeled,
+                    jlab.wfb.reportMode, jlab.wfb.reportMode);
             };
 
             if (
@@ -177,7 +177,8 @@
                         <div class="li-value">
                             <select id="reportMode-input" name="reportMode">
                                 <option value="all" <c:if test="${reportMode == 'all'}">selected</c:if>>All</option>
-                                <option value="linac" <c:if test="${reportMode == 'linac'}">selected</c:if>>Linac</option>
+                                <option value="linac" <c:if test="${reportMode == 'linac'}">selected</c:if>>Linac
+                                </option>
                                 <option value="zone" <c:if test="${reportMode == 'zone'}">selected</c:if>>Zone</option>
                             </select>
                         </div>
@@ -187,18 +188,19 @@
             </fieldset>
 
         </form>
-        <div class="dotplot-wrapper" id="fault-dotplot-wrapper">
-            <div id="fault-dotplot-title" class="chart-title">Fault Timeline by Zone</div>
-            <div id="fault-dotplot-legend" class="dotplot-legend"></div>
-            <div id="fault-dotplot-container" class="dotplot-container"></div>
-        </div>
-        <div id="cavity-dotplot-wrapper" class="dotplot-wrapper">
-            <div id="cavity-dotplot-title" class="chart-title">Cavity Timeline by Zone</div>
-            <div id="cavity-dotplot-legend" class="dotplot-legend"></div>
-            <div id="cavity-dotplot-container" class="dotplot-container"></div>
-        </div>
+        <div id="dotplot-panel"></div>
+<%--        <div id="fault-dotplot-wrapper" class="dotplot-wrapper">--%>
+<%--            <div id="fault-dotplot-title" class="chart-title">Fault Timeline by Zone</div>--%>
+<%--            <div id="fault-dotplot-legend" class="dotplot-legend"></div>--%>
+<%--            <div id="fault-dotplot-container" class="dotplot-container"></div>--%>
+<%--        </div>--%>
+<%--        <div id="cavity-dotplot-wrapper" class="dotplot-wrapper">--%>
+<%--            <div id="cavity-dotplot-title" class="chart-title">Cavity Timeline by Zone</div>--%>
+<%--            <div id="cavity-dotplot-legend" class="dotplot-legend"></div>--%>
+<%--            <div id="cavity-dotplot-container" class="dotplot-container"></div>--%>
+<%--        </div>--%>
         <hr/>
-        <div id="heatmaps-wrapper">
+        <div id="heatmaps-panel">
             <div id="heatmaps-title" class="chart-title">Fault vs Cavity Labels</div>
             <div id="heatmaps-container"></div>
         </div>
@@ -212,8 +214,6 @@
             jlab.wfb.begin = "${requestScope.beginString}";
             jlab.wfb.end = "${requestScope.endString}";
             jlab.wfb.locationSelections = [<c:forEach var="location" items="${locationSelections}" varStatus="status">'${location}'<c:if test="${!status.last}">, </c:if></c:forEach>];
-            console.log(jlab.wfb.isLabeled);
-            console.log(jlab.wfb.events);
         </script>
     </jsp:body>
 </t:report-page>

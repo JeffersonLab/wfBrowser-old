@@ -115,9 +115,13 @@ public class RFFaultSummary extends HttpServlet {
                     "&end=" + URLEncoder.encode(endString, "UTF-8") +
                     "&reportMode=" + URLEncoder.encode(reportMode, "UTF-8") +
                     "&isLabeled=" + URLEncoder.encode(String.valueOf(isLabeled), "UTF-8"));
-            redirectUrl.append("&conf=").append(URLEncoder.encode(confString, "UTF-8")).append("&confOp=").append(URLEncoder.encode(confOpString, "UTF-8"));
+            redirectUrl.append("&conf=");
+            redirectUrl.append(URLEncoder.encode(confString, "UTF-8"));
+            redirectUrl.append("&confOp=");
+            redirectUrl.append(URLEncoder.encode(confOpString, "UTF-8"));
             for (String location : locationSelections) {
-                redirectUrl.append("&location=").append(URLEncoder.encode(location, "UTF-8"));
+                redirectUrl.append("&location=");
+                redirectUrl.append(URLEncoder.encode(location, "UTF-8"));
             }
             response.sendRedirect(response.encodeRedirectURL(redirectUrl.toString()));
             return;
