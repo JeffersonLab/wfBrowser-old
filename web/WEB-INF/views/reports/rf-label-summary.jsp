@@ -3,257 +3,79 @@
 <%@taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@taglib prefix="t" tagdir="/WEB-INF/tags" %>
-<c:set var="title" value="Cryomodule Faults"/>
+<c:set var="title" value="RF Fault Summary"/>
 <t:report-page title="${title}">
     <jsp:attribute name="stylesheets">
         <style>
             /*Plotly svg element has some overhang on initial draw.  This 99% helps hide that fact.*/
-            #barchart-container {
-                width: 99%;
+            .dotplot-container {
+                width: 97%;
+                height: 150px;
                 justify-content: center;
                 display: grid;
                 grid-template-columns: 49% 49%;
                 grid-gap: 4px;
                 gap: 4px;
+                padding-bottom: 25px;
             }
 
-            #barchart-wrapper {
+            .dotplot-wrapper {
                 padding: 2px;
+                padding-bottom: 10px;
             }
 
-            .barchart {
-                border: #4c4c4c solid 1px;
-                padding-right: 2.5%;
+            .dotplot-legend {
+                margin: auto;
+                text-align: center;
+                height: 2.5em;
+                font-size: 12px;
             }
+
 
             .key-value-list {
                 display: inline-block;
                 vertical-align: top;
             }
 
-            #barcharts-title {
+            .chart-title {
                 text-align: center;
                 font-weight: bold;
+            }
+
+            #heatmaps-container .js-plotly-plot {
+                display: inline-block;
+                height: 100%;
+            }
+
+            .heatmap-plot-row {
+                height: 250px;
             }
 
             input[type="submit"] {
                 display: block;
             }
+
         </style>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css"/>
     </jsp:attribute>
     <jsp:attribute name="scripts">
         <script type="text/javascript"
                 src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/plotly-v1.50.1.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"></script>
+        <script type="text/javascript"
+                src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/rf_label_summary.js"></script>
+
         <script>
-            // The json should be structured like this
-            /*
-            [
-                {"location":<location_1>,"label-combo":<csv string of cavity,fault labels>,"count":<count of events labeled this way>},
-                {"location":<location_1>,"label-combo":<csv string of cavity,fault labels>,"count":<count of events labeled this way>},
-                ...
-                {"location":<location_N>,"label-combo":<csv string of cavity,fault labels>,"count":<count of events labeled this way>},
-                ...
-            ]
-             */
-            var label_summary = <c:out value="${tallyArray}" escapeXml="false"></c:out>;
-            var fault_label_options = <c:out value="${faultLabelOptions}" escapeXml="false"></c:out>;
-            var fault_color_palette = ["rgba(0,107,164,1)", "rgba(255,128,14,1)", "rgba(171,171,171,1)", "rgba(89,89,89,1)",
-                "rgba(95,158,209,1)", "rgba(200,82,0,1)", "rgba(137,137,137,1)", "rgba(162,200,236,1)", "rgba(255,188,121,1)",
-                "rgba(207,207,207,1)", "rgba(0,0,0,1)", "rgba(255,255,255,1)"];
-            var fault_color_map = {};
-            fault_color_map["no label"] = fault_color_palette[0];
-            var i = 1;
-            fault_label_options.forEach(function (elem) {
-                fault_color_map[elem] = fault_color_palette[i];
-                i = i + 1;
-            })
-
-            // Keep track of bad cavity labels are receive them.  Alert if we get any.
-            var invalid_cavity_labels = [];
-
-            // Assume valid cavity labels to display are here.
-            var cavity_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "multi", "none"];
-
-            // Adjust the labels if we are only dealing with labeled examples
-            if (jlab.wfb.isLabeled) {
-                cavity_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "multi"];
-            }
-
-            // Inspect the label_summary object for high level info
-            var num_charts = label_summary.length;
-
-            // Construct an object keyed on locations.  Each location key will contain data for generating a plot.
-            var plot_data = {};
-            label_summary.forEach(function (locObj) {
-                var zone = locObj["location"];
-                var labelCombo = locObj["label-combo"];
-                var count = locObj["count"];
-
-                // label-combo should be a CSV of string all the labels for the given combination.  The server should be
-                // sending over only cavity and fault-type labels (or "NULL" if unlabeled)
-                var labels = labelCombo.split(",");
-
-                // Make sure we got some labels.  Check and throw an alert.
-                if (labels.length === 0) {
-                    console.log(JSON.stringify(locObj));
-                    alert("Received no label data for '" + zone + "'.  Report may be missing some data.");
-                    return;
-                }
-                // Some faults will be unlabeled and should be returned as label-combo: "NULL".  If we get a single
-                // label that's not "NULL" something went wrong.
-                if (labels.length === 1 && labels[0] !== "NULL") {
-                    console.log(JSON.stringify(locObj));
-                    alert("Received unexpected data for '" + zone + "'.  Report may be missing some data.");
-                    return;
-                }
-                // We should not be getting more than two labels.  Check and throw an alert.
-                if (labels.length > 2) {
-                    console.log(JSON.stringify(locObj));
-                    alert("Received to many labels for '" + zone + "'.  Report may be missing some data.");
-                    return;
-                }
-
-                // Get the labels - after above checks (that single label == "NULL"), length one means it's unlabeled
-                var cavity = "none";
-                var fault = "no label";
-                if (labels.length === 2) {
-                    fault = labels[0];
-                    cavity = labels[1];
-                }
-                // Short this so the chart looks better
-                if (cavity === "multiple") {
-                    cavity = "multi";
-                }
-
-                // Check for and exclude any invalid cavity labels
-                if (!cavity_labels.includes(cavity)) {
-                    console.log("Received invalid cavity label.  zone: " + zone + " cavity: " + cavity + " fault-type: " +
-                        fault + " count: " + count);
-                    invalid_cavity_labels.push(zone + " " + cavity + " " + fault + " " + count);
-                    return;
-                }
-
-                // Initiate the zone specific plot data structure.  It's not clear what cavity labels will be provided.
-                // Let's start with the assumption that it will be 1,2,..,8,"multiple","no label"
-                if (!plot_data.hasOwnProperty(zone)) {
-                    plot_data[zone] = {"faults": [], "data": []};
-                }
-
-                // Check if this is the first time the current fault has been seen.  Initialize the data structure if so,
-                // or just update the appropriate counter and add the fault to the list otherwise.
-                if (!plot_data[zone].faults.includes(fault)) {
-                    plot_data[zone].faults.push(fault);
-                    plot_data[zone].data.push({
-                        x: cavity_labels,
-                        y: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        name: fault,
-                        type: "bar",
-                        marker: {
-                            color: fault_color_map[fault],
-                            line: {color: "rgba(67,67,67,1", width: 1}
-                        }
-                    });
-                    plot_data[zone].layout = {
-
-                        yaxis: {
-                            title: zone,
-                            fixedrange: true    // Disable "lasso zoom"
-                        },
-                        xaxis: {
-                            title: "Cavity Label",
-                            type: "category",   // Keeps plotly from doing dumb things when X axis contains numbers and strings
-                            fixedrange: true    // Disable "lasso zoom"
-                        },
-                        barmode: 'stack',
-                        autosize: true,
-                        margin: {l: 40, r: 10, t: 20, b: 50}, // be careful here so that labels have room to flip orientation
-                        hovermode: "closest",
-                        showlegend: true
-                    };
-                    if (num_charts > 2) {
-                        plot_data[zone].layout.height = 200;
-                    }
-                }
-
-                var fault_index = plot_data[zone].faults.indexOf(fault);
-                var cavity_index = plot_data[zone].data[fault_index].x.indexOf(cavity);
-                plot_data[zone].data[fault_index].y[cavity_index] = count;
-            });
-
-            // Iterate over the data to determine what the y-axis max value should be.
-            var max_count = 0;
-            for (var zone in plot_data) {
-                if (!plot_data.hasOwnProperty(zone)) {
-                    continue;
-                }
-                var count_by_cav = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-                plot_data[zone].data.forEach(function (fault_trace) {
-                    for (var i = 0; i < fault_trace.y.length; i++) {
-                        count_by_cav[i] = count_by_cav[i] + fault_trace.y[i];
-                    }
-                });
-                count_by_cav.forEach(function (elem) {
-                    if (max_count < elem) {
-                        max_count = elem;
-                    }
-                })
-            }
-
-            // Set the y-axis range for all of the of plots
-            for (var zone in plot_data) {
-                if (!plot_data.hasOwnProperty(zone)) {
-                    continue;
-                }
-                plot_data[zone].layout.yaxis.range = [0, max_count];
-            }
-
-            // Alert the user if we received any unexpected cavity labels
-            if (invalid_cavity_labels.length > 0) {
-                var msg = "Received invalid cavity labels.  Charts may be missing some data.  Received <zone> <cav> <fault> <count>\n";
-                invalid_cavity_labels.forEach(function (elem) {
-                    msg += elem + "\n";
-                });
-                alert(msg);
-            }
-
-
-            var plotly_config = {
-                responsive: true,   // Auto resizing
-                scrollZoom: false,  // Disable scroll to zoom behavior
-                editable: false,    // Can't edit the plot
-                displayModeBar: false,  // Don't show the plotly control bar
-                showAxisDragHandles: false,
-                showAxisRangeEntryBoxes: false,
-            }
-
-            var container = document.getElementById("barchart-container");
-            jlab.wfb.locationSelections.forEach(function (zone) {
-                console.log(zone);
-                var chart = document.createElement("div");
-                chart.setAttribute("id", "chart-" + zone);
-                chart.setAttribute("class", "barchart");
-                container.appendChild(chart);
-
-                // If we didn't get any data for this one, print out a friendly message
-                if (!plot_data.hasOwnProperty(zone)) {
-                    var chart_div = document.getElementById("chart-" + zone);
-                    chart_div.innerHTML = "<center><bold>No data received for zone " + zone + "</bold></center>";
-                } else {
-                    Plotly.plot(chart, plot_data[zone].data, plot_data[zone].layout, plotly_config);
-                }
-            });
-
             // Function for processing control-form on submit
-            var submitHandler = function(){
-            // function submitHandler(event){
+            var submitHandler = function () {
+                // function submitHandler(event){
                 // Servlet is expecting a boolean, but we show a checkbox widget which sends "on" or nothing.
                 // Update the hidden field that is associated with this checkbox.
                 var isLabeledCheckBox = document.getElementById("isLabeled-checkbox-input");
                 var isLabeled = document.getElementById("isLabeled-input");
                 isLabeled.setAttribute("value", isLabeledCheckBox.checked);
             };
-        </script>
-        <script>
+
             // Setup the form's submit handler
             var form = document.getElementById('control-form');
 
@@ -275,11 +97,30 @@
                 width: "15em"
             };
             jlab.wfb.$locationSelector.select2(select2Options);
+
+            jlab.wfb.ready_callback = function () {
+                var dp_div = document.getElementById("dotplot-panel");
+                var hm_div = document.getElementById("heatmaps-container");
+                jlab.wfb.create_plots(jlab.wfb.events, dp_div, hm_div, jlab.wfb.isLabeled,
+                    jlab.wfb.reportMode, jlab.wfb.reportMode);
+                var done_span = document.createElement("span");
+                done_span.classList.add("done");
+                document.body.appendChild(done_span);
+            };
+
+            if (
+                document.readyState === "complete" ||
+                (document.readyState !== "loading" && !document.documentElement.doScroll)
+            ) {
+                jlab.wfb.ready_callback();
+            } else {
+                document.addEventListener("DOMContentLoaded", jlab.wfb.ready_callback);
+            }
         </script>
 
     </jsp:attribute>
     <jsp:body>
-        <h2>Fault Counts By Cavity and Type</h2>
+        <h2>RF Fault Summary</h2>
         <form id="control-form">
             <fieldset>
                 <legend>Report Controls</legend>
@@ -316,7 +157,7 @@
                     <li>
                         <div class="li-key"><label for="conf-input">Confidence Filter</label></div>
                         <div class="li-value">
-                            <input id="conf-input" type="text" width="5" name="conf" value="${confString}"
+                            <input id="conf-input" type="text" size=5 name="conf" value="${confString}"
                                    placeholder="default: no filter">
                             <select id="confOp-input" name="confOp">
                                 <option value=">" <c:if test="${confOpString == '>'}">selected</c:if>>&gt;</option>
@@ -334,19 +175,44 @@
                                                      <c:if test="${requestScope.isLabeled}">checked</c:if> ></div>
                         <input id="isLabeled-input" name="isLabeled" type="hidden">
                     </li>
+                    <li>
+                        <div class="li-key"><label for="reportMode-input">Report Mode</label></div>
+                        <div class="li-value">
+                            <select id="reportMode-input" name="reportMode">
+                                <option value="all" <c:if test="${reportMode == 'all'}">selected</c:if>>All</option>
+                                <option value="linac" <c:if test="${reportMode == 'linac'}">selected</c:if>>Linac
+                                </option>
+                                <option value="zone" <c:if test="${reportMode == 'zone'}">selected</c:if>>Zone</option>
+                            </select>
+                        </div>
+                    </li>
                 </ul>
                 <input type="submit" value="Submit">
             </fieldset>
 
         </form>
-        <div id="barchart-wrapper">
-            <div id="barcharts-title">Fault Label Counts By Cavity Label</div>
-            <div id="barchart-container"></div>
+        <div id="dotplot-panel"></div>
+<%--        <div id="fault-dotplot-wrapper" class="dotplot-wrapper">--%>
+<%--            <div id="fault-dotplot-title" class="chart-title">Fault Timeline by Zone</div>--%>
+<%--            <div id="fault-dotplot-legend" class="dotplot-legend"></div>--%>
+<%--            <div id="fault-dotplot-container" class="dotplot-container"></div>--%>
+<%--        </div>--%>
+<%--        <div id="cavity-dotplot-wrapper" class="dotplot-wrapper">--%>
+<%--            <div id="cavity-dotplot-title" class="chart-title">Cavity Timeline by Zone</div>--%>
+<%--            <div id="cavity-dotplot-legend" class="dotplot-legend"></div>--%>
+<%--            <div id="cavity-dotplot-container" class="dotplot-container"></div>--%>
+<%--        </div>--%>
+        <hr/>
+        <div id="heatmaps-panel">
+            <div id="heatmaps-title" class="chart-title">Fault vs Cavity Labels</div>
+            <div id="heatmaps-container"></div>
         </div>
         <script>
             var jlab = jlab || {};
             jlab.wfb = jlab.wfb || {};
 
+            jlab.wfb.events = ${requestScope.events};
+            jlab.wfb.reportMode = "${requestScope.reportMode}";
             jlab.wfb.isLabeled = ${requestScope.isLabeled};
             jlab.wfb.begin = "${requestScope.beginString}";
             jlab.wfb.end = "${requestScope.endString}";
