@@ -253,7 +253,7 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
         // Figure out what facet should be based on the location and the facet_on setting
         var facet;
         if (facet_on == "linac") {
-            facet = loc.substr(0, 2);
+            facet = jlab.wfb.get_linac(loc);
         } else if (facet_on == "zone") {
             facet = loc;
         } else {
