@@ -6,6 +6,7 @@
 <c:set var="title" value="RF Fault Summary"/>
 <t:report-page title="${title}">
     <jsp:attribute name="stylesheets">
+        <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/css/dygraph.2.1.0.css" />
         <style>
             /*Plotly svg element has some overhang on initial draw.  This 99% helps hide that fact.*/
             .dotplot-container {
@@ -56,12 +57,11 @@
             }
 
         </style>
-        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css"/>
     </jsp:attribute>
     <jsp:attribute name="scripts">
+        <script type="text/javascript" src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/dygraph.2.1.0.min.js"></script>
         <script type="text/javascript"
                 src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/plotly-v1.50.1.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"></script>
         <script type="text/javascript"
                 src="${pageContext.request.contextPath}/resources/v${initParam.resourceVersionNumber}/js/rf_label_summary.js"></script>
 
@@ -192,16 +192,6 @@
 
         </form>
         <div id="dotplot-panel"></div>
-<%--        <div id="fault-dotplot-wrapper" class="dotplot-wrapper">--%>
-<%--            <div id="fault-dotplot-title" class="chart-title">Fault Timeline by Zone</div>--%>
-<%--            <div id="fault-dotplot-legend" class="dotplot-legend"></div>--%>
-<%--            <div id="fault-dotplot-container" class="dotplot-container"></div>--%>
-<%--        </div>--%>
-<%--        <div id="cavity-dotplot-wrapper" class="dotplot-wrapper">--%>
-<%--            <div id="cavity-dotplot-title" class="chart-title">Cavity Timeline by Zone</div>--%>
-<%--            <div id="cavity-dotplot-legend" class="dotplot-legend"></div>--%>
-<%--            <div id="cavity-dotplot-container" class="dotplot-container"></div>--%>
-<%--        </div>--%>
         <hr/>
         <div id="heatmaps-panel">
             <div id="heatmaps-title" class="chart-title">Fault vs Cavity Labels</div>
