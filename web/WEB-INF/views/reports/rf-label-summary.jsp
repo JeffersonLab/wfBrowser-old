@@ -102,7 +102,7 @@
                 var dp_div = document.getElementById("dotplot-panel");
                 var hm_div = document.getElementById("heatmaps-container");
                 jlab.wfb.create_plots(jlab.wfb.events, dp_div, hm_div, jlab.wfb.isLabeled,
-                    jlab.wfb.reportMode, jlab.wfb.reportMode);
+                    jlab.wfb.reportMode, jlab.wfb.reportMode, jlab.wfb.locationSelections);
                 var done_span = document.createElement("span");
                 done_span.classList.add("done");
                 document.body.appendChild(done_span);

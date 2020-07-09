@@ -180,7 +180,8 @@ jlab.wfb.get_linac = function (zone) {
 };
 
 
-jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, row_mapper, labeled_only=true, facet_on=null) {
+jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, row_mapper, labeled_only=true,
+                                                    facet_on=null, locations) {
     var events = event_data.events;
     var n_cols = column_mapper.levels.length; // columns
     var n_rows = row_mapper.levels.length; // rows
@@ -225,6 +226,36 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
             }
         }
         heatmaps[facet][row_number][column_number]++;
+    });
+
+    // Make sure that every facet level has a heatmap matrix, even if it's all zeros.
+    var expected_facets = [];
+    locations.forEach(function(loc) {
+        // Figure out what facet should be based on the location and the facet_on setting
+        var facet;
+        if (facet_on == "linac") {
+             facet = loc.substr(0, 2);
+        } else if (facet_on == "zone") {
+            facet = loc;
+        } else {
+            facet = "All";
+        }
+
+        // Just add every facet we come across.  We can dedupe afterwards.
+        expected_facets.push(facet);
+    });
+
+    // Remove any duplicates from expected_facets
+    Object.values(expected_facets).filter(distinct);
+
+    // Fill in any missing facet values with a zero matrix
+    expected_facets.forEach(function(facet){
+        if (!heatmaps.hasOwnProperty(facet)) {
+            heatmaps[facet] = new Array(n_rows);
+            for (var i = 0; i < n_rows; i++) {
+                heatmaps[facet][i] = new Array(n_cols).fill(0);
+            }
+        }
     });
 
     return heatmaps;
@@ -302,7 +333,6 @@ jlab.wfb.process_event_data = function (event_data, columns, values, column_mapp
         // Convert the raw strings into corresponding index value
         var column_number = column_mapper.get_numeric_value(column);
         var value_number = value_mapper.get_numeric_value(value);
-        console.log(value_mapper.levels, value_number, value)
 
         // Construct the point and add it to the output dotplot data.
         point[0] = new Date(event.datetime_utc + "Z");
@@ -356,7 +386,7 @@ jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title)
         highlightSeriesOpts: {
             strokeWidth: 0,
             strokeBorderWidth: 2,
-            highlightCircleSize: 6,
+            highlightCircleSize: 6
         },
         highlightCircleSize: 6,
         labels: labels,
@@ -408,7 +438,7 @@ jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title)
 // row_mapper - A Categorizer object for describing the rows
 jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
     var num_plots = 0;
-    var max = 0;
+    var max = 1; // Set to one since we always want to have a zero-bounded scale and plotly updates the scale if min=max
     for (var key in data) {
         if (data.hasOwnProperty(key)) {
             num_plots += 1;
@@ -504,8 +534,7 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
     });
 };
 
-jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, report_mode) {
-    console.log(report_mode)
+jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, report_mode, locations) {
     if (report_mode == "zone") {
         var cf_data = jlab.wfb.process_event_data(event_data, "fault", 'cavity', fault_mapper, cavity_mapper, labeled_only);
         jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline");
@@ -517,6 +546,6 @@ jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only,
         jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone");
     }
 
-    var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on);
+    var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on, locations);
     jlab.wfb.plot_heatmaps(heatmap_div, heatmaps, cavity_mapper, fault_mapper);
 };
