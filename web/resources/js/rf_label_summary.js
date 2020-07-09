@@ -42,6 +42,25 @@ Dygraph.prototype.mouseMove_ = function (event) {
 };
 /* ------ End of Dygraphs customization -------*/
 
+// "Plugin" function for dygraphs that unzooms out to the specified valueRange setting.
+const doubleClickZoomOutPlugin = {
+    activate: function (g) {
+        // Save the initial y-axis range for later.
+        const initialValueRange = g.getOption('valueRange');
+        return {
+            dblclick: function (e) {
+                console.log(g.getOption("valueRange"), g.getOption("axes"));
+                e.dygraph.updateOptions({
+                    dateWindow: null,  // zoom all the way out
+                    axes: {y: {valueRange: initialValueRange}}  // zoom to a specific y-axis range.
+                });
+                e.preventDefault();  // prevent the default zoom out action.
+            }
+        };
+    }
+};
+
+
 jlab.wfb.pad = function (n, width, z) {
     z = z || '0';
     n = n + ""; // convert to string
@@ -230,11 +249,11 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
 
     // Make sure that every facet level has a heatmap matrix, even if it's all zeros.
     var expected_facets = [];
-    locations.forEach(function(loc) {
+    locations.forEach(function (loc) {
         // Figure out what facet should be based on the location and the facet_on setting
         var facet;
         if (facet_on == "linac") {
-             facet = loc.substr(0, 2);
+            facet = loc.substr(0, 2);
         } else if (facet_on == "zone") {
             facet = loc;
         } else {
@@ -249,7 +268,7 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
     Object.values(expected_facets).filter(distinct);
 
     // Fill in any missing facet values with a zero matrix
-    expected_facets.forEach(function(facet){
+    expected_facets.forEach(function (facet) {
         if (!heatmaps.hasOwnProperty(facet)) {
             heatmaps[facet] = new Array(n_rows);
             for (var i = 0; i < n_rows; i++) {
@@ -398,12 +417,14 @@ jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title,
         legendFormatter: function (data) {
             if (data.x == null) {
                 // This happens when there's no selection and {legend: 'always'} is set.
-                return data.series.map(function(series) { return series.dashHTML +
-                    ' <span style="font-weight: bold; color: '+ series.color + '">' + series.labelHTML + '</span>' }).join(' ');
+                return data.series.map(function (series) {
+                    return series.dashHTML +
+                        ' <span style="font-weight: bold; color: ' + series.color + '">' + series.labelHTML + '</span>'
+                }).join(' ');
             }
 
             var html = this.getLabels()[0] + ': ' + data.xHTML;
-            data.series.forEach(function(series) {
+            data.series.forEach(function (series) {
                 if (!series.isVisible) return;
                 var labeledData = series.labelHTML + ': ' + series.yHTML;
                 if (series.isHighlighted) {
@@ -426,13 +447,14 @@ jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title,
             },
             y: {
                 // axisLabelFormatter: number_to_cavity,
-                ticker: value_mapper.ticker,
-                valueRange: [-0.5, value_mapper.levels.length + 0.5]
-            }
-        }
+                ticker: value_mapper.ticker
+            },
+        },
+        valueRange: [-0.5, value_mapper.levels.length + 0.5],
+        plugins: [doubleClickZoomOutPlugin]
     };
 
-    new Dygraph(plot_div, data, config);
+    return new Dygraph(plot_div, data, config);
 };
 
 
@@ -490,8 +512,8 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
             // is that we want to detect non-zero values easily, and anything at the high end requires attention.  This
             // scheme focuses nuanced differentiation in the middle, where users may want to apply some individual
             // judgement.
-            var blue_scale = [[0, 'rgb(247,247,255)'], [1/4, 'rgb(158,202,225)'], [2/4, 'rgb(107,174,214)'],
-                [3/4, 'rgb(8,81,156)'], [1, 'rgb(8,48,107)']]
+            var blue_scale = [[0, 'rgb(247,247,255)'], [1 / 4, 'rgb(158,202,225)'], [2 / 4, 'rgb(107,174,214)'],
+                [3 / 4, 'rgb(8,81,156)'], [1, 'rgb(8,48,107)']]
 
             var plot_data = [
                 {
@@ -546,10 +568,12 @@ jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only,
         jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline", begin, end);
     } else {
         var fault_data = jlab.wfb.process_event_data(event_data, "fault", 'zone', fault_mapper, zone_mapper, labeled_only);
-        jlab.wfb.plot_dotplot(dp_div, fault_data, fault_mapper, zone_mapper, "Fault Types By Zone", begin, end);
+        var g1 = jlab.wfb.plot_dotplot(dp_div, fault_data, fault_mapper, zone_mapper, "Fault Types By Zone", begin, end);
 
         var cavity_data = jlab.wfb.process_event_data(event_data, "cavity", 'zone', cavity_mapper, zone_mapper, labeled_only);
-        jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone", begin, end);
+        var g2 = jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone", begin, end);
+
+        Dygraph.synchronize([g1, g2], {selection: false});
     }
 
     var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on, locations);
