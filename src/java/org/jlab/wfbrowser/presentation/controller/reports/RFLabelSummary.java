@@ -106,8 +106,6 @@ public class RFLabelSummary extends HttpServlet {
             locationSelectionMap.put(loc, locationSelections.contains(loc));
         }
 
-        System.out.println(isLabeledString + " " + isLabeled + " redirectNeeded=" + redirectNeeded);
-
         // Redirect if needed.  Make sure we grab all of our user selections to make this bookmark-able
         if (redirectNeeded) {
             StringBuilder redirectUrl = new StringBuilder(request.getContextPath() + "/reports/rf-label-summary?" +
