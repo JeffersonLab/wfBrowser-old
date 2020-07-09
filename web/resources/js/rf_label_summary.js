@@ -348,7 +348,10 @@ jlab.wfb.process_event_data = function (event_data, columns, values, column_mapp
 // data - dygraph data needed for the plot in javascript native format (2D array)
 // column_mapper - A Categorizer for the columns (colored series) of data to be displayed
 // value_mapper - A Categorizer for the values (rows) of data to be displayed
-jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title) {
+// title - The chart title to display
+// begin - A date time string for the beginning of the plot time range
+// end - A date time string for the end of the plot time range
+jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title, begin, end) {
 
     // Setup the HTML divs to contain the plot structure
     var wrapper_div = document.createElement("div");
@@ -410,8 +413,10 @@ jlab.wfb.plot_dotplot = function (div, data, column_mapper, value_mapper, title)
             });
             return html;
         },
+        dateWindow: [new Date(begin).getTime(), new Date(end).getTime()],
         axes: {
             x: {
+
                 axisLabelWidth: 75,
                 axisLabelFormatter: function (d) {
                     return d.getFullYear() + "-" + jlab.wfb.pad(d.getMonth() + 1, 2, '0') + "-" + jlab.wfb.pad(d.getDate(), 2, '0') + "\n"
@@ -534,16 +539,17 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
     });
 };
 
-jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, report_mode, locations) {
+jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, report_mode, locations,
+                                  begin, end) {
     if (report_mode == "zone") {
         var cf_data = jlab.wfb.process_event_data(event_data, "fault", 'cavity', fault_mapper, cavity_mapper, labeled_only);
-        jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline");
+        jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline", begin, end);
     } else {
         var fault_data = jlab.wfb.process_event_data(event_data, "fault", 'zone', fault_mapper, zone_mapper, labeled_only);
-        jlab.wfb.plot_dotplot(dp_div, fault_data, fault_mapper, zone_mapper, "Fault Types By Zone");
+        jlab.wfb.plot_dotplot(dp_div, fault_data, fault_mapper, zone_mapper, "Fault Types By Zone", begin, end);
 
         var cavity_data = jlab.wfb.process_event_data(event_data, "cavity", 'zone', cavity_mapper, zone_mapper, labeled_only);
-        jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone");
+        jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone", begin, end);
     }
 
     var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on, locations);
