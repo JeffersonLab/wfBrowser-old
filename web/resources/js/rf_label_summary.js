@@ -178,7 +178,7 @@ var fault_mapper = jlab.wfb.Categorizer(["Single_Cav", "Multi_Cav", "Quench", "E
     "Quench_3ms": "Quench_3ms",
     "Quench_100ms": "Quench_100ms",
     "Microphonics": "Microphonics",
-    "Controls Faults": "Controls_Fault",
+    "Controls Fault": "Controls_Fault",
     "Controls_Fault": "Controls_Fault",
     "Other": 'Other',
     "null": "No_Label",  // fault_name_mapper[null]
