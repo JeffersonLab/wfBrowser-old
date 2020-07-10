@@ -574,6 +574,10 @@ jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only,
         var g2 = jlab.wfb.plot_dotplot(dp_div, cavity_data, cavity_mapper, zone_mapper, "Cavity By Zone", begin, end);
 
         Dygraph.synchronize([g1, g2], {selection: false});
+
+        // For some reason the top chart draw itself too wide the first time in chrome.  Resizing the window seems to
+        // fix it.  Dispatching a resize event will trigger a redraw at the proper size.
+        window.dispatchEvent(new Event('resize'));
     }
 
     var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on, locations);
