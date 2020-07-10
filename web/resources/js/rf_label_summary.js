@@ -169,6 +169,7 @@ var fault_mapper = jlab.wfb.Categorizer(["Single_Cav", "Multi_Cav", "Quench", "E
     "Multi_Cav": "Multi_Cav",
     "Multi Cav turn Off": "Multi_Cav",
     "Multi Cav Turn off": "Multi_Cav",
+    "Multi Cav turn off": "Multi_Cav",
     "Multi Cavity turn Off": "Multi_Cav",
     "Multi Cavity Turn off": "Multi_Cav",
     "Multi Cavity Turn Off": "Multi_Cav",
