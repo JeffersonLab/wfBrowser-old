@@ -18,7 +18,7 @@
     </context-param>
     <context-param>
         <param-name>resourceVersionNumber</param-name>
-        <param-value>26</param-value>
+        <param-value>27</param-value>
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
@@ -26,7 +26,7 @@
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>TBD</param-value>
+        <param-value>July 14, 2020</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
