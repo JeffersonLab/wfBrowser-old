@@ -22,11 +22,11 @@
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
-        <param-value>1.5.4</param-value>
+        <param-value>1.5.5</param-value>
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>July 10, 2020</param-value>
+        <param-value>TBD</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>

@@ -562,9 +562,9 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
     });
 };
 
-jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, report_mode, locations,
+jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, timeline_mode, locations,
                                   begin, end) {
-    if (report_mode == "zone") {
+    if (timeline_mode == "single") {
         var cf_data = jlab.wfb.process_event_data(event_data, "fault", 'cavity', fault_mapper, cavity_mapper, labeled_only);
         jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline", begin, end);
     } else {

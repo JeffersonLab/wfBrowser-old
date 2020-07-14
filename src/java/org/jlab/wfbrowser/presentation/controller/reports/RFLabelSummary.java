@@ -40,7 +40,8 @@ public class RFLabelSummary extends HttpServlet {
         String confOpString = request.getParameter("confOp");
         String[] locationStrings = request.getParameterValues("location");
         String isLabeledString = request.getParameter("isLabeled");
-        String reportMode = request.getParameter("reportMode");
+        String heatmap = request.getParameter("heatmap");
+        String timeline = request.getParameter("timeline");
 
         Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
@@ -65,10 +66,16 @@ public class RFLabelSummary extends HttpServlet {
             confOpString = ">";
         }
 
-        if (reportMode == null ||
-                (!reportMode.equals("linac") && !reportMode.equals("zone") && !reportMode.equals("all"))) {
+        if (heatmap == null ||
+                (!heatmap.equals("linac") && !heatmap.equals("zone") && !heatmap.equals("all"))) {
             redirectNeeded = true;
-            reportMode = "linac";
+            heatmap = "linac";
+        }
+
+        if (timeline == null ||
+                (!timeline.equals("single") && !timeline.equals("separate"))) {
+            redirectNeeded = true;
+            timeline = "separate";
         }
 
         EventService es = new EventService();
@@ -111,7 +118,8 @@ public class RFLabelSummary extends HttpServlet {
             StringBuilder redirectUrl = new StringBuilder(request.getContextPath() + "/reports/rf-label-summary?" +
                     "begin=" + URLEncoder.encode(beginString, "UTF-8") +
                     "&end=" + URLEncoder.encode(endString, "UTF-8") +
-                    "&reportMode=" + URLEncoder.encode(reportMode, "UTF-8") +
+                    "&heatmap=" + URLEncoder.encode(heatmap, "UTF-8") +
+                    "&timeline=" + URLEncoder.encode(timeline, "UTF-8") +
                     "&isLabeled=" + URLEncoder.encode(String.valueOf(isLabeled), "UTF-8"));
             redirectUrl.append("&conf=");
             redirectUrl.append(URLEncoder.encode(confString, "UTF-8"));
@@ -148,7 +156,8 @@ public class RFLabelSummary extends HttpServlet {
         request.setAttribute("beginString", beginString);
         request.setAttribute("endString", endString);
         request.setAttribute("isLabeled", isLabeled);
-        request.setAttribute("reportMode", reportMode);
+        request.setAttribute("heatmap", heatmap);
+        request.setAttribute("timeline", timeline);
         request.getRequestDispatcher("/WEB-INF/views/reports/rf-label-summary.jsp").forward(request, response);
     }
 }

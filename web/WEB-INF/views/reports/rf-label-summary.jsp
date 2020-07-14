@@ -102,8 +102,8 @@
             jlab.wfb.ready_callback = function () {
                 var dp_div = document.getElementById("dotplot-panel");
                 var hm_div = document.getElementById("heatmaps-container");
-                jlab.wfb.create_plots(jlab.wfb.events, dp_div, hm_div, jlab.wfb.isLabeled, jlab.wfb.reportMode,
-                    jlab.wfb.reportMode, jlab.wfb.locationSelections, jlab.wfb.begin, jlab.wfb.end);
+                jlab.wfb.create_plots(jlab.wfb.events, dp_div, hm_div, jlab.wfb.isLabeled, jlab.wfb.heatmap,
+                    jlab.wfb.timeline, jlab.wfb.locationSelections, jlab.wfb.begin, jlab.wfb.end);
                 var done_span = document.createElement("span");
                 done_span.classList.add("done");
                 document.body.appendChild(done_span);
@@ -177,13 +177,22 @@
                         <input id="isLabeled-input" name="isLabeled" type="hidden">
                     </li>
                     <li>
-                        <div class="li-key"><label for="reportMode-input">Report Mode</label></div>
+                        <div class="li-key"><label for="heatmap-input">Heatmaps</label></div>
                         <div class="li-value">
-                            <select id="reportMode-input" name="reportMode">
-                                <option value="all" <c:if test="${reportMode == 'all'}">selected</c:if>>All</option>
-                                <option value="linac" <c:if test="${reportMode == 'linac'}">selected</c:if>>Linac
+                            <select id="heatmap-input" name="heatmap">
+                                <option value="all" <c:if test="${heatmap == 'all'}">selected</c:if>>All</option>
+                                <option value="linac" <c:if test="${heatmap == 'linac'}">selected</c:if>>Linac
                                 </option>
-                                <option value="zone" <c:if test="${reportMode == 'zone'}">selected</c:if>>Zone</option>
+                                <option value="zone" <c:if test="${heatmap == 'zone'}">selected</c:if>>Zone</option>
+                            </select>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="li-key"><label for="timeline-input">Timeline</label></div>
+                        <div class="li-value">
+                            <select id="timeline-input" name="timeline">
+                                <option value="single" <c:if test="${timeline == 'single'}">selected</c:if>>Combined</option>
+                                <option value="separate" <c:if test="${timeline == 'separate'}">selected</c:if>>Separate</option>
                             </select>
                         </div>
                     </li>
@@ -203,7 +212,8 @@
             jlab.wfb = jlab.wfb || {};
 
             jlab.wfb.events = ${requestScope.events};
-            jlab.wfb.reportMode = "${requestScope.reportMode}";
+            jlab.wfb.heatmap = "${requestScope.heatmap}";
+            jlab.wfb.timeline = "${requestScope.timeline}";
             jlab.wfb.isLabeled = ${requestScope.isLabeled};
             jlab.wfb.begin = "${requestScope.beginString}";
             jlab.wfb.end = "${requestScope.endString}";
