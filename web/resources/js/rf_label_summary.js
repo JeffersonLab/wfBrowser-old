@@ -137,10 +137,10 @@ var eventCompare = function (e1, e2) {
 
 };
 
-var zone_mapper = jlab.wfb.Categorizer(['0L04', '1L07', '1L22', '1L23', '1L24', '1L25', '1L26', '2L22', '2L23', '2L24', '2L25', '2L26'], {
-    '0L04': '0L04',
+var zone_mapper = jlab.wfb.Categorizer(['2L26', '2L25', '2L24', '2L23', '2L22', '1L26', '1L25', '1L24', '1L23', '1L22', '1L07', '0L04'], {
     '1L07': '1L07', '1L22': '1L22', '1L23': '1L23', '1L24': '1L24', '1L25': '1L25', '1L26': '1L26',
-    '2L22': '2L22', '2L23': '2L23', '2L24': '2L24', '2L25': '2L25', '2L26': '2L26'
+    '2L22': '2L22', '2L23': '2L23', '2L24': '2L24', '2L25': '2L25', '2L26': '2L26',
+    '0L04': '0L04'
 });
 
 var cavity_mapper = jlab.wfb.Categorizer(['Multi', '1', '2', '3', '4', '5', '6', '7', '8', 'Other', 'No_Label'], {
@@ -240,6 +240,10 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
         }
 
         if (!heatmaps.hasOwnProperty(facet)) {
+            if (facet_on == "linac" && facet == "INJ") {
+                // Received request that we not force injector to show up since the current models do not work for it.
+                return;
+            }
             heatmaps[facet] = new Array(n_rows);
             for (var i = 0; i < n_rows; i++) {
                 heatmaps[facet][i] = new Array(n_cols).fill(0);
