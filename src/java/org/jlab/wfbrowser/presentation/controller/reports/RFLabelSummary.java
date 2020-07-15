@@ -5,6 +5,7 @@ import org.jlab.wfbrowser.business.filter.LabelFilter;
 import org.jlab.wfbrowser.business.service.EventService;
 import org.jlab.wfbrowser.business.service.LabelService;
 import org.jlab.wfbrowser.business.util.TimeUtil;
+import org.jlab.wfbrowser.model.Event;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -15,6 +16,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -25,9 +27,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@WebServlet(name = "RFLabelSummary", urlPatterns = {"/reports/rf-label-summary"})
+@WebServlet(name = "Servlet", urlPatterns = "/reports/rf-label-summary")
 public class RFLabelSummary extends HttpServlet {
-
     private static final Logger LOGGER = Logger.getLogger(RFLabelSummary.class.getName());
 
     @Override
@@ -39,10 +40,12 @@ public class RFLabelSummary extends HttpServlet {
         String confOpString = request.getParameter("confOp");
         String[] locationStrings = request.getParameterValues("location");
         String isLabeledString = request.getParameter("isLabeled");
+        String heatmap = request.getParameter("heatmap");
+        String timeline = request.getParameter("timeline");
 
         Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
-        List<String> locationSelections = locationStrings == null ? null : Arrays.asList(locationStrings);
+        List<String> locationSelections = locationStrings == null ? null : new ArrayList<>(Arrays.asList(locationStrings));
         boolean isLabeled = Boolean.parseBoolean(isLabeledString);
 
         boolean redirectNeeded = false;
@@ -61,6 +64,18 @@ public class RFLabelSummary extends HttpServlet {
         if (confOpString == null) {
             redirectNeeded = true;
             confOpString = ">";
+        }
+
+        if (heatmap == null ||
+                (!heatmap.equals("linac") && !heatmap.equals("zone") && !heatmap.equals("all"))) {
+            redirectNeeded = true;
+            heatmap = "linac";
+        }
+
+        if (timeline == null ||
+                (!timeline.equals("single") && !timeline.equals("separate"))) {
+            redirectNeeded = true;
+            timeline = "separate";
         }
 
         EventService es = new EventService();
@@ -90,6 +105,16 @@ public class RFLabelSummary extends HttpServlet {
         if (locationSelections == null || locationSelections.isEmpty()) {
             redirectNeeded = true;
             locationSelections = locationOptions;
+        } else {
+            // Remove in invalid location selections since we're dealing with user input
+            Iterator<String> itr = locationSelections.iterator();
+            while (itr.hasNext()) {
+                String loc = itr.next();
+                if (!locationOptions.contains(loc)) {
+                    LOGGER.log(Level.INFO, "Received invalid location parameter '" + loc + "'");
+                    itr.remove();
+                }
+            }
         }
 
         // The map gets used by the view for tracking valid options and which options have been selected
@@ -102,45 +127,38 @@ public class RFLabelSummary extends HttpServlet {
         if (redirectNeeded) {
             StringBuilder redirectUrl = new StringBuilder(request.getContextPath() + "/reports/rf-label-summary?" +
                     "begin=" + URLEncoder.encode(beginString, "UTF-8") +
-                    "&end=" + URLEncoder.encode(endString, "UTF-8"));
-            redirectUrl.append("&conf=").append(URLEncoder.encode(confString, "UTF-8")).append("&confOp=").append(URLEncoder.encode(confOpString, "UTF-8"));
+                    "&end=" + URLEncoder.encode(endString, "UTF-8") +
+                    "&heatmap=" + URLEncoder.encode(heatmap, "UTF-8") +
+                    "&timeline=" + URLEncoder.encode(timeline, "UTF-8") +
+                    "&isLabeled=" + URLEncoder.encode(String.valueOf(isLabeled), "UTF-8"));
+            redirectUrl.append("&conf=");
+            redirectUrl.append(URLEncoder.encode(confString, "UTF-8"));
+            redirectUrl.append("&confOp=");
+            redirectUrl.append(URLEncoder.encode(confOpString, "UTF-8"));
             for (String location : locationSelections) {
-                redirectUrl.append("&location=").append(URLEncoder.encode(location, "UTF-8"));
+                redirectUrl.append("&location=");
+                redirectUrl.append(URLEncoder.encode(location, "UTF-8"));
             }
             response.sendRedirect(response.encodeRedirectURL(redirectUrl.toString()));
             return;
         }
 
-        JsonArray tallyArray;
-        JsonArray faultLabelOptions;
+        List<Event> events;
         try {
             // Get the tally of labeled events
             EventFilter ef = new EventFilter(null, begin, end, "rf", locationSelections, null, null, null, null);
             List<LabelFilter> lfList = new ArrayList<>();
             lfList.add(new LabelFilter(null, null, null, confidence, confOpString));
 
-            // Filter out unlabeled only if requested - request param is "should I only display labeled" while service
-            // param is "should I include unlabeled" since most LabelFilters will remove any unlabeled events
-            tallyArray = es.getLabelTallyAsJson(ef, lfList, !isLabeled);
-
-            // Get the valid options for an RF label
-            LabelService ls = new LabelService();
-            Map<String, List<String>> labelOptions = ls.getDistinctLabels(Collections.singletonList("fault-type"), "rf");
-            JsonArrayBuilder jab = Json.createArrayBuilder();
-            // In case we don't have any fault-type labels yet.
-            if (labelOptions.containsKey("fault-type")) {
-                for (String value : labelOptions.get("fault-type")) {
-                    jab.add(value);
-                }
-            }
-            faultLabelOptions = jab.build();
+            events = es.getEventListWithoutCaptureFiles(ef);
+            events = EventService.applyLabelFilters(events, lfList, !isLabeled);
         } catch (SQLException ex) {
             LOGGER.log(Level.WARNING, "Error querying database for label tally");
             throw new ServletException(ex);
         }
 
-        request.setAttribute("tallyArray", tallyArray);
-        request.setAttribute("faultLabelOptions", faultLabelOptions);
+
+        request.setAttribute("events", es.convertEventListToJson(events, null).toString());
         request.setAttribute("locationSelectionMap", locationSelectionMap);
         request.setAttribute("locationSelections", locationSelections);
         request.setAttribute("confString", confString);
@@ -148,6 +166,8 @@ public class RFLabelSummary extends HttpServlet {
         request.setAttribute("beginString", beginString);
         request.setAttribute("endString", endString);
         request.setAttribute("isLabeled", isLabeled);
+        request.setAttribute("heatmap", heatmap);
+        request.setAttribute("timeline", timeline);
         request.getRequestDispatcher("/WEB-INF/views/reports/rf-label-summary.jsp").forward(request, response);
     }
 }

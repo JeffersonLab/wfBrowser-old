@@ -963,26 +963,7 @@ public class EventService {
 
         // Only want to query the database once
         List<Event> eventList = getEventList(eventFilter, null, false, false);
-
-        // Get the different filtered sets and collect their union
-        if (lfList != null && !lfList.isEmpty()) {
-
-            // Build up a set so that events don't get duplicated
-            List<Event> events = eventList;
-            for (LabelFilter lf : lfList) {
-                events = lf.filterEvents(events);
-            }
-
-            // Create a set to remove duplicate events that may be introduced by the unlabeled
-            Set<Event> eventSet = new HashSet<>(events);
-            if (includeUnlabeled) {
-                LabelFilter lf = new LabelFilter(false);
-                eventSet.addAll(lf.filterEvents(eventList));
-            }
-
-            // Remove duplicates by adding to a set and then back to a list.
-            eventList = new ArrayList<>(eventSet);
-        }
+        eventList = EventService.applyLabelFilters(eventList, lfList, includeUnlabeled);
 
         // Now process the events and tally up the label combinations.  As of this writing, there was only RF-related cavity and fault-type
         // label names, so sorting them puts them in the right order.
@@ -1055,5 +1036,47 @@ public class EventService {
             }
         }
         return jab.build();
+    }
+
+    /** Simple method for converting a List<Events> to a JSON object
+     *
+     * @param eventList A List of Events to be converted to JSON
+     * @param seriesMasterSet A Set of Strings describing which serires are to be included.
+     * @return A JSON object
+     */
+    static public JsonObject convertEventListToJson(List<Event> eventList, Set<String> seriesMasterSet) {
+        JsonObjectBuilder job = Json.createObjectBuilder();
+        JsonArrayBuilder jab = Json.createArrayBuilder();
+        for (Event e : eventList) {
+            jab.add(e.toJsonObject(seriesMasterSet));
+        }
+        job.add("events", jab.build());
+
+        return job.build();
+    }
+
+    /**
+     * Simple method for returning a List of Events after a List of LabelFilters have been applied.
+     * @param eventList The original, unfiltered list of events
+     * @param filterList The list of label filters to be applied.  The results of each
+     * @return
+     */
+    static public List<Event> applyLabelFilters(List<Event> eventList, List<LabelFilter> filterList, boolean includeUnlabeled) {
+        List<Event> events = new ArrayList<>(eventList);
+
+        if (filterList != null) {
+            for (LabelFilter filter : filterList) {
+                events = filter.filterEvents(events);
+            }
+        }
+
+        if (includeUnlabeled) {
+            HashSet<Event> eventSet = new HashSet<>(events);
+            LabelFilter lf = new LabelFilter(false);
+            eventSet.addAll(lf.filterEvents(eventList));
+            events = new ArrayList<>(eventSet);
+        }
+
+        return events;
     }
 }
