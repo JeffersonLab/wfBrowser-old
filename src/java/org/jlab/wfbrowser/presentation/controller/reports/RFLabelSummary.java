@@ -45,7 +45,7 @@ public class RFLabelSummary extends HttpServlet {
 
         Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
         Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
-        List<String> locationSelections = locationStrings == null ? null : Arrays.asList(locationStrings);
+        List<String> locationSelections = locationStrings == null ? null : new ArrayList<>(Arrays.asList(locationStrings));
         boolean isLabeled = Boolean.parseBoolean(isLabeledString);
 
         boolean redirectNeeded = false;
@@ -105,6 +105,16 @@ public class RFLabelSummary extends HttpServlet {
         if (locationSelections == null || locationSelections.isEmpty()) {
             redirectNeeded = true;
             locationSelections = locationOptions;
+        } else {
+            // Remove in invalid location selections since we're dealing with user input
+            Iterator<String> itr = locationSelections.iterator();
+            while (itr.hasNext()) {
+                String loc = itr.next();
+                if (!locationOptions.contains(loc)) {
+                    LOGGER.log(Level.INFO, "Received invalid location parameter '" + loc + "'");
+                    itr.remove();
+                }
+            }
         }
 
         // The map gets used by the view for tracking valid options and which options have been selected
