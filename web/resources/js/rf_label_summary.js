@@ -240,10 +240,6 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
         }
 
         if (!heatmaps.hasOwnProperty(facet)) {
-            if (facet_on == "linac" && facet == "INJ") {
-                // Received request that we not force injector to show up since the current models do not work for it.
-                return;
-            }
             heatmaps[facet] = new Array(n_rows);
             for (var i = 0; i < n_rows; i++) {
                 heatmaps[facet][i] = new Array(n_cols).fill(0);
@@ -259,8 +255,16 @@ jlab.wfb.process_event_data_to_heatmaps = function (event_data, column_mapper, r
         var facet;
         if (facet_on == "linac") {
             facet = jlab.wfb.get_linac(loc);
+            if (facet == "INJ") {
+                // Received request that we not force injector to show up since the current models do not work for it.
+                return;
+            }
         } else if (facet_on == "zone") {
             facet = loc;
+            // We should exclude 0L04 since we're also excluding 0L linac
+            if (facet == "0L04") {
+                return;
+            }
         } else {
             facet = "All";
         }
@@ -568,6 +572,11 @@ jlab.wfb.plot_heatmaps = function (div, data, cavity_mapper, fault_mapper) {
 
 jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only, facet_on, timeline_mode, locations,
                                   begin, end) {
+    var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on, locations);
+    jlab.wfb.plot_heatmaps(heatmap_div, heatmaps, cavity_mapper, fault_mapper);
+
+    console.log("HERE")
+
     if (timeline_mode == "single") {
         var cf_data = jlab.wfb.process_event_data(event_data, "fault", 'cavity', fault_mapper, cavity_mapper, labeled_only);
         jlab.wfb.plot_dotplot(dp_div, cf_data, fault_mapper, cavity_mapper, "Fault Timeline", begin, end);
@@ -584,7 +593,4 @@ jlab.wfb.create_plots = function (event_data, dp_div, heatmap_div, labeled_only,
         // fix it.  Dispatching a resize event will trigger a redraw at the proper size.
         window.dispatchEvent(new Event('resize'));
     }
-
-    var heatmaps = jlab.wfb.process_event_data_to_heatmaps(event_data, cavity_mapper, fault_mapper, labeled_only, facet_on, locations);
-    jlab.wfb.plot_heatmaps(heatmap_div, heatmaps, cavity_mapper, fault_mapper);
 };
