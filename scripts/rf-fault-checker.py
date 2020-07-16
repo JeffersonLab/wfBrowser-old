@@ -250,6 +250,7 @@ def format_html_message(preamble, threshold, start, end, report_links, fault_df)
         url = report_links[key]
         links += f"<p><a href='{url}'>{key} Report</a></p>\n"
 
+    fmt = "%Y-%m-%d %H:%M:%S"
     msg = f"""
 <html>
 <head>{email_css}</head>
@@ -264,8 +265,8 @@ validation checks.  These checks may vary over time, but the two goals are rough
   <li>The trip's data acquisition is suitable for the model to process it.</li>
 </ul></p>
 <p>Threshold:  {threshold} events</p>
-<p>Start Time: {start}</p>
-<p>End Time:   {end}</p>
+<p>Start Time: {start.strftime(fmt)}</p>
+<p>End Time:   {end.strftime(fmt)}</p>
 
 <h2>Report Links</h2>
 {links}
@@ -294,7 +295,7 @@ End: {end}
 def handle_fault_check(threshold, start, end, to_addrs):
     # Process the time range
     now = datetime.now()
-    (s, e) = process_start_end(start, end, now - timedelta(days=28), now)
+    (s, e) = process_start_end(start, end, now - timedelta(days=1), now)
 
     # Get the fault data
     events = retrieve_events(s, e)
@@ -317,17 +318,17 @@ def handle_fault_check(threshold, start, end, to_addrs):
                 report_links[zone] = url
 
             # Get the standard HTML formatted message
-            msg = format_html_message(preamble, threshold, start, end, report_links, df)
+            msg = format_html_message(preamble, threshold, s, e, report_links, df)
             send_html_email(msg, subject, from_addr, to_addrs, imgs)
         else:
             preamble = f"Found recurring Cavity/Fault-type events"
-            msg = format_text_message(preamble, threshold, start, end, df)
+            msg = format_text_message(preamble, threshold, s, e, df)
             print(msg)
 
 def handle_cavity_check(threshold, start, end, to_addrs):
     # Process the time range
     now = datetime.now()
-    (s, e) = process_start_end(start, end, now - timedelta(days=7), now)
+    (s, e) = process_start_end(start, end, now - timedelta(days=1), now)
 
     # Get the fault data
     events = retrieve_events(s, e)
@@ -350,11 +351,11 @@ def handle_cavity_check(threshold, start, end, to_addrs):
                 report_links[zone] = url
 
             # Get the standard HTML formatted message
-            msg = format_html_message(preamble, threshold, start, end, report_links, df)
+            msg = format_html_message(preamble, threshold, s, e, report_links, df)
             send_html_email(msg, subject, from_addr, to_addrs, imgs)
         else:
             preamble = f"Found recurring Cavity fault events"
-            msg = format_text_message(preamble, threshold, start, end, df)
+            msg = format_text_message(preamble, threshold, s, e, df)
             print(msg)
 
 
@@ -384,11 +385,11 @@ def handle_zone_check(threshold, start, end, to_addrs):
                 report_links[zone] = url
     
             # Get the standard HTML formatted message
-            msg = format_html_message(preamble, threshold, start, end, report_links, df)
+            msg = format_html_message(preamble, threshold, s, e, report_links, df)
             send_html_email(msg, subject, from_addr, to_addrs, imgs)
         else:
             preamble = f"Found recurring Zone fault events"
-            msg = format_text_message(preamble, threshold, start, end, df)
+            msg = format_text_message(preamble, threshold, s, e, df)
             print(msg)
 
 
@@ -425,17 +426,17 @@ def handle_linac_check(threshold, start, end, to_addrs):
                 report_links[linac] = url
 
             # Get the standard HTML formatted message
-            msg = format_html_message(preamble, threshold, start, end, report_links, df)
+            msg = format_html_message(preamble, threshold, s, e, report_links, df)
             send_html_email(msg, subject, from_addr, to_addrs, imgs)
         else:
             preamble = f"Found recurring Linac fault events"
-            msg = format_text_message(preamble, threshold, start, end, df)
+            msg = format_text_message(preamble, threshold, s, e, df)
             print(msg)
 
 def handle_summary(start, end, to_addrs):
     # Process the time range
     now = datetime.now()
-    (s, e) = process_start_end(start, end, now - timedelta(hours=1), now)
+    (s, e) = process_start_end(start, end, now - timedelta(days=2), now)
 
     # Get the fault data
     events = retrieve_events(s, e)
@@ -477,6 +478,7 @@ def handle_summary(start, end, to_addrs):
         imgs = {'summary.png': img}
 
         # This is the message body/ email report
+        fmt = "%Y-%m-%d %H:%M:%S"
         msg = f"""
 <html>
 <head>{email_css}</head>
@@ -489,8 +491,8 @@ def handle_summary(start, end, to_addrs):
     <li>The trip's data acquisition is suitable for the model to process it.</li>
   </ul></p>
 
-  <p>Start: {start}</p>
-  <p>End: {end}</p>
+  <p>Start: {s.strftime(fmt)}</p>
+  <p>End: {e.strftime(fmt)}</p>
 
   <h2>Report Links</h2>
   <p><a href='{url}'>Summary Report</a></p>
