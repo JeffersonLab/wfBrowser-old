@@ -176,7 +176,7 @@ def get_wfb_report(start, end, locations, timeline_mode, heatmap_mode, server='a
     return (r.content, report_url)
     
 
-def retrieve_events(start, end):
+def retrieve_events(start, end, include_unlabeled=False):
     # Download the data as a nested dictionary structure
     events = get_events_from_web(start=start, end=end)
 
@@ -193,20 +193,31 @@ def retrieve_events(start, end):
 
     # Place the events in the dataframe
     for event in events:
-        if event['labels'] is None or len(event['labels']) == 0:
-            continue
 
+        # Get the labels if the exist.  None otherwise
+        if event['labels'] is None or len(event['labels']) == 0:
+            if include_unlabeled:
+                f_label = None
+                f_conf = None
+                c_label = None
+                c_conf = None
+            else:
+                continue
+        else:
+            for label in event['labels']:
+                if label['name'] == 'cavity':
+                    c_label = label['value']
+                    c_conf = label['confidence']
+                if label['name'] == 'fault-type':
+                    f_label = label['value']
+                    f_conf = label['confidence']
+
+        # Get the timestamps
         tz_fmt = '%Y-%m-%d %H:%M:%S.%f%z'
         dt_local = datetime.strptime(event['datetime_utc'] + "-0000", tz_fmt).astimezone(
-                       tzlocal.get_localzone())
-        for label in event['labels']:
-            if label['name'] == 'cavity':
-                c_label = label['value']
-                c_conf = label['confidence']
-            if label['name'] == 'fault-type':
-                f_label = label['value']
-                f_conf = label['confidence']
+                           tzlocal.get_localzone())
 
+        # Append the event to the output data structure
         df = df.append({
           'linac': event['location'][0:2],
           "zone": event['location'],
@@ -439,7 +450,18 @@ def handle_summary(start, end, to_addrs):
     (s, e) = process_start_end(start, end, now - timedelta(days=2), now)
 
     # Get the fault data
-    events = retrieve_events(s, e)
+    events = retrieve_events(s, e, include_unlabeled=True)
+    events['labeled'] = ~pd.isnull(events['fault-label'])
+    events['unlabeled'] = pd.isnull(events['fault-label'])
+
+    # Get a count of labeled/unlabeled events by zone
+    counts_df = pd.pivot_table(events, index=['zone'], values=['labeled', 'unlabeled'], aggfunc=[np.sum],
+                               fill_value=0, margins=True).reset_index()
+    counts_df.columns = ['Zone', 'Labeled' , 'Unlabeled']
+    counts_df['Total'] = counts_df.Labeled + counts_df.Unlabeled
+
+    # Drop all of the unlabled data.  Makes the rest of the reporting logic easier.
+    events = events[events['labeled'] == True]
 
     # Split out the two tables we will report.  First faults by zone then by zone/labels.
     zone_g = events.groupby(['zone'])
@@ -498,6 +520,9 @@ def handle_summary(start, end, to_addrs):
   <p><a href='{url}'>Summary Report</a></p>
 
   <h2>Faults By Zone</h2>
+  {counts_df.to_html(index=False)}
+
+  <h2>Labeled Faults By Zone</h2>
   {zone_df.round(2).to_html(index=False)}
 
   <h2>Faults By Cavity and Fault Type</h2>
@@ -515,6 +540,9 @@ Start: {start}
 End:   {end}
 
 # Faults By Zone #
+{counts_df.to_string(index=False)}
+
+# Labeled Faults By Zone #
 {zone_df.round(2).to_string(index=False)}
 
 # Faults By Cavity and Fault Type #
@@ -576,8 +604,9 @@ def main():
             handle_linac_check(args.fault_threshold, args.start_time, args.end_time, to_addrs)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+    main()
+#    try:
+#        main()
+#    except Exception as e:
+#        print(f"Error: {e}")
+#        sys.exit(1)
