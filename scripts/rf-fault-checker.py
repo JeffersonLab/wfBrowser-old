@@ -455,10 +455,13 @@ def handle_summary(start, end, to_addrs):
     events['unlabeled'] = pd.isnull(events['fault-label'])
 
     # Get a count of labeled/unlabeled events by zone
-    counts_df = pd.pivot_table(events, index=['zone'], values=['labeled', 'unlabeled'], aggfunc=[np.sum],
-                               fill_value=0, margins=True).reset_index()
-    counts_df.columns = ['Zone', 'Labeled' , 'Unlabeled']
-    counts_df['Total'] = counts_df.Labeled + counts_df.Unlabeled
+    if events.empty:
+        counts_df = pd.DataFrame({'zone': ['All'], 'Labeled': [0], 'Unlabeled': [0], 'Total': [0]})
+    else:
+        counts_df = pd.pivot_table(events, index=['zone'], values=['labeled', 'unlabeled'], aggfunc=[np.sum],
+                                   fill_value=0, margins=True).reset_index()
+        counts_df.columns = ['Zone', 'Labeled' , 'Unlabeled']
+        counts_df['Total'] = counts_df.Labeled + counts_df.Unlabeled
 
     # Drop all of the unlabled data.  Makes the rest of the reporting logic easier.
     events = events[events['labeled'] == True]
@@ -605,8 +608,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-#    try:
-#        main()
-#    except Exception as e:
-#        print(f"Error: {e}")
-#        sys.exit(1)
