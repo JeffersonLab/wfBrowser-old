@@ -563,7 +563,8 @@ public class EventService {
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
             }
-            getEventSql += " ORDER BY event_time_utc DESC";
+            // Sorting on event_time_utc, label_name and model_name makes the query result repeatable.
+            getEventSql += " ORDER BY event_time_utc, label_name, model_name DESC";
             if (limit != null) {
                 getEventSql += " LIMIT " + limit;
             }
