@@ -7,6 +7,8 @@ package org.jlab.wfbrowser.model;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -56,6 +58,9 @@ public class EventTest {
     private static Event e1_ungrp_class1 = null;
     private static Event e2_ungrp_class1 = null;
 
+    // Real world inconsistent data from 2L26
+    private static Event real_grp_incon_noclass = null;
+
 //    public EventTest() {
 //    }
 
@@ -70,6 +75,7 @@ public class EventTest {
         // Create some events to add to the database - files that match these must exist on the filesystem
         Instant t1 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the unzipped files
         Instant t2 = LocalDateTime.of(2017, 9, 14, 11, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the zipped files
+        Instant t3 = LocalDateTime.of(2022, 7, 16, 18, 18, 51).atZone(ZoneId.systemDefault()).toInstant().plusMillis(700);  // Real world example
 
         // Setup the flags for the basic testing.  Make variable names match what they do.
         boolean unarchive = false;
@@ -119,6 +125,10 @@ public class EventTest {
         e2_grp_incon_noclass = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
         e1_grp_incon_class1 = new Event(t1, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF, null);
         e2_grp_incon_class1 = new Event(t2, grp_incon, "test", unarchive, noDelete, grouped, class1, nullCF, null);
+
+        // A real world example of data where once cavity has a different timescale than the rest.  Also, the one cavity has a much faster rate.
+        real_grp_incon_noclass = new Event(t3, "real-different-times", "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        real_grp_incon_noclass.setEventId(357L); // Just some big random ID.  We won't use this for equality tests.
 
         // Setup the ungrouped events (consistent by default)
         e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF, null);
@@ -256,6 +266,15 @@ public class EventTest {
                 + "]"
                 + "}";
         String result = e2_grp_con_noclass.toDyGraphJsonObject(null).toString();
+        assertEquals(expResult, result);
+
+        result = real_grp_incon_noclass.toDyGraphJsonObject(null).toString();
+        try {
+            System.out.println(System.getProperty("user.dir"));
+            expResult = new String(Files.readAllBytes((Paths.get("test/files/real-inconsistent-example-dygraph.json"))));
+        } catch(IOException e) {
+            throw new RuntimeException(e);
+        }
         assertEquals(expResult, result);
     }
 
