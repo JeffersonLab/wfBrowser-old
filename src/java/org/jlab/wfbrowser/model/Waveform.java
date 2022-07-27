@@ -99,13 +99,9 @@ public class Waveform {
         return waveformName;
     }
 
-    public double[] getTimeOffsets() {
-        return Arrays.copyOf(timeOffsets, timeOffsets.length);
-    }
+    public double[] getTimeOffsets() { return timeOffsets; }
 
-    public double[] getValues() {
-        return Arrays.copyOf(values, values.length);
-    }
+    public double[] getValues() { return values; }
 
     /**
      * This method is returns the value of a waveform at a given offset, and
@@ -140,31 +136,46 @@ public class Waveform {
      * @return The floor index or -1 if it is outside the bounds of the array
      */
     private int floorIndexSearch(double arr[], int low, int high, double x) {
+        // Check boundary conditions
+        int out = -1;
+        boolean terminate = false;
         if (x > arr[high]) {
             // If it is after the waveform timeOffsets, return -1
-            return -1;
+            out = -1;
+            terminate = true;
         } else if (Double.compare(x, arr[high]) == 0) {
             // If it is the last point, return it
-            return high;
+            out = high;
+            terminate = true;
         } else if (x < arr[low]) {
             // If it is before the waveform timeOffsets, return -1
-            return -1;
+            out = -1;
+            terminate = true;
         } else if (Double.compare(x, arr[low]) == 0) {
             // If it is the first point return it
-            return low;
+            out = low;
+            terminate = true;
+        } else if (low + 1 == high){
+            // We have narrowed this down completely and found the floor
+            out = low;
+            terminate = true;
         }
 
-        int mid = (low + high) / 2;
-        if (Double.compare(x, arr[mid]) == 0) {
-            return mid;
-        } else if (x > arr[mid]) {
-            // do the search again setting low = mid;
-            return floorIndexSearch(arr, mid, high, x);
-        } else {
-            // Since x != arr[mid] and ! x > arr[mid], then x < arr[mid]
-            // do the search again setting low = mid;
-            return floorIndexSearch(arr, low, mid, x);
+        // We haven't hit a short circuit if we've hit a boundary condition.  Do the binary search thing.
+        if (!terminate) {
+            int mid = (low + high) / 2;
+            if (Double.compare(x, arr[mid]) == 0) {
+                out = mid;
+            } else if (x > arr[mid]) {
+                // do the search again setting low = mid;
+                out = floorIndexSearch(arr, mid, high, x);
+            } else {
+                // Since x != arr[mid] and ! x > arr[mid], then x < arr[mid]
+                // do the search again setting low = mid;
+                out = floorIndexSearch(arr, low, mid, x);
+            }
         }
+        return out;
     }
 
     /**
