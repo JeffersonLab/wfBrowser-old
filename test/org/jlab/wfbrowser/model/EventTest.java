@@ -243,7 +243,6 @@ public class EventTest {
 
     @Test
     public void testToDyGraphJsonObject() {
-        System.out.println("toDyGraphJsonObject");
         String expResult = "{\"id\":2,"
                 + "\"datetime_utc\":\"2017-09-14 15:00:00.1\","
                 + "\"location\":\"grouped-consistent\","
