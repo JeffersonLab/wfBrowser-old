@@ -717,61 +717,79 @@ public class Event implements Comparable<Event> {
             throw new RuntimeException("Error: No waveforms found for this event matching the requested series.");
         }
         if (areWaveformsConsistent) {
-            // 2D array for hold csv content - [rows][columns]
-            //  number of points only since we aren't including headers, +1 columns because of the time_offset column
-            data = new double[wfList.get(0).getTimeOffsets().length][wfList.size() + 1];
-
-            // Set up the time offset column
-            double[] tos = wfList.get(0).getTimeOffsets();
-            for (int i = 0, iMax = data.length; i < iMax; i++) {
-                data[i][0] = tos[i];
-            }
-
-            // Add in all of the waveform series information
-            int j = 1;
-            for (Waveform w : wfList) {
-                double[] values = w.getValues();
-                for (int i = 0, iMax = values.length; i < iMax; i++) {
-                    data[i][j] = values[i];
-                }
-                j++;
-            }
+            data = getConsistentWaveformDataAsArray(wfList);
         } else {
-            // The waveforms are not consistent in that they do not all have the same set of time offsets.  Instead of just grabbing
-            // the timeoffsets from one waveform and pulling the values from all in order, we need to compile the full set of time
-            // offsets from all of the waveforms.  Then for each offset, see what the value would have been for a waveform at that
-            // point using a method that interpolates, but not extrapolates.
+            // These waveforms have an issue like their time series do not all line up.  We have to handle this differently
+            data = getInconsistentWaveformDataAsArray(wfList);
+        }
 
-            // Get all of the time offset value from all of the waveforms and put them in a sorted set.  Manually convert the set to
-            // a list to ensure the order is maintained (SortedSet returns value in sorted order, and ArrayList maintains insertion
-            // order.
-            SortedSet<Double> timeOffsetSet = new TreeSet<>();
-            for (Waveform w : wfList) {
-                List<Double> tos = convertArrayToList(w.getTimeOffsets());
-                timeOffsetSet.addAll(tos);
+        return data;
+    }
+
+    private double[][] getConsistentWaveformDataAsArray(List<Waveform> wfList) {
+        // 2D array for hold csv content - [rows][columns]
+        //  number of points only since we aren't including headers, +1 columns because of the time_offset column
+        double[][] data = new double[wfList.get(0).getTimeOffsets().length][wfList.size() + 1];
+
+        // Set up the time offset column
+        double[] tos = wfList.get(0).getTimeOffsets();
+        for (int i = 0, iMax = data.length; i < iMax; i++) {
+            data[i][0] = tos[i];
+        }
+
+        // Add in all of the waveform series information
+        int j = 1;
+        for (Waveform w : wfList) {
+            double[] values = w.getValues();
+            for (int i = 0, iMax = values.length; i < iMax; i++) {
+                data[i][j] = values[i];
             }
-            List<Double> timeOffsets = new ArrayList<>();
-            for (Double t : timeOffsetSet) {
-                timeOffsets.add(t);
-            }
+            j++;
+        }
+        return data;
+    }
 
-            // 2D array for hold csv content - [rows][columns]
-            // rows for data only because no headers, +1 columns because of the time_offset column
-            data = new double[timeOffsets.size()][wfList.size() + 1];
-
-            // Set up the time offset column
-            for (int i = 0, iMax = data.length; i < iMax; i++) {
-                data[i][0] = timeOffsets.get(i);
-            }
-
-            // Add in all of the waveform series data points
-            for (int j = 1, jMax = data[0].length; j < jMax; j++) {
-                for (int i = 0, iMax = data.length; i < iMax; i++) {
-                    Double value = wfList.get(j - 1).getValueAtOffset(timeOffsets.get(i));
-                    data[i][j] = value;  // Should be a valid double or NaN if no value found
+    private double[][] getInconsistentWaveformDataAsArray(List<Waveform> wfList) {
+        SortedMap<Double, double[]> toMap = new TreeMap<>();
+        for (int i = 0; i < wfList.size(); i++) {
+            Waveform w = wfList.get(i);
+            for (int j = 0; j < w.getTimeOffsets().length; j++) {
+                double timeOffset = w.getTimeOffsets()[j];
+                double value = w.getValues()[j];
+                if (!toMap.containsKey(timeOffset)) {
+                    // This is the first waveform with a value at this timeOffset.  Make an array and initialize all
+                    // values.
+                    double[] slice = new double[wfList.size()+1];
+                    for (int k = 0; k < slice.length; k++) {
+                        if (k == 0) {
+                            // First column is going to be the timestamp
+                            slice[k] = timeOffset;
+                        } else if (k-1 == i) {
+                            // Waveform k goes to the k+1 column since we've added the timestamp at the front
+                            slice[k] = value;
+                        } else {
+                            // All other positions get initialized to NaN.  They will be overwritten if another
+                            // waveform has a value at this timeOffset
+                            slice[k] = Double.NaN;
+                        }
+                    }
+                    // Add the array of values to the map for that timeOffset
+                    toMap.put(timeOffset, slice);
+                } else {
+                    // The map contains values for this timeOffset already.  Update the column corresponding to that waveform.
+                    toMap.get(timeOffset)[i+1] = value;
                 }
             }
         }
+
+        // Iterate through the sorted map and build up 2D array.  First column are timestamps, the next columns are
+        // waveform values.
+        Object[] times = toMap.keySet().toArray();
+        double[][] data = new double[times.length][wfList.size()+1];
+        for(int i = 0; i < times.length; i++) {
+            data[i] = toMap.get((Double) times[i]);
+        }
+
         return data;
     }
 
@@ -899,7 +917,12 @@ public class Event implements Comparable<Event> {
                             if (data != null) {
                                 for (int j = 0; j < data.length; j++) {
                                     // Since waveformNames is the first row, it's index matches up with the columns of data;
-                                    djab.add(data[j][i]);
+                                    // Data will be NaN if the waveform had no value at that timestamp
+                                    if (Double.isNaN(data[j][i])){
+                                        djab.add(JsonValue.NULL);
+                                    } else {
+                                        djab.add(data[j][i]);
+                                    }
                                 }
                             }
                             wjob.add("dataPoints", djab.build());
