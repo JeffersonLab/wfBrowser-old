@@ -60,6 +60,8 @@ public class EventTest {
 
     // Real world inconsistent data from 2L26
     private static Event real_grp_incon_noclass = null;
+    private static Event real_grp_incon_noclass_full = null;
+    private static Event real_grp_con_noclass_full = null;
 
 //    public EventTest() {
 //    }
@@ -76,6 +78,8 @@ public class EventTest {
         Instant t1 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the unzipped files
         Instant t2 = LocalDateTime.of(2017, 9, 14, 11, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the zipped files
         Instant t3 = LocalDateTime.of(2022, 7, 16, 18, 18, 51).atZone(ZoneId.systemDefault()).toInstant().plusMillis(700);  // Real world example
+        Instant t4 = LocalDateTime.of(2018, 4, 26, 18, 18, 51).atZone(ZoneId.systemDefault()).toInstant().plusMillis(700);  // Real world example
+        Instant t5 = LocalDateTime.of(2018, 5, 2, 13, 35, 6).atZone(ZoneId.systemDefault()).toInstant().plusMillis(500);  // Real world example
 
         // Setup the flags for the basic testing.  Make variable names match what they do.
         boolean unarchive = false;
@@ -129,6 +133,10 @@ public class EventTest {
         // A real world example of data where once cavity has a different timescale than the rest.  Also, the one cavity has a much faster rate.
         real_grp_incon_noclass = new Event(t3, "real-different-times", "test", unarchive, noDelete, grouped, noClass, nullCF, null);
         real_grp_incon_noclass.setEventId(357L); // Just some big random ID.  We won't use this for equality tests.
+        real_grp_incon_noclass_full = new Event(t4, "real-different-times", "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        real_grp_incon_noclass_full.setEventId(358L); // Just some big random ID.  We won't use this for equality tests.
+        real_grp_con_noclass_full = new Event(t5, grp_con, "test", unarchive, noDelete, grouped, noClass, nullCF, null);
+        real_grp_con_noclass_full.setEventId(359L); // Just some big random ID.  We won't use this for equality tests.
 
         // Setup the ungrouped events (consistent by default)
         e1_ungrp_noclass = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, noClass, unzipCF, null);
@@ -275,6 +283,20 @@ public class EventTest {
             throw new RuntimeException(e);
         }
         assertEquals(expResult, result);
+    }
+
+    @Test
+    public void testToDyGraphJsonObjectConsistent() {
+        for (int i = 0; i < 3; i++) {
+            real_grp_con_noclass_full.toDyGraphJsonObject(null);
+        }
+    }
+
+    @Test
+    public void testToDyGraphJsonObjectInconsistent() {
+        for (int i = 0; i < 20; i++) {
+            real_grp_incon_noclass_full.toDyGraphJsonObject(null);
+        }
     }
 
     @Test
