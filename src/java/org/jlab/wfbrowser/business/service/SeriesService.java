@@ -33,7 +33,7 @@ public class SeriesService {
     public List<Series> getSeries(SeriesFilter filter) throws SQLException {
         List<Series> seriesList = new ArrayList<>();
 
-        String sql = "SELECT series_id, system_name, pattern, series_name, description, units"
+        String sql = "SELECT series_id, system_name, pattern, series_name, description, units, ymin, ymax"
                 + " FROM series"
                 + " JOIN system_type"
                 + " ON system_type.system_id = series.system_id"
@@ -52,6 +52,7 @@ public class SeriesService {
 
             String name, system, pattern, description, units;
             int id;
+            Double yMin, yMax;
             while (rs.next()) {
                 id = rs.getInt("series_id");
                 name = rs.getString("series_name");
@@ -59,7 +60,9 @@ public class SeriesService {
                 pattern = rs.getString("pattern");
                 description = rs.getString("description");
                 units = rs.getString("units");
-                seriesList.add(new Series(name, id, pattern, system, description, units));
+                yMin = rs.getDouble("ymin");
+                yMax = rs.getDouble("ymax");
+                seriesList.add(new Series(name, id, pattern, system, description, units, yMin, yMax));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
@@ -300,7 +303,7 @@ public class SeriesService {
             }
 
             pstmt.close();
-            String seriesSql = "SELECT series_name,series.series_id,pattern,description,units"
+            String seriesSql = "SELECT series_name,series.series_id,pattern,description,units, ymin, ymax"
                     + " FROM series"
                     + " JOIN series_set_contents ON series_set_contents.series_id = series.series_id"
                     + " WHERE set_id = ?";
@@ -314,7 +317,9 @@ public class SeriesService {
                     String pattern = rs.getString("pattern");
                     String seriesDescription = rs.getString("description");
                     String units = rs.getString("units");
-                    seriesSet.addSeries(new Series(seriesName, seriesId, pattern, seriesSet.getSystemName(), seriesDescription, units));
+                    Double yMin =  rs.getDouble("ymin");
+                    Double yMax = rs.getDouble("ymax");
+                    seriesSet.addSeries(new Series(seriesName, seriesId, pattern, seriesSet.getSystemName(), seriesDescription, units, yMin, yMax));
                 }
             }
         } finally {

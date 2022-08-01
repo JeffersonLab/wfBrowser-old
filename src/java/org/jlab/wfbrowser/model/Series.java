@@ -7,6 +7,8 @@ package org.jlab.wfbrowser.model;
 
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
 
 /**
  * Simple object for representing the lookup information for a single waveform
@@ -22,14 +24,19 @@ public class Series {
     private final String system;
     private final String description;
     private final String units;
+    private final Double yMin;
+    private final Double yMax;
 
-    public Series(String name, int id, String pattern, String system, String description, String units) {
+    public Series(String name, int id, String pattern, String system, String description, String units, Double yMin,
+                  Double yMax) {
         this.name = name;
         this.id = id;
         this.pattern = pattern;
         this.system = system;
         this.description = description;
         this.units = units;
+        this.yMin = yMin;
+        this.yMax = yMax;
     }
 
     public String getUnits() {
@@ -57,14 +64,25 @@ public class Series {
     }
 
     public JsonObject toJsonObject() {
-        return Json.createObjectBuilder()
+        JsonObjectBuilder job = Json.createObjectBuilder()
                 .add("name", name)
                 .add("seriesId", id)
                 .add("pattern", pattern)
                 .add("system", system)
                 .add("units", (units == null) ? "" : units)
-                .add("description", (description == null) ? "" : description)
-                .build();
+                .add("description", (description == null) ? "" : description);
+        if (yMin == null) {
+            job.add("y-min", JsonValue.NULL);
+        } else {
+            job.add("y-min", yMin);
+        }
+        if (yMax == null) {
+            job.add("y-max", JsonValue.NULL);
+        } else {
+            job.add("y-max", yMax);
+        }
+
+        return job.build();
     }
     
     @Override

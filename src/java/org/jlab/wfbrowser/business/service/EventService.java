@@ -367,7 +367,7 @@ public class EventService {
         // This is a little complex.  Perform a sub-query / derived table on the event IDs to cut down on the amount of data we process.
         // Then join on the series and event_waveforms tables where the waveform name (PV) matches the specified pattern.  This should
         // only return rows where we had a non-zero number of matches.
-        StringBuilder sql = new StringBuilder("SELECT series_name, series_id, system_name, pattern, description, units, COUNT(*) FROM"
+        StringBuilder sql = new StringBuilder("SELECT series_name, series_id, system_name, pattern, description, units, ymin, ymax, COUNT(*) FROM"
                 + " (SELECT * FROM event_waveforms WHERE event_id IN (?");
         for (int i = 1; i < eventIdList.size(); i++) {
             sql.append(",?");
@@ -397,7 +397,9 @@ public class EventService {
                 String systemName = rs.getString("system_name");
                 String description = rs.getString("description");
                 String units = rs.getString("units");
-                out.add(new Series(seriesName, id, pattern, systemName, description, units));
+                Double yMin = rs.getDouble("ymin");
+                Double yMax = rs.getDouble("ymax");
+                out.add(new Series(seriesName, id, pattern, systemName, description, units, yMin, yMax));
             }
         } finally {
             SqlUtil.close(rs, pstmt, conn);
@@ -700,7 +702,7 @@ public class EventService {
                 }
 
                 // Determine the rules for labeling waveform series (GMES vs DETA2, not Cav1, Cav2, ...)
-                String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name "
+                String mapSql = "SELECT series_name, series_id, pattern, system_type.system_name, description, units, waveform_name, ymin, ymax "
                         + " FROM capture_wf"
                         + " JOIN series ON waveform_name LIKE series.pattern"
                         + " JOIN system_type ON series.system_id = system_type.system_id"
@@ -723,10 +725,12 @@ public class EventService {
                         String systemName = rs.getString("system_name");
                         String description = rs.getString("description");
                         String units = rs.getString("units");
+                        Double yMin = rs.getDouble("ymin");
+                        Double yMax = rs.getDouble("ymax");
                         if (waveformToSeries.get(waveformName) == null) {
                             waveformToSeries.put(waveformName, new ArrayList<>());
                         }
-                        waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units));
+                        waveformToSeries.get(waveformName).add(new Series(seriesName, seriesId, pattern, systemName, description, units, yMin, yMax));
                     }
                     rs.close();
 
