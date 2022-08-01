@@ -228,6 +228,8 @@ CREATE TABLE series (
   pattern VARCHAR(255) NOT NULL,
   series_name VARCHAR(127) NOT NULL,
   units VARCHAR(23) NULL,
+  ymin DOUBLE DEFAULT NULL,
+  ymax DOUBLE DEFAULT NULL,
   description varchar(2047)  DEFAULT NULL,
   UNIQUE KEY `series_name` (series_name),
   INDEX i_series_name(series_name),
