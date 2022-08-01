@@ -750,7 +750,7 @@ public class Event implements Comparable<Event> {
     }
 
     private double[][] getInconsistentWaveformDataAsArray(List<Waveform> wfList) {
-        SortedMap<Double, double[]> toMap = new TreeMap<>();
+        Map<Double, double[]> toMap = new HashMap<>();
         for (int i = 0; i < wfList.size(); i++) {
             Waveform w = wfList.get(i);
             for (int j = 0; j < w.getTimeOffsets().length; j++) {
@@ -784,10 +784,11 @@ public class Event implements Comparable<Event> {
 
         // Iterate through the sorted map and build up 2D array.  First column are timestamps, the next columns are
         // waveform values.
-        Object[] times = toMap.keySet().toArray();
+        Double[] times = toMap.keySet().toArray(new Double[0]);
+        Arrays.sort(times);
         double[][] data = new double[times.length][wfList.size()+1];
         for(int i = 0; i < times.length; i++) {
-            data[i] = toMap.get((Double) times[i]);
+            data[i] = toMap.get(times[i]);
         }
 
         return data;
@@ -856,6 +857,8 @@ public class Event implements Comparable<Event> {
         return builder.toString();
     }
 
+
+
     /**
      * Generate a json object in a way that makes it easy to pass to the dygraph
      * widgets
@@ -865,7 +868,8 @@ public class Event implements Comparable<Event> {
      * @return A JSON representation that is optimized for consumption by dygraphs
      */
     public JsonObject toDyGraphJsonObject(Set<String> seriesSet) {
-        JsonObjectBuilder job = Json.createObjectBuilder();
+        JsonBuilderFactory jsonFactory = Json.createBuilderFactory(null);
+        JsonObjectBuilder job = jsonFactory.createObjectBuilder();
         List<Waveform> waveforms = getWaveforms();
         if (eventId != null) {
             job.add("id", eventId)
@@ -884,7 +888,7 @@ public class Event implements Comparable<Event> {
                 }
 
                 // Get the timeOffsets
-                JsonArrayBuilder tjab = Json.createArrayBuilder();
+                JsonArrayBuilder tjab = jsonFactory.createArrayBuilder();
                 if (data != null) {
                     for (int i = 0; i < data.length; i++) {
                         tjab.add(data[i][0]);
@@ -893,27 +897,27 @@ public class Event implements Comparable<Event> {
                 job.add("timeOffsets", tjab.build());
 
                 // Don't add a waveforms parameter if it's null.  That indicates that the waveforms were requested
-                JsonArrayBuilder wjab = Json.createArrayBuilder();
+                JsonArrayBuilder wjab = jsonFactory.createArrayBuilder();
                 JsonArrayBuilder sjab, djab;
                 JsonObjectBuilder wjob;
                 for (int i = 1; i < headerNames.size(); i++) {
                     for (Waveform w : waveforms) {
                         if (w.getWaveformName().equals(headerNames.get(i))) {
-                            wjob = Json.createObjectBuilder().add("waveformName", headerNames.get(i));
+                            wjob = jsonFactory.createObjectBuilder().add("waveformName", headerNames.get(i));
 
                             // Add some information that the client side can cue off of for consitent colors and names.
                             wjob.add("dygraphLabel", getDygraphLabel(headerNames.get(i)));
                             wjob.add("dygraphId", getDygraphId(headerNames.get(i)));
 
                             // Get the series names for the waveform and add them
-                            sjab = Json.createArrayBuilder();
+                            sjab = jsonFactory.createArrayBuilder();
                             for (Series series : w.getSeries()) {
                                 sjab.add(series.toJsonObject());
                             }
                             wjob.add("series", sjab.build());
 
                             // Add the data points for the series.  Can't query the waveform directly in case the waveforms aren't consistent
-                            djab = Json.createArrayBuilder();
+                            djab = jsonFactory.createArrayBuilder();
                             if (data != null) {
                                 for (int j = 0; j < data.length; j++) {
                                     // Since waveformNames is the first row, it's index matches up with the columns of data;
