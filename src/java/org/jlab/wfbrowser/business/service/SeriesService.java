@@ -80,16 +80,19 @@ public class SeriesService {
      * @param pattern The SQL "like" pattern to be used to match a series
      * @param system The system for which the pattern is intended
      * @param description A user created description for the series
+     * @param units The units of this series
+     * @param yMin The lower bound of the y-axis for this series
+     * @param yMax The upper bound of the y-axis for this series
      * @throws java.sql.SQLException
      */
-    public void addSeries(String name, String pattern, String system, String description, String units) throws SQLException {
+    public void addSeries(String name, String pattern, String system, String description, String units, Double yMin, Double yMax) throws SQLException {
         SystemService ss = new SystemService();
         int systemId = ss.getSystemId(system);
 
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "INSERT INTO series (pattern, series_name, system_id, description, units) VALUES (?,?,?,?,?)";
+        String sql = "INSERT INTO series (pattern, series_name, system_id, description, units, ymin, ymax) VALUES (?,?,?,?,?,?,?)";
         try {
             conn = SqlUtil.getConnection();
             conn.setAutoCommit(false);
@@ -99,6 +102,16 @@ public class SeriesService {
             pstmt.setInt(3, systemId);
             pstmt.setString(4, description);
             pstmt.setString(5, units);
+            if (yMin == null) {
+                pstmt.setNull(7, java.sql.Types.NULL);
+            } else {
+                pstmt.setDouble(7, yMin);
+            }
+            if (yMax == null) {
+                pstmt.setNull(8, java.sql.Types.NULL);
+            } else {
+                pstmt.setDouble(8, yMax);
+            }
             int n = pstmt.executeUpdate();
             if (n < 1) {
                 String msg = "Error adding series to database.  No change made";
@@ -116,14 +129,15 @@ public class SeriesService {
         }
     }
 
-    public void updateSeries(int seriesId, String name, String pattern, String description, String system, String units) throws SQLException {
+    public void updateSeries(int seriesId, String name, String pattern, String description, String system, String units,
+                             Double yMin, Double yMax) throws SQLException {
         SystemService ss = new SystemService();
         int systemId = ss.getSystemId(system);
 
         Connection conn = null;
         PreparedStatement pstmt = null;
 
-        String sql = "UPDATE series set pattern = ?, series_name = ?, system_id = ?, description = ?, units = ? "
+        String sql = "UPDATE series set pattern = ?, series_name = ?, system_id = ?, description = ?, units = ?, ymin = ?, ymax = ? "
                 + "WHERE series_id = ?";
         try {
             conn = SqlUtil.getConnection();
@@ -134,7 +148,22 @@ public class SeriesService {
             pstmt.setInt(3, systemId);
             pstmt.setString(4, description);
             pstmt.setString(5, units);
-            pstmt.setInt(6, seriesId);
+            if (yMin == null) {
+                pstmt.setNull(6, java.sql.Types.NULL);
+            } else {
+                pstmt.setDouble(6, yMin);
+            }
+            if (yMax == null) {
+                pstmt.setNull(7, java.sql.Types.NULL);
+            } else {
+                pstmt.setDouble(7, yMax);
+            }
+            pstmt.setInt(8, seriesId);
+
+            System.out.println("id=" + seriesId);
+            System.out.println("yMin=" + yMin);
+            System.out.println("yMax=" + yMax);
+
             int n = pstmt.executeUpdate();
             if (n < 1) {
                 conn.rollback();
