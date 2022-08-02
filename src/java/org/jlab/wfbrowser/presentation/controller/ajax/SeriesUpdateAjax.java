@@ -49,6 +49,19 @@ public class SeriesUpdateAjax extends HttpServlet {
         String pattern = request.getParameter("pattern");
         String description = request.getParameter("description");
         String units = request.getParameter("units");
+        Double yMin, yMax;
+
+        try {
+            yMin = request.getParameter("ymin") == "" ? null : Double.valueOf(request.getParameter("ymin"));
+            yMax = request.getParameter("ymax") == "" ? null : Double.valueOf(request.getParameter("ymax"));
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.setContentType("application/json");
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\":\"Parameter 'yMin' or 'yMax' not empty or a valid double\"}");
+            }
+            return;
+        }
 
         if (id == null || system == null || system.isEmpty() || name == null || name.isEmpty() || pattern == null || pattern.isEmpty()
                 || description == null || description.isEmpty()) {
@@ -74,7 +87,7 @@ public class SeriesUpdateAjax extends HttpServlet {
 
         SeriesService ss = new SeriesService();
         try {
-            ss.updateSeries(seriesId, name, pattern, description, system, units);
+            ss.updateSeries(seriesId, name, pattern, description, system, units, yMin, yMax);
         } catch (SQLException ex) {
             String msg = "Error updating database - " + ex.getMessage();
             LOGGER.log(Level.WARNING, "Error updating database", ex);

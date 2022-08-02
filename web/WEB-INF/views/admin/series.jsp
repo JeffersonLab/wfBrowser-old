@@ -24,6 +24,8 @@
                             <th>Units</th>
                             <th>Description</th>
                             <th>System</th>
+                            <th>Y-Min</th>
+                            <th>Y-Max</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -34,6 +36,13 @@
                                 <td><c:out value="${series.units}"/></td>
                                 <td><c:out value="${series.description}"/></td>
                                 <td><c:out value="${series.system}"/></td>
+                                <td><c:out value="${series.yMin}"></c:out></td>
+                                <td><c:out value="${series.yMax}"></c:out></td>
+                                <c:if test = "${series.yMin} == null"><td></td></c:if>
+                                <c:if test = "${series.yMin} != null"><td><c:out value="${series.yMin}"/></td></c:if>
+                                <c:if test = "${series.yMax} == null"><td></td></c:if>
+                                <c:if test = "${series.yMax} 1= null"><td><c:out value="${series.yMax}"/></td></c:if>
+
                             </tr>
                         </c:forEach>
                     </tbody>
@@ -59,11 +68,19 @@
                         <li>
                             <div class="li-key"><label class="required-field" for="description">Description</label></div>
                             <div class="li-value"><input type="text" id="row-description" name="description"/></div>
-                        </li>                                       
+                        </li>
                         <li>
                             <div class="li-key"><label class="required-field" for="description">System</label></div>
                             <div class="li-value"><input type="text" id="row-system" name="system"/></div>
-                        </li>                                       
+                        </li>
+                        <li>
+                            <div class="li-key"><label for="y-min">Y-Min</label></div>
+                            <div class="li-value"><input type="text" id="row-y-min" name="y-min"/></div>
+                        </li>
+                        <li>
+                            <div class="li-key"><label for="y-max">Y-Max</label></div>
+                            <div class="li-value"><input type="text" id="row-y-max" name="y-max"/></div>
+                        </li>
                     </ul>
                 </form>
             </t:editable-row-table-dialog>

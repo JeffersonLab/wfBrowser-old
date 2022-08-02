@@ -109,6 +109,20 @@ public class SeriesAjax extends HttpServlet {
         String pattern = request.getParameter("pattern");
         String description = request.getParameter("description");
         String units = request.getParameter("units");
+        Double yMin, yMax;
+
+        try {
+            yMin = request.getParameter("ymin") == "" ? null : Double.valueOf(request.getParameter("ymin"));
+            yMax = request.getParameter("ymax") == "" ? null : Double.valueOf(request.getParameter("ymax"));
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.setContentType("application/json");
+            try (PrintWriter pw = response.getWriter()) {
+                pw.write("{\"error\":\"Parameter 'yMin' or 'yMax' not empty or a valid double\"}");
+            }
+            return;
+        }
+
 
         String error = "";
         if (system == null || system.isEmpty()) {
@@ -130,7 +144,7 @@ public class SeriesAjax extends HttpServlet {
 
         SeriesService ss = new SeriesService();
         try {
-            ss.addSeries(name, pattern, system, description, units);
+            ss.addSeries(name, pattern, system, description, units, yMin, yMax);
         } catch (SQLException e) {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

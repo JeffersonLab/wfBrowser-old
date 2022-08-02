@@ -37,7 +37,7 @@ jlab.wfb.initDialogs = function () {
     $("#table-row-dialog").dialog({
         autoOpen: false,
         width: 700,
-        height: 300,
+        height: 350,
         modal: true
     });
 };
@@ -74,8 +74,11 @@ jlab.wfb.editRow = function () {
     var system = $("#row-system").val();
     var pattern = $("#row-pattern").val();
     var units = $("#row-units").val();
+    var ymin = $("#row-y-min").val();
+    var ymax = $("#row-y-max").val();
     var url = jlab.contextPath + "/ajax/series-update";
-    var data = {"id": seriesId, "name": name, "description": description, "pattern": pattern, "system": system, "units": units};
+    var data = {"id": seriesId, "name": name, "description": description, "pattern": pattern, "system": system,
+        "units": units, "ymin": ymin, "ymax": ymax};
     var $dialog = $("#table-row-dialog");
     jlab.doAjaxJsonPostRequest(url, data, $dialog, true);
 };
@@ -89,8 +92,11 @@ jlab.wfb.addRow = function () {
     var system = $("#row-system").val();
     var pattern = $("#row-pattern").val();
     var units = $("#row-units").val();
+    var ymin = $("#row-y-min").val();
+    var ymax = $("#row-y-max").val();
     var url = jlab.contextPath + "/ajax/series";
-    var data = {"name": name, "description": description, "pattern": pattern, "system": system, "units": units};
+    var data = {"name": name, "description": description, "pattern": pattern, "system": system, "units": units,
+        "ymin": ymin, "ymax": ymax};
     var $dialog = $("table-row-dialog");
 
     jlab.doAjaxJsonPostRequest(url, data, $dialog, true);
@@ -113,12 +119,16 @@ $(document).on("click", "#open-edit-row-dialog-button", function () {
     var units = $selectedRow.find("td:nth-child(3)").text();
     var description = $selectedRow.find("td:nth-child(4)").text();
     var system = $selectedRow.find("td:nth-child(5)").text();
+    var ymin = $selectedRow.find("td:nth-child(6)").text();
+    var ymax = $selectedRow.find("td:nth-child(7)").text();
 
     $("#row-name").val(name);
     $("#row-pattern").val(pattern);
     $("#row-units").val(units);
     $("#row-description").val(description);
     $("#row-system").val(system);
+    $("#row-y-min").val(ymin);
+    $("#row-y-max").val(ymax);
 });
 
 $(document).on("table-row-add", function () {
