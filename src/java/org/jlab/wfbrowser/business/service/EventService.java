@@ -398,7 +398,9 @@ public class EventService {
                 String description = rs.getString("description");
                 String units = rs.getString("units");
                 Double yMin = rs.getDouble("ymin");
+                yMin = rs.wasNull() ? null : yMin;
                 Double yMax = rs.getDouble("ymax");
+                yMax = rs.wasNull() ? null : yMax;
                 out.add(new Series(seriesName, id, pattern, systemName, description, units, yMin, yMax));
             }
         } finally {
@@ -726,7 +728,9 @@ public class EventService {
                         String description = rs.getString("description");
                         String units = rs.getString("units");
                         Double yMin = rs.getDouble("ymin");
+                        yMin = rs.wasNull() ? null : yMin;
                         Double yMax = rs.getDouble("ymax");
+                        yMax = rs.wasNull() ? null : yMax;
                         if (waveformToSeries.get(waveformName) == null) {
                             waveformToSeries.put(waveformName, new ArrayList<>());
                         }

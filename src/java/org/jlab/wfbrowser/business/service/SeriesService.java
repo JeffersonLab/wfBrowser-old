@@ -61,7 +61,9 @@ public class SeriesService {
                 description = rs.getString("description");
                 units = rs.getString("units");
                 yMin = rs.getDouble("ymin");
+                yMin = rs.wasNull() ? null : yMin;
                 yMax = rs.getDouble("ymax");
+                yMax = rs.wasNull() ? null : yMax;
                 seriesList.add(new Series(name, id, pattern, system, description, units, yMin, yMax));
             }
         } finally {
@@ -318,7 +320,9 @@ public class SeriesService {
                     String seriesDescription = rs.getString("description");
                     String units = rs.getString("units");
                     Double yMin =  rs.getDouble("ymin");
+                    yMin = rs.wasNull() ? null : yMin;
                     Double yMax = rs.getDouble("ymax");
+                    yMax = rs.wasNull() ? null : yMax;
                     seriesSet.addSeries(new Series(seriesName, seriesId, pattern, seriesSet.getSystemName(), seriesDescription, units, yMin, yMax));
                 }
             }
