@@ -189,6 +189,8 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     var units = "";
     var dygraphIds = [];
     var data = [];
+    var ymin = null;
+    var ymax = null;
     data.push(event.timeOffsets);
     for (var i = 0; i < event.waveforms.length; i++) {
         for (var j = 0; j < event.waveforms[i].series.length; j++) {
@@ -197,6 +199,25 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
                 labels.push(event.waveforms[i].dygraphLabel);
                 dygraphIds.push(event.waveforms[i].dygraphId);
                 units = event.waveforms[i].series[j].units;
+
+                // Figure out the y-axis bounds.  All series should be the same, but we should check since each waveform
+                // has its own entry for this.
+                if (event.waveforms[i].series[j]['y-min'] !== null) {
+                    if (ymin === null) {
+                        ymin = event.waveforms[i].series[j]['y-min'];
+                    }
+                    else if (ymin > event.waveforms[i].series[j]['y-min']) {
+                        ymin = event.waveforms[i].series[j]['y-min'];
+                    }
+                }
+                if (event.waveforms[i].series[j]['y-max'] !== null) {
+                    if (ymax === null) {
+                        ymax = event.waveforms[i].series[j]['y-max'];
+                    }
+                    else if (ymax > event.waveforms[i].series[j]['y-max']) {
+                        ymax = event.waveforms[i].series[j]['y-max'];
+                    }
+                }
             }
         }
     }
@@ -232,6 +253,7 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     graphOptions.colors = colors;
     graphOptions.title = series + " (" + units + ")";
     graphOptions.labels = labels;
+    graphOptions.axes.y.visibleRange = [ymin, ymax];
     $graphPanel.append("<div class=" + containerClass + "><div id=graph-chart-" + chartId + " class='graph-chart'></div>"
         + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div></div>");
     graphOptions.labelsDiv = document.getElementById("graph-legend-" + chartId);
@@ -332,12 +354,39 @@ jlab.wfb.loadNewGraphs = (function () {
             // Make sure the jlab.wfb.timeline matches the current event
             jlab.wfb.timeline.setSelection(currEventId);
 
-            var promise = jlab.doAjaxJsonGetRequest(jlab.contextPath + "/ajax/event", {
-                id: eventId,
-                out: "dygraph",
-                includeData: true,
-                requester: "graph"
+            // Request the event object - only the needed series.
+            var promise = jQuery.ajax({
+                url: jlab.contextPath + "/ajax/event",
+                type: "GET",
+                dataType: "json",
+                data: {
+                    id: eventId,
+                    out: "dygraph",
+                    includeData: true,
+                    requester: "graph",
+                    series: jlab.wfb.seriesMasterSet,
+                },
+                traditional: true
             });
+
+            promise.error(function (xhr, textStatus) {
+                var json;
+
+                try {
+                    json = $.parseJSON(xhr.responseText);
+                } catch (err) {
+                    window.console && console.log('Response is not JSON: ' + xhr.responseText);
+                    json = {};
+                }
+
+                var message = json.error || 'Server did not handle request';
+                if(quiet) {
+                    window.console && console.log('Unable to perform request: ' + message);
+                } else {
+                    alert('Unable to perform request: ' + message);
+                }
+            });
+
             promise.done(function (json) {
                 // Sanity check - make sure the id we get back is what we asked for.
                 if (json.events[0].id !== currEventId) {
