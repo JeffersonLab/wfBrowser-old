@@ -184,6 +184,9 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
         return;
     }
 
+    // Need a local copy so that each graph can have different options after visibility updates.
+    var opts = JSON.parse(JSON.stringify(graphOptions));
+
     // Get the data, labels, etc. needed for this chart out of the currentEvent object
     var labels = [];
     var units = "";
@@ -221,6 +224,7 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
             }
         }
     }
+
     labels = ["time"].concat(labels.sort());
 
     // Set up colors so that they are unique to the dygraphId (which maps to cavity number)
@@ -242,6 +246,7 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     }
     data = tempData;
 
+    // Figure out what size graph we want based on the number of series (i.e., graphs) that we will be displaying
     var containerClass = "'graph-container";
     if (seriesArray.length >= 6) {
         containerClass += " graph-container-thirdwidth";
@@ -250,18 +255,22 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     }
     containerClass += "'";
 
-    graphOptions.colors = colors;
-    graphOptions.title = series + " (" + units + ")";
-    graphOptions.labels = labels;
-    graphOptions.axes.y.visibleRange = [ymin, ymax];
+    // Append the div structure needed to hold this graph
     $graphPanel.append("<div class=" + containerClass + "><div id=graph-chart-" + chartId + " class='graph-chart'></div>"
         + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div></div>");
-    graphOptions.labelsDiv = document.getElementById("graph-legend-" + chartId);
+
+    // Set up the needed options
+    opts.colors = colors;
+    opts.title = series + " (" + units + ")";
+    opts.labels = labels;
+    opts.axes.y.valueRange = [ymin, ymax];
+    opts.labelsDiv = document.getElementById("graph-legend-" + chartId);
+
     var g = new Dygraph(
         // containing div
         document.getElementById("graph-chart-" + chartId),
         data,
-        graphOptions
+        opts
     );
 
     // This event handler allows the users to highlight/unhighlight a single series
@@ -578,6 +587,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
         legend: "always",
         labelsSeparateLines: true,
         highlightCircleSize: 3,
+        connectSeparatedPoints: true,
         strokeWidth: 2,
         highlightSeriesOpts: {
             strokeWidth: 2,
