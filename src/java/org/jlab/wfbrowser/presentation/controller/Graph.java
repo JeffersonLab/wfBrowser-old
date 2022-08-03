@@ -75,7 +75,7 @@ public class Graph extends HttpServlet {
         }
 
         /* Basic strategy with these session attributes - if we get explicit request parameters, use them and update the session
-         * copies.  If we don't get reuqest params, but we have the needed session attributes, use them and redirect.  If we don't
+         * copies.  If we don't get request params, but we have the needed session attributes, use them and redirect.  If we don't
          * have request or session values, then use defaults, update the session, and redirect.
          */
         HttpSession session = request.getSession();
