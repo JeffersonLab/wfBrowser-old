@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,10 +32,11 @@ import org.jlab.wfbrowser.business.filter.SeriesFilter;
 import org.jlab.wfbrowser.business.filter.SeriesSetFilter;
 import org.jlab.wfbrowser.business.service.EventService;
 import org.jlab.wfbrowser.business.service.SeriesService;
-import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.SeriesSet;
+import org.jlab.wfbrowser.presentation.util.Pair;
+import org.jlab.wfbrowser.presentation.util.SessionUtils;
 
 /**
  * @author adamc
@@ -89,37 +88,17 @@ public class Graph extends HttpServlet {
 
         // Process the begin/end parameters
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
         Instant begin, end;
-        if (beginString != null && !beginString.isEmpty()) {
-            TimeUtil.validateDateTimeString(beginString);
-            begin = TimeUtil.getInstantFromDateTimeString(beginString);
-            session.setAttribute("graphBegin", begin);
-        } else if (session.getAttribute("graphBegin") != null) {
-            begin = (Instant) session.getAttribute("graphBegin");
-            beginString = dtf.format(begin);
-            redirectNeeded = true;
-        } else {
-            begin = now.plus(-2, ChronoUnit.DAYS);
-            session.setAttribute("graphBegin", begin);
-            beginString = dtf.format(begin);
-            redirectNeeded = true;
-        }
+        Pair<String, Instant> pair;
+        if (beginString == null || beginString.isEmpty()) { redirectNeeded = true; }
+        pair = SessionUtils.getGraphBegin(request, beginString, now);
+        beginString = pair.first;
+        begin = pair.second;
 
-        if (endString != null && !endString.isEmpty()) {
-            TimeUtil.validateDateTimeString(endString);
-            end = TimeUtil.getInstantFromDateTimeString(endString);
-            session.setAttribute("graphEnd", end);
-        } else if (session.getAttribute("graphEnd") != null) {
-            end = (Instant) session.getAttribute("graphEnd");
-            endString = dtf.format(end);
-            redirectNeeded = true;
-        } else {
-            end = now;
-            session.setAttribute("graphEnd", end);
-            endString = dtf.format(end);
-            redirectNeeded = true;
-        }
+        if (endString == null || endString.isEmpty()) { redirectNeeded = true; }
+        pair = SessionUtils.getGraphEnd(request, endString, now);
+        endString = pair.first;
+        end = pair.second;
 
         // Create a map of the series and seriesSet options and whether or not the user selected them.
         SeriesService ss = new SeriesService();
@@ -394,6 +373,23 @@ public class Graph extends HttpServlet {
         // on to hundreds of megabytes of data per session.  It's simple enough to go look it up since we're saving the eventId.
         Event currentEvent = null;
         Long id;
+
+        // Check for the event ID in the session if none was supplied
+        if (eventId == null || eventId.isEmpty()) {
+            // Synchronize here to make sure that no deletes the graphEventId and pulls the rug out from under the
+            // parser.
+            synchronized(SessionUtils.getSessionLock(request, null)) {
+                try {
+                    if (session.getAttribute("graphEventId") != null) {
+                        eventId = Long.toString((Long) session.getAttribute("graphEventId"));
+                    }
+                } catch (NumberFormatException ex) {
+                    LOGGER.log(Level.SEVERE, "Error retreiving 'graphEventId' from session", ex);
+                    session.setAttribute("graphEventId", null);
+                }
+            }
+        }
+
         if (eventId != null && !eventId.isEmpty()) {
             // We have a real request
             try {
@@ -412,6 +408,8 @@ public class Graph extends HttpServlet {
                 throw new ServletException("Error querying database for event information.");
             }
         }
+
+
 
         // If the eventId in the request was not in location or date range specified OR was not specified at all
         if (currentEvent == null) {

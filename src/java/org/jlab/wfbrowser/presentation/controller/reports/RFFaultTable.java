@@ -3,9 +3,10 @@ package org.jlab.wfbrowser.presentation.controller.reports;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.filter.LabelFilter;
 import org.jlab.wfbrowser.business.service.EventService;
-import org.jlab.wfbrowser.business.util.TimeUtil;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Label;
+import org.jlab.wfbrowser.presentation.util.Pair;
+import org.jlab.wfbrowser.presentation.util.SessionUtils;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -40,13 +41,26 @@ public class RFFaultTable extends HttpServlet {
         String isLabeledString = request.getParameter("isLabeled");
         String out = request.getParameter("out");
 
-        Instant begin = beginString == null ? null : TimeUtil.getInstantFromDateTimeString(beginString);
-        Instant end = endString == null ? null : TimeUtil.getInstantFromDateTimeString(endString);
         List<String> locationSelections = locationStrings == null ? null : Arrays.asList(locationStrings);
         boolean isLabeled = Boolean.parseBoolean(isLabeledString);
 
         boolean redirectNeeded = false;
         Double confidence;
+
+        // Process the begin/end parameters
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        Instant begin, end;
+        Pair<String, Instant> pair;
+        if (beginString == null || beginString.isEmpty()) { redirectNeeded = true; }
+        pair = SessionUtils.getGraphBegin(request, beginString, now);
+        beginString = pair.first;
+        begin = pair.second;
+
+        if (endString == null || endString.isEmpty()) { redirectNeeded = true; }
+        pair = SessionUtils.getGraphEnd(request, endString, now);
+        endString = pair.first;
+        end = pair.second;
+
 
         // If someone doesn't supply a confidence value, set it to 0.0.  This works permissively with the default confOp
         // of ">"

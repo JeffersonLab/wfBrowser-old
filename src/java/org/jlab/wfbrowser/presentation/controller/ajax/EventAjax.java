@@ -26,6 +26,7 @@ import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Label;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.SeriesSet;
+import org.jlab.wfbrowser.presentation.util.SessionUtils;
 
 /**
  *
@@ -169,11 +170,18 @@ public class EventAjax extends HttpServlet {
 
         // Update the session's graphEventId if the request came from graph page
         if (requester != null && requester.equals("graph")) {
-            HttpSession session = request.getSession();
-            if (!eventList.isEmpty() && eventList.get(0) != null) {
-                session.setAttribute("graphEventId", eventList.get(0).getEventId());
-            } else {
-                session.setAttribute("graphEventId", null);
+            // Make sure that only one request is updating the session variable at a time.
+            synchronized (SessionUtils.getSessionLock(request, null)) {
+                HttpSession session = request.getSession();
+                if (!eventList.isEmpty() && eventList.get(0) != null) {
+                    if (session.getAttribute("graphEventId") == null) {
+                        // We haven't selected an event to graph yet.  Pick the first one.
+                        session.setAttribute("graphEventId", eventList.get(0).getEventId());
+                    } else if (eventIdList.size() == 1) {
+                        // The user requested information on a single event from the graph page.  Update the eventId.
+                        session.setAttribute("graphEventId", eventList.get(0).getEventId());
+                    }
+                }
             }
         }
 
