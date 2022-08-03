@@ -96,6 +96,12 @@
 .graph-y-control input {
     width: 5em;
 }
+.graph-y-control .key-value-list {
+    margin: 0px;
+}
+.graph-y-control .li-key, .li-value {
+    padding: 1px;
+}
 .graph-legend > span.highlight {
     border: 1px solid grey;
 }
