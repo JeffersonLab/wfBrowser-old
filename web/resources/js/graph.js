@@ -273,14 +273,13 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
 
     const doubleClickZoomOutPlugin = {
         activate: function(g) {
-            // Save the initial y-axis range for later.
-            const initialValueRange = g.getOption('valueRange');
-            console.log("initialValueRange " + initialValueRange);
+            // This zooms all the way back out to the currently set axis range.  That's all of the x data, and the
+            // currently set y valueRange.  If y valueRange is [null, null], then you get all of the data displayed.
             return {
                 dblclick: e => {
                     e.dygraph.updateOptions({
                         dateWindow: null,  // zoom all the way out
-                        valueRange: initialValueRange  // zoom to a specific y-axis range.
+                        valueRange: null  // zoom out based on the current valueRange setting.
                     });
                     e.preventDefault();  // prevent the default zoom out action.
                 }
