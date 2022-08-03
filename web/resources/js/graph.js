@@ -269,6 +269,8 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     opts.title = series + " (" + units + ")";
     opts.labels = labels;
     opts.axes.y.valueRange = [ymin, ymax];
+    opts.xlabel = "ms";
+    opts.ylabel = units;
     opts.labelsDiv = document.getElementById("graph-legend-" + chartId);
 
     const doubleClickZoomOutPlugin = {
