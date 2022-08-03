@@ -292,7 +292,8 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
             }
         }
     };
-    opts.plugins = [doubleClickZoomOutPlugin];
+    const crossHairPlugin = new Dygraph.Plugins.Crosshair({direction: "vertical"});
+    opts.plugins = [doubleClickZoomOutPlugin, crossHairPlugin];
 
     var g = new Dygraph(
         // containing div
