@@ -257,7 +257,12 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
 
     // Append the div structure needed to hold this graph
     $graphPanel.append("<div class=" + containerClass + "><div id=graph-chart-" + chartId + " class='graph-chart'></div>"
-        + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div></div>");
+        + "<div class='graph-legend' id=graph-legend-" + chartId + " ></div>" +
+        "<div class='graph-y-control' id='graph-y-controls-'" + chartId + ">" +
+        "<ul class='key-value-list'>" +
+        "<li><div class='li-key'><label>y-max</label></div><div class='li-value'><input id='graph-y-max-" + chartId + "' type='number' value='" + ymax + "'></div></li>" +
+        "<li><div class='li-key'><label>y-min</label></div><div class='li-value'><input id='graph-y-min-" + chartId + "' type='number' value='" + ymin + "'></div></li>" +
+        "</ul></div></div>");
 
     // Set up the needed options
     opts.colors = colors;
@@ -265,6 +270,24 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
     opts.labels = labels;
     opts.axes.y.valueRange = [ymin, ymax];
     opts.labelsDiv = document.getElementById("graph-legend-" + chartId);
+
+    const doubleClickZoomOutPlugin = {
+        activate: function(g) {
+            // Save the initial y-axis range for later.
+            const initialValueRange = g.getOption('valueRange');
+            console.log("initialValueRange " + initialValueRange);
+            return {
+                dblclick: e => {
+                    e.dygraph.updateOptions({
+                        dateWindow: null,  // zoom all the way out
+                        valueRange: initialValueRange  // zoom to a specific y-axis range.
+                    });
+                    e.preventDefault();  // prevent the default zoom out action.
+                }
+            }
+        }
+    };
+    opts.plugins = [doubleClickZoomOutPlugin];
 
     var g = new Dygraph(
         // containing div
@@ -284,6 +307,18 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
 
     g.updateOptions({clickCallback: onclick}, true);
     g.setSelection(false, g.getHighlightSeries());
+
+    // Set a listener that updates the y valueRange of this plot based on the values specified in input boxes.
+    var ymaxElement = document.querySelector('#graph-y-max-' + chartId);
+    var yminElement = document.querySelector('#graph-y-min-' + chartId);
+    var updateYRange = function(event) {
+        var ymin = yminElement.value === "" ? null : parseFloat(yminElement.value);
+        var ymax = ymaxElement.value === "" ? null : parseFloat(ymaxElement.value);
+        g.updateOptions({axes: {y: {valueRange: [ymin, ymax]}}});
+    };
+    ymaxElement.addEventListener('change', updateYRange);
+    yminElement.addEventListener('change', updateYRange);
+
     return g;
 };
 
