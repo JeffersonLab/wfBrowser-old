@@ -167,6 +167,7 @@
                     <table class="data-table stripped-table">
                         <thead>
                         <tr>
+                            <th></th>
                             <th>Timestamp</th>
                             <th>Location</th>
                             <th>Cavity Label</th>
@@ -179,6 +180,7 @@
                         <tbody>
                         <c:forEach var="event" items="${eventList}">
                             <tr>
+                                <td><a href="${pageContext.request.contextPath}/graph?eventId=${event.eventId}">View</span></a></td>
                                 <td>${event.eventTimeStringLocal}</td>
                                 <td>${event.location}</td>
                                 <c:choose>
