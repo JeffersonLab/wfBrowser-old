@@ -513,25 +513,39 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
 
     // Construct checkboxes that will control the visibility of inidividual cavity series.  Once we've created the graphs, we can bind a click event handler
     var checkBoxNum = 0;
-    // Map.foreach(function(value, key, map)
-    dygraphLabelIdMap.forEach(function (id, label, map) {
-        if (checkBoxNum === 4) {
-            $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
-        }
-        var forName = "cav-toggle-" + checkBoxNum;
-        var color = jlab.wfb.dygraphIdToColorArray[id - 1];
-        switch (jlab.wfb.system) {
-            case "rf":
+    var allVisibility = document
+
+    console.log(dygraphLabelIdMap);
+    switch (jlab.wfb.system) {
+        case "rf":
+            dygraphLabelIdMap.forEach(function (id, label, map) {
+                while (id > checkBoxNum+1) {
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + (checkBoxNum+1) + '</label><input type="checkbox" id="cav-toggle-' + (checkBoxNum+1) + '" class="cavity-toggle" data-label="' + label + '"  disabled="disabled">');
+                    checkBoxNum++;
+                }
+                if (checkBoxNum === 4) {
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
+                }
+                var forName = "cav-toggle-" + checkBoxNum;
+                var color = jlab.wfb.dygraphIdToColorArray[id - 1];
                 // For RF we can assign nicer cavity number labels instead of just a colored line.
                 $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + id + '</label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
-                break;
-            default:
+                checkBoxNum++;
+            });
+            break;
+        default:
+            dygraphLabelIdMap.forEach(function (id, label, map) {
+               if (checkBoxNum === 4) {
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
+                }
+                var forName = "cav-toggle-" + checkBoxNum;
+                var color = jlab.wfb.dygraphIdToColorArray[id - 1];
                 // Give a colored line as a label.  Dygraph already does this for their labels, so just reuse their div with the color we specified earler
                 $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '"><div class="dygraph-legend-line" style="border-bottom-color: ' + color + ';"></div></label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
-                break;
-        }
-        checkBoxNum++;
-    });
+                checkBoxNum++;
+            });
+            break;
+    }
 
     // Setup the download button
     $("#graph-panel .graph-panel-action-controls .download").on("click", function () {
