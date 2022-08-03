@@ -266,11 +266,15 @@ jlab.wfb.makeGraph = function (event, chartId, $graphPanel, graphOptions, series
 
     // Set up the needed options
     opts.colors = colors;
-    opts.title = series + " (" + units + ")";
+    opts.title = series;
     opts.labels = labels;
     opts.axes.y.valueRange = [ymin, ymax];
     opts.xlabel = "ms";
-    opts.ylabel = units;
+    if (units === "") {
+        opts.ylabel = "&ltNO UNITS&gt";
+    } else {
+        opts.ylabel = units;
+    }
     opts.labelsDiv = document.getElementById("graph-legend-" + chartId);
 
     const doubleClickZoomOutPlugin = {
