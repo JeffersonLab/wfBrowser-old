@@ -481,6 +481,25 @@ jlab.wfb.loadNewGraphs = (function () {
 })();
 
 /*
+ * Change the visibility on all series in all of the graphs to on or off.
+ * @param graphs: An array of Dygraph Objects
+ * @param isVisible: A boolean.  true if all should be visible, false if not.
+ */
+jlab.wfb.setAllVisibility = function(graphs, isVisible) {
+    for (var i = 0; i < graphs.length; i++) {
+        console.log(graphs[i]);
+        console.log("graph " + i);
+        // Figure out which column the labeled series is in.  Time is the first column so, the series number is one less.
+        var visibility = graphs[i].visibility();
+        for (var j = 0; j < visibility.length; j++) {
+            visibility[j] = isVisible;
+        }
+        graphs[i].setVisibility(visibility);
+        console.log("graph " + i + " done");
+    }
+};
+
+/*
  * Make all of the request waveform graphs.  One chart per series.
  * @param event - An object representing the event to be displayed
  * @param jQuery selector object $graphPanel The div in which to create waveform graphs
@@ -513,25 +532,36 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
 
     // Construct checkboxes that will control the visibility of inidividual cavity series.  Once we've created the graphs, we can bind a click event handler
     var checkBoxNum = 0;
-    var allVisibility = document
+    var allVisibility = document.createElement("button");
+    allVisibility.appendChild(document.createTextNode("All"));
+    allVisibility.setAttribute("style", "width:3em; font-size: 10px; margin: 0px 2px 0px 10px; vertical-align: top;");
+    var noneVisibility = document.createElement("button");
+    noneVisibility.appendChild(document.createTextNode("None"));
+    noneVisibility.setAttribute("style", "width:3em; font-size: 10px; margin: 0px 2px 0px 10px; vertical-align: top;");
 
-    console.log(dygraphLabelIdMap);
     switch (jlab.wfb.system) {
         case "rf":
             dygraphLabelIdMap.forEach(function (id, label, map) {
+                // RF has 8 cavities.  It's better to leave a disabled checkbox, than throw off the alignment
                 while (id > checkBoxNum+1) {
-                    $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + (checkBoxNum+1) + '</label><input type="checkbox" id="cav-toggle-' + (checkBoxNum+1) + '" class="cavity-toggle" data-label="' + label + '"  disabled="disabled">');
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append(
+                        '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + (checkBoxNum+1) + '</label>' +
+                        '<input type="checkbox" id="cav-toggle-' + (checkBoxNum+1) + '" class="cavity-toggle" data-label="' + label + '"  disabled="disabled">');
                     checkBoxNum++;
                 }
                 if (checkBoxNum === 4) {
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append(allVisibility);
                     $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
                 }
                 var forName = "cav-toggle-" + checkBoxNum;
                 var color = jlab.wfb.dygraphIdToColorArray[id - 1];
                 // For RF we can assign nicer cavity number labels instead of just a colored line.
-                $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + id + '</label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
+                $("#graph-panel .graph-panel-visibility-controls fieldset").append(
+                    '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + id + '</label>' +
+                    '<input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
                 checkBoxNum++;
             });
+            $("#graph-panel .graph-panel-visibility-controls fieldset").append(noneVisibility);
             break;
         default:
             dygraphLabelIdMap.forEach(function (id, label, map) {
@@ -544,6 +574,8 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
                 $("#graph-panel .graph-panel-visibility-controls fieldset").append('<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '"><div class="dygraph-legend-line" style="border-bottom-color: ' + color + ';"></div></label><input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
                 checkBoxNum++;
             });
+            $("#graph-panel .graph-panel-visibility-controls fieldset").append(allVisibility);
+            $("#graph-panel .graph-panel-visibility-controls fieldset").append(noneVisibility);
             break;
     }
 
@@ -660,8 +692,28 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
         Dygraph.synchronize(graphs, {range: false});
     }
 
+    // Set event listeners the check/uncheck all visibility boxes, and show/hide all series signals on all graphs.
+    allVisibility.addEventListener("click", function(ev) {
+        $("#graph-panel .graph-panel-visibility-controls fieldset input:checkbox").each(function (index, element){
+            if (!element.disabled && !element.checked) {
+                element.checked = true;
+            }
+        });
+        jlab.wfb.setAllVisibility(graphs, true);
+    });
+    noneVisibility.addEventListener("click", function(ev) {
+        $("#graph-panel .graph-panel-visibility-controls fieldset input:checkbox").each(function (index, element){
+            if (!element.disabled && element.checked) {
+                element.checked = false;
+            }
+        });
+        jlab.wfb.setAllVisibility(graphs, false);
+    });
+
+
+
 // Set a listener that toggles visibility on series
-    $(".cavity-toggle").on("click", function () {
+    $(".cavity-toggle").on("change", function () {
         var label = $(this).data("label");
         for (var i = 0; i < graphs.length; i++) {
             // Figure out which column the labeled series is in.  Time is the first column so, the series number is one less.
