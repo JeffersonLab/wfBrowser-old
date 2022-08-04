@@ -59,6 +59,10 @@ public class Series {
         return id;
     }
 
+    public Double getyMin() { return yMin; }
+
+    public Double getyMax() { return yMax; }
+
     public String getPattern() {
         return pattern;
     }
