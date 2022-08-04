@@ -165,7 +165,7 @@ jlab.wfb.getLastItem = function (items, id) {
 };
 
 
-/*
+/**
  * eventId - The waveform eventId to query information for
  * chartId - typically a number, is appended to "graph-chart-" to create the id of a div that acts as the dygraph container
  * $graphPanel - jQuery object that is the parent object of all dygraph containers
@@ -480,7 +480,7 @@ jlab.wfb.loadNewGraphs = (function () {
     };
 })();
 
-/*
+/**
  * Change the visibility on all series in all of the graphs to on or off.
  * @param graphs: An array of Dygraph Objects
  * @param isVisible: A boolean.  true if all should be visible, false if not.
@@ -499,7 +499,7 @@ jlab.wfb.setAllVisibility = function(graphs, isVisible) {
     }
 };
 
-/*
+/**
  * Make all of the request waveform graphs.  One chart per series.
  * @param event - An object representing the event to be displayed
  * @param jQuery selector object $graphPanel The div in which to create waveform graphs
@@ -710,9 +710,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
         jlab.wfb.setAllVisibility(graphs, false);
     });
 
-
-
-// Set a listener that toggles visibility on series
+    // Set a listener that toggles visibility on series
     $(".cavity-toggle").on("change", function () {
         var label = $(this).data("label");
         for (var i = 0; i < graphs.length; i++) {
@@ -732,34 +730,14 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     });
 
     return graphs;
-}
-;
+};
 
-/*
+/**
  * Setup the timeline widget
- * begin  - starting datetime string of the timeline
- * end     - ending datetime string of the timeline
- * zones - array of zone names to be included in the timeline
- * events - array of events to be drawn
+ * @param container - element that will hold the timeline widget
+ * @param groups - viz.DataSet containing row group names
+ * @param items  viz.DataSet containing the items to place on the timeline
  */
-//            jlab.wfb.makeTimeline = function (container, begin, end, zones, events, eventId) {
-//jlab.wfb.makeTimeline = function (container, zones, events) {
-
-
-//
-//    var groupArray = new Array(zones.length);
-//    for (var i = 0; i < zones.length; i++) {
-//        groupArray[i] = {id: jlab.wfb.locationToGroupMap.get(zones[i]), content: zones[i]};
-//    }
-//    var groups = new vis.DataSet(groupArray);
-//
-//    var itemArray = new Array(events.length);
-//    for (var i = 0; i < events.length; i++) {
-//        itemArray[i] = jlab.wfb.eventToItem(events[i]);
-//    }
-//    var items = new vis.DataSet(itemArray);
-
-//
 jlab.wfb.makeTimeline = function (container, groups, items) {
     var options = {
         type: "point",
@@ -776,81 +754,6 @@ jlab.wfb.makeTimeline = function (container, groups, items) {
     if (typeof jlab.wfb.currentEvent === "object" && jlab.wfb.currentEvent !== null) {
         timeline.setSelection(jlab.wfb.currentEvent.id);
     }
-
-    // Currently a bug in the timeline widget is keeping this from working as desired.  I may be able to work around it.
-    // the bug seems to be that calling timeline.getItemRange().min inside of on("rangechagned", ...) cause the timeline
-    // to display items incorrectly.
-//                timeline.on("rangechanged", function (params) {
-//                    var timeLineStart = params.start;
-//                    var timeLineEnd = params.end;
-//                    var byUser = params.byUser;
-//                    var event = params.event;
-//
-//
-//                    if (timeline.getItemRange() === null
-//                            || timeLineStart.getTime() < timeline.getItemRange().min.getTime()
-//                            || timeLineEnd.getTime() > timeline.getItemRange().max.getTime()) {
-//
-//                        var queryStart, queryEnd;
-//                        if (timeline.getItemRange() === null) {
-//                            queryStart = timeLineStart;
-//                            queryEnd = timeLineEnd;
-//                        } else if (timeLineStart.getTime() < timeline.getItemRange().min.getTime()) {
-//                            queryStart = timeLineStart;
-//                            queryEnd = timeline.getItemRange().min;
-//                        } else if (timeLineEnd.getTime() > timeline.getItemRange().max.getTime()) {
-//                            queryStart = timeline.getItemRange().max;
-//                            queryEnd = timeLineEnd;
-//                        }
-//
-//                        jlab.wfb.begin = jlab.dateToDateTimeString(timeLineStart);
-//                        jlab.wfb.end = jlab.dateToDateTimeString(timeLineEnd);
-//
-//                        if (byUser) {
-//                            jlab.wfb.updateBrowserUrlAndControls();
-//
-//                            var url = jlab.contextPath + "/ajax/event";
-//                            var data = {
-//                                begin: jlab.dateToDateTimeString(queryStart),
-//                                end: jlab.dateToDateTimeString(queryEnd),
-//                                location: jlab.wfb.locationSelections
-//                            };
-//                            var settings = {
-//                                "url": url,
-//                                type: "GET",
-//                                traditional: true,
-//                                "data": data,
-//                                dataType: "json"
-//                            };
-//                            var promise = $.ajax(settings);
-//
-//                            // Basically copy and paste of the smoothness doAjaxJsonGetRequest error handler.
-//                            // Done since I needed to be able to pass the "traditional" setting
-//                            promise.error(function (xhr, textStatus) {
-//                                var json;
-//
-//                                try {
-//                                    json = $.parseJSON(xhr.responseText);
-//                                } catch (err) {
-//                                    window.console && console.log('Response is not JSON: ' + xhr.responseText);
-//                                    json = {};
-//                                }
-//
-//                                var message = json.error || 'Server did not handle request';
-//                                alert('Unable to perform request: ' + message);
-//                            });
-//
-//                            promise.done(function (json) {
-//                                var eventArray = json.events;
-//                                var newItems = new Array(eventArray.length);
-//                                for (var i = 0; i < eventArray.length; i++) {
-//                                    newItems[i] = jlab.wfb.eventToItem(eventArray[i]);
-//                                }
-//                                items.add(newItems);
-//                            });
-//                        }
-//                    }
-//                });
 
     timeline.on("select", function (params) {
         jlab.wfb.loadNewGraphs(params.items[0]);
@@ -884,7 +787,6 @@ jlab.wfb.validateForm = function () {
         $err.append("End time required.");
         return false;
     }
-
 
     // Check that the date range isn't too large.  The timeline widget uses DOM elements and too many of them can slow down the browser.
     var start = new Date(jlab.wfb.$startPicker.val());
