@@ -18,19 +18,19 @@
     </context-param>
     <context-param>
         <param-name>resourceVersionNumber</param-name>
-        <param-value>28</param-value>
+        <param-value>29</param-value>
     </context-param>
     <context-param>
         <param-name>releaseNumber</param-name>
-        <param-value>1.5.6</param-value>
+        <param-value>1.6</param-value>
     </context-param>
     <context-param>
         <param-name>releaseDate</param-name>
-        <param-value>July 15, 2020</param-value>
+        <param-value>Aug 4, 2022</param-value>
     </context-param>
     <context-param>
         <param-name>contentContact</param-name>
-        <param-value>Anna Solopova (shabalin), Gary Croke (gcroke)</param-value>
+        <param-value>Adam Carpenter (adamc), Gary Croke (gcroke)</param-value>
     </context-param>
     <context-param>
         <param-name>technicalContact</param-name>
