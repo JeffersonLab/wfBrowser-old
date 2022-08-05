@@ -539,14 +539,21 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
     noneVisibility.appendChild(document.createTextNode("None"));
     noneVisibility.setAttribute("style", "width:3em; font-size: 10px; margin: 0px 2px 0px 10px; vertical-align: top;");
 
+    var color = jlab.wfb.dygraphIdToColorArray[checkBoxNum];
+
     switch (jlab.wfb.system) {
         case "rf":
             dygraphLabelIdMap.forEach(function (id, label, map) {
                 // RF has 8 cavities.  It's better to leave a disabled checkbox, than throw off the alignment
                 while (id > checkBoxNum+1) {
+                    color = jlab.wfb.dygraphIdToColorArray[checkBoxNum];
                     $("#graph-panel .graph-panel-visibility-controls fieldset").append(
                         '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + (checkBoxNum+1) + '</label>' +
                         '<input type="checkbox" id="cav-toggle-' + (checkBoxNum+1) + '" class="cavity-toggle" data-label="' + label + '"  disabled="disabled">');
+                    if (checkBoxNum === 4) {
+                        $("#graph-panel .graph-panel-visibility-controls fieldset").append(allVisibility);
+                        $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
+                    }
                     checkBoxNum++;
                 }
                 if (checkBoxNum === 4) {
@@ -554,13 +561,21 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
                     $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
                 }
                 var forName = "cav-toggle-" + checkBoxNum;
-                var color = jlab.wfb.dygraphIdToColorArray[id - 1];
                 // For RF we can assign nicer cavity number labels instead of just a colored line.
                 $("#graph-panel .graph-panel-visibility-controls fieldset").append(
                     '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + id + '</label>' +
                     '<input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
                 checkBoxNum++;
             });
+            while (checkBoxNum < 8) {
+                color = jlab.wfb.dygraphIdToColorArray[checkBoxNum];
+                var forName = "cav-toggle-" + checkBoxNum;
+
+                $("#graph-panel .graph-panel-visibility-controls fieldset").append(
+                    '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + (checkBoxNum+1) + '</label>' +
+                    '<input type="checkbox" id="cav-toggle-' + (checkBoxNum+1) + '" class="cavity-toggle" disabled="disabled">');
+                checkBoxNum++;
+            }
             $("#graph-panel .graph-panel-visibility-controls fieldset").append(noneVisibility);
             break;
         default:
