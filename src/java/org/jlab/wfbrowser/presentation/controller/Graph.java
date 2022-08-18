@@ -359,7 +359,13 @@ public class Graph extends HttpServlet {
         if (classificationSelections == null || classificationSelections.isEmpty()) {
             // We end up with not locations after checking the request and session for valid location choices.  Default to all valid options.
             classificationSelections = new ArrayList<>(classificationOptions);
-            redirectNeeded = true;
+            if (classificationSelections.size() > 0 ) {
+                // This option is saved as not null in the database so systems that don't have multiple classifications
+                // saved as a single empty string.  No point in redirecting.
+                if (!(classificationSelections.size() == 1 && classificationSelections.get(0).isEmpty())) {
+                    redirectNeeded = true;
+                }
+            }
         }
         session.setAttribute("graphClassificationSelections", classificationSelections);
 
