@@ -553,6 +553,10 @@ public class EventService {
         boolean archive, delete, grouped;
         Long labelId;
 
+        // Information that may be used to help reduce the size of subqueries.
+        Integer filterStartIndex = null;
+        EventFilter subqueryFilter = null;
+
         try {
             conn = SqlUtil.getConnection();
 
@@ -560,10 +564,18 @@ public class EventService {
                     "label_id, model_name, label_time_utc, label_name, label_value, label_confidence"
                     + " FROM (SELECT *, count(*) AS num_cf FROM event"
                     + "   JOIN system_type USING(system_id)"
-                    + "   JOIN capture USING(event_id)"
-                    + "   GROUP BY event_id"
-                    + " ) AS t "
-                    + "   LEFT JOIN label USING(event_id)";
+                    + "   JOIN capture USING(event_id)";
+
+            // Unless we also filter this subquery we end up counting the entire waveform database.  Ends up being a major
+            // problem as the number of events grow.  Easiest to make another filter with some of the original filter parameters.
+            if (filter.getBegin() != null || filter.getEnd() != null || filter.getSystem() != null) {
+                subqueryFilter = new EventFilter(null, filter.getBegin(), filter.getEnd(), filter.getSystem(), null, null, null, null, null);
+                getEventSql += subqueryFilter.getWhereClause();
+            }
+            getEventSql += "   GROUP BY event_id"
+                         + " ) AS t "
+                         + "   LEFT JOIN label USING(event_id)";
+
             if (filter != null) {
                 getEventSql += filter.getWhereClause();
             }
@@ -574,8 +586,12 @@ public class EventService {
             }
             pstmt = conn.prepareStatement(getEventSql);
 
+            // First bind the subQueryFilter parameters if one was used.  Then bind the out filter.
+            if (subqueryFilter != null) {
+                filterStartIndex = subqueryFilter.assignParameterValues(pstmt, filterStartIndex);
+            }
             if (filter != null) {
-                filter.assignParameterValues(pstmt);
+                filter.assignParameterValues(pstmt, filterStartIndex);
             }
 
             rs = pstmt.executeQuery();
