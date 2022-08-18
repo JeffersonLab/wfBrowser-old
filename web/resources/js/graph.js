@@ -487,15 +487,12 @@ jlab.wfb.loadNewGraphs = (function () {
  */
 jlab.wfb.setAllVisibility = function(graphs, isVisible) {
     for (var i = 0; i < graphs.length; i++) {
-        console.log(graphs[i]);
-        console.log("graph " + i);
         // Figure out which column the labeled series is in.  Time is the first column so, the series number is one less.
         var visibility = graphs[i].visibility();
         for (var j = 0; j < visibility.length; j++) {
             visibility[j] = isVisible;
         }
         graphs[i].setVisibility(visibility);
-        console.log("graph " + i + " done");
     }
 };
 
@@ -550,21 +547,22 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
                     $("#graph-panel .graph-panel-visibility-controls fieldset").append(
                         '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + (checkBoxNum+1) + '</label>' +
                         '<input type="checkbox" id="cav-toggle-' + (checkBoxNum+1) + '" class="cavity-toggle" data-label="' + label + '"  disabled="disabled">');
-                    if (checkBoxNum === 4) {
+                    if (checkBoxNum === 3) {
                         $("#graph-panel .graph-panel-visibility-controls fieldset").append(allVisibility);
                         $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
                     }
                     checkBoxNum++;
                 }
-                if (checkBoxNum === 4) {
-                    $("#graph-panel .graph-panel-visibility-controls fieldset").append(allVisibility);
-                    $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
-                }
+
                 var forName = "cav-toggle-" + checkBoxNum;
                 // For RF we can assign nicer cavity number labels instead of just a colored line.
                 $("#graph-panel .graph-panel-visibility-controls fieldset").append(
                     '<label style="font-weight: bold; color: ' + color + ';" for="' + forName + '">C' + id + '</label>' +
                     '<input type="checkbox" id="cav-toggle-' + checkBoxNum + '" class="cavity-toggle" data-label="' + label + '" checked="checked">');
+                if (checkBoxNum === 3) {
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append(allVisibility);
+                    $("#graph-panel .graph-panel-visibility-controls fieldset").append("<br>");
+                }
                 checkBoxNum++;
             });
             while (checkBoxNum < 8) {
