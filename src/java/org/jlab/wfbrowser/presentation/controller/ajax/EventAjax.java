@@ -187,79 +187,84 @@ public class EventAjax extends HttpServlet {
 
         JsonObjectBuilder job;
         JsonArrayBuilder jab;
-        switch (out) {
-            case "json":
-
-//                job = Json.createObjectBuilder();
-//                jab = Json.createArrayBuilder();
-//                for (Event e : eventList) {
-//                    jab.add(e.toJsonObject(seriesMasterSet));
-//                }
-//                job.add("events", jab.build());
-
-                response.setContentType("application/json");
-                try (PrintWriter pw = response.getWriter()) {
-//                    pw.print(job.build().toString());
-                    pw.print(EventService.convertEventListToJson(eventList, seriesMasterSet).toString());
-                }
-                break;
-            case "dygraph":
-                job = Json.createObjectBuilder();
-                jab = Json.createArrayBuilder();
-                for (Event e : eventList) {
-                    jab.add(e.toDyGraphJsonObject(seriesMasterSet));
-                }
-                job.add("events", jab.build());
-
-                response.setContentType("application/json");
-                try (PrintWriter pw = response.getWriter()) {
-                    pw.print(job.build().toString());
-                }
-                break;
-            case "csv":
-                response.setContentType("text/csv");
-                // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
-                // for now.  Only used to send over a single event to a dygraph chart widget.
-                try (PrintWriter pw = response.getWriter()) {
-                    if (!eventList.isEmpty()) {
-                        Event e = eventList.get(0);
-                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
-                            pw.write(e.toCsv(seriesMasterSet));
-                        } else {
-                            pw.write("No data requested");
-                        }
-                        break;
+        try (PrintWriter pw = response.getWriter()) {
+            switch (out) {
+                case "json":
+                    response.setContentType("application/json");
+                    // TODO: Make this faster.  Probably need to make the same modifications as to the dygraph to side
+                    // step the JsonObjectBuilder speed limitations.
+                    try {
+                        pw.print(EventService.convertEventListToJson(eventList, seriesMasterSet).toString());
+                    } catch (Exception exc) {
+                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                        pw.print("{\"error\": " + exc.getMessage() + "}");
                     }
-                }
-                break;
-            case "orig":
-                if (eventList.size() != 1) {
+                    break;
+                case "dygraph":
+                    response.setContentType("application/json");
+                    try {
+                        job = Json.createObjectBuilder();
+                        jab = Json.createArrayBuilder();
+                        for (Event e : eventList) {
+                            jab.add(e.toDyGraphJsonObject(seriesMasterSet));
+                        }
+                        job.add("events", jab.build());
+
+                        pw.print(job.build().toString());
+                    } catch (Exception exc) {
+                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                        pw.print("{\"error\": " + exc.getMessage() + "}");
+                    }
+                    break;
+                case "csv":
+                    response.setContentType("text/csv");
+                    try {
+                        // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
+                        // for now.  Only used to send over a single event to a dygraph chart widget.
+                        if (!eventList.isEmpty()) {
+                            Event e = eventList.get(0);
+                            if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+                                pw.write(e.toCsv(seriesMasterSet));
+                            } else {
+                                pw.write("No data requested");
+                            }
+                            break;
+                        }
+                    } catch (Exception exc) {
+                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                        pw.write("Error: " + exc.getMessage());
+                    }
+                    break;
+                case "orig":
+                    try {
+                        if (eventList.size() != 1) {
+                            response.setContentType("application/json");
+                            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                            pw.print("{'error': 'out=orig only defined for single event");
+                            return;
+                        }
+
+                        Event e = eventList.get(0);
+                        String filename = e.getSystem() + "_" + e.getLocation();
+                        if (e.getClassification() != null && !e.getClassification().isEmpty()) {
+                            filename += "_" + e.getClassification();
+                        }
+                        filename += "_" + TimeUtil.getDateTimeString(e.getEventTime(), ZoneId.systemDefault()).replace(":", "").replace(" ", "_") + ".tar.gz";
+                        response.setContentType("application/gzip");
+                        response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+                        try (OutputStream os = response.getOutputStream()) {
+                            e.streamCaptureFiles(os);
+                        }
+                    } catch (Exception exc) {
+                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                        pw.print("{\"error\": " + exc.getMessage() + "}");
+                    }
+                    break;
+                default:
                     response.setContentType("application/json");
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    try (PrintWriter pw = response.getWriter()) {
-                        pw.print("{'error': 'out=orig only defined for single event");
-                    }
-                    return;
-                }
-
-                Event e = eventList.get(0);
-                String filename = e.getSystem() + "_" + e.getLocation();
-                if (e.getClassification() != null && !e.getClassification().isEmpty()) {
-                    filename += "_" + e.getClassification();
-                }
-                filename += "_" + TimeUtil.getDateTimeString(e.getEventTime(), ZoneId.systemDefault()).replace(":", "").replace(" ", "_") + ".tar.gz";
-                response.setContentType("application/gzip");
-                response.setHeader("Content-Disposition", "attachment; filename=" + filename);
-                try (OutputStream os = response.getOutputStream()) {
-                    e.streamCaptureFiles(os);
-                }
-                break;
-            default:
-                response.setContentType("application/json");
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                try (PrintWriter pw = response.getWriter()) {
                     pw.print("{'error':'unrecognized output format - " + out + "'}");
-                }
+            }
         }
     }
 
