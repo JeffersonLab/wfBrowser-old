@@ -59,6 +59,18 @@ public class EventFilter {
         this.minCaptureFiles = minCaptureFiles;
     }
 
+    public String getSystem() {
+        return system;
+    }
+
+    public Instant getBegin() {
+        return begin;
+    }
+
+    public Instant getEnd() {
+        return end;
+    }
+
     /**
      * Generate a WHERE SQL clause based on the supplied filter parameters
      *
@@ -128,10 +140,14 @@ public class EventFilter {
      * Assign the filter parameter values to the prepared statement.
      *
      * @param stmt The prepared statement that the filter should operate on
+     * @return One more than the last index of the PreparedStatement set by this method.
      * @throws SQLException If issue binding parameters
      */
-    public void assignParameterValues(PreparedStatement stmt) throws SQLException {
+    public int assignParameterValues(PreparedStatement stmt, Integer start_index) throws SQLException {
         int i = 1;
+        if (start_index != null) {
+            i = start_index;
+        }
 
         if (eventIdList != null && !eventIdList.isEmpty()) {
             for (Long eventId : eventIdList) {
@@ -166,5 +182,7 @@ public class EventFilter {
         if (minCaptureFiles != null) {
             stmt.setInt(i++, minCaptureFiles);
         }
+
+        return i;
     }
 }
