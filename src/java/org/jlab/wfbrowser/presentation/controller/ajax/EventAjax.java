@@ -17,6 +17,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.filter.SeriesSetFilter;
 import org.jlab.wfbrowser.business.service.EventService;
@@ -29,7 +30,6 @@ import org.jlab.wfbrowser.model.SeriesSet;
 import org.jlab.wfbrowser.presentation.util.SessionUtils;
 
 /**
- *
  * @author adamc
  */
 @WebServlet(name = "event", urlPatterns = {"/ajax/event"})
@@ -40,7 +40,7 @@ public class EventAjax extends HttpServlet {
     /**
      * Allows users to query for event data
      *
-     * @param request servlet request
+     * @param request  servlet request
      * @param response servlet response
      * @throws IOException if an I/O error occurs
      */
@@ -86,7 +86,7 @@ public class EventAjax extends HttpServlet {
 
         String minCF = request.getParameter("minCF");
         Integer minCaptureFiles = null;
-        if (minCF != null && ! minCF.isEmpty()) {
+        if (minCF != null && !minCF.isEmpty()) {
             minCaptureFiles = Integer.parseInt(minCF);
         }
 
@@ -187,9 +187,9 @@ public class EventAjax extends HttpServlet {
 
         JsonObjectBuilder job;
         JsonArrayBuilder jab;
-        try (PrintWriter pw = response.getWriter()) {
-            switch (out) {
-                case "json":
+        switch (out) {
+            case "json":
+                try (PrintWriter pw = response.getWriter()) {
                     response.setContentType("application/json");
                     // TODO: Make this faster.  Probably need to make the same modifications as to the dygraph to side
                     // step the JsonObjectBuilder speed limitations.
@@ -199,8 +199,10 @@ public class EventAjax extends HttpServlet {
                         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                         pw.print("{\"error\": " + exc.getMessage() + "}");
                     }
-                    break;
-                case "dygraph":
+                }
+                break;
+            case "dygraph":
+                try (PrintWriter pw = response.getWriter()) {
                     response.setContentType("application/json");
                     try {
                         job = Json.createObjectBuilder();
@@ -215,63 +217,72 @@ public class EventAjax extends HttpServlet {
                         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                         pw.print("{\"error\": " + exc.getMessage() + "}");
                     }
-                    break;
-                case "csv":
-                    response.setContentType("text/csv");
-                    try {
-                        // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
-                        // for now.  Only used to send over a single event to a dygraph chart widget.
-                        if (!eventList.isEmpty()) {
-                            Event e = eventList.get(0);
-                            if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
-                                pw.write(e.toCsv(seriesMasterSet));
-                            } else {
-                                pw.write("No data requested");
-                            }
-                            break;
+                }
+                break;
+            case "csv":
+                response.setContentType("text/csv");
+                try (PrintWriter pw = response.getWriter()) {
+                    // This only returns the first event in a csv.  Update so that multiple CSVs are tar.gz'ed and sent, but not needed
+                    // for now.  Only used to send over a single event to a dygraph chart widget.
+                    if (!eventList.isEmpty()) {
+                        Event e = eventList.get(0);
+                        if (e.getWaveforms() != null && (!e.getWaveforms().isEmpty())) {
+                            pw.write(e.toCsv(seriesMasterSet));
+                        } else {
+                            pw.write("No data requested");
                         }
-                    } catch (Exception exc) {
-                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                        break;
+                    }
+                } catch (Exception exc) {
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    response.setContentType("text/plain");
+                    try (PrintWriter pw = response.getWriter()) {
                         pw.write("Error: " + exc.getMessage());
                     }
-                    break;
-                case "orig":
-                    try {
-                        if (eventList.size() != 1) {
-                            response.setContentType("application/json");
-                            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                }
+                break;
+            case "orig":
+                try {
+                    if (eventList.size() != 1) {
+                        response.setContentType("application/json");
+                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        try (PrintWriter pw = response.getWriter()) {
                             pw.print("{'error': 'out=orig only defined for single event");
-                            return;
                         }
+                        return;
+                    }
 
-                        Event e = eventList.get(0);
-                        String filename = e.getSystem() + "_" + e.getLocation();
-                        if (e.getClassification() != null && !e.getClassification().isEmpty()) {
-                            filename += "_" + e.getClassification();
-                        }
-                        filename += "_" + TimeUtil.getDateTimeString(e.getEventTime(), ZoneId.systemDefault()).replace(":", "").replace(" ", "_") + ".tar.gz";
-                        response.setContentType("application/gzip");
-                        response.setHeader("Content-Disposition", "attachment; filename=" + filename);
-                        try (OutputStream os = response.getOutputStream()) {
-                            e.streamCaptureFiles(os);
-                        }
-                    } catch (Exception exc) {
-                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    Event e = eventList.get(0);
+                    String filename = e.getSystem() + "_" + e.getLocation();
+                    if (e.getClassification() != null && !e.getClassification().isEmpty()) {
+                        filename += "_" + e.getClassification();
+                    }
+                    filename += "_" + TimeUtil.getDateTimeString(e.getEventTime(), ZoneId.systemDefault()).replace(":", "").replace(" ", "_") + ".tar.gz";
+                    response.setContentType("application/gzip");
+                    response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+                    try (OutputStream os = response.getOutputStream()) {
+                        e.streamCaptureFiles(os);
+                    }
+                } catch (Exception exc) {
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    try (PrintWriter pw = response.getWriter()) {
                         pw.print("{\"error\": " + exc.getMessage() + "}");
                     }
-                    break;
-                default:
-                    response.setContentType("application/json");
-                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                }
+                break;
+            default:
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                try (PrintWriter pw = response.getWriter()) {
                     pw.print("{'error':'unrecognized output format - " + out + "'}");
-            }
+                }
         }
     }
 
     /**
      * Handle logic for events to be added to waveform database.
      *
-     * @param request Standard HttpServletRequest object
+     * @param request  Standard HttpServletRequest object
      * @param response Standard HttpServletResponse object
      * @throws IOException If problems arise while accessing data from disk
      */
@@ -324,7 +335,7 @@ public class EventAjax extends HttpServlet {
             boolean del = Boolean.parseBoolean(delete);
             boolean grp = Boolean.parseBoolean(grouped);
             kvp = "sys=" + system + " loc=" + location + " cls=" + classification + " timestamp=" +
-                    (t==null ? "null" : t.toString()) + " grp=" + grp + " arc=" + arch + " del=" + del + " cFile=" +
+                    (t == null ? "null" : t.toString()) + " grp=" + grp + " arc=" + arch + " del=" + del + " cFile=" +
                     captureFile;
             LOGGER.log(Level.INFO, "User ''{0}'' attempting to add event {1}", new Object[]{userName, kvp});
             Event event = new Event(t, location, system, arch, del, grp, classification, captureFile, labelList);
