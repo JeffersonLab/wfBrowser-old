@@ -287,14 +287,14 @@ public class EventTest {
 
     @Test
     public void testToDyGraphJsonObjectConsistent() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 1; i++) {
             real_grp_con_noclass_full.toDyGraphJsonObject(null);
         }
     }
 
     @Test
     public void testToDyGraphJsonObjectInconsistent() {
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 1; i++) {
             real_grp_incon_noclass_full.toDyGraphJsonObject(null);
         }
     }
