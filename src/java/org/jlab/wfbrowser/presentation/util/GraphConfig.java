@@ -191,9 +191,8 @@ public class GraphConfig {
         this.seriesSetOptions = seriesSetOptions;
         updateSeriesMasterSet();
 
-        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        this.end = (end == null) ? now : end;
-        this.begin = (begin == null) ? this.end.plus(-2, ChronoUnit.DAYS) : begin;
+        this.end = end;
+        this.begin = begin;
         this.dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
     }
 
@@ -311,9 +310,8 @@ public class GraphConfig {
         updateSeriesMasterSet();
 
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        this.end = (end == null || end.isEmpty()) ? now : TimeUtil.getInstantFromDateTimeString(end);
-        this.begin = (begin == null || begin.isEmpty()) ? this.end.plus(-2, ChronoUnit.DAYS) :
-                TimeUtil.getInstantFromDateTimeString(begin);
+        this.end = (end == null || end.isEmpty()) ? null : TimeUtil.getInstantFromDateTimeString(end);
+        this.begin = (begin == null || begin.isEmpty()) ? null : TimeUtil.getInstantFromDateTimeString(begin);
         this.dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
     }
 
@@ -401,11 +399,11 @@ public class GraphConfig {
     }
 
     public String getBeginString() {
-        return dtf.format(begin);
+        return (begin == null) ? null : dtf.format(begin);
     }
 
     public String getEndString() {
-        return dtf.format(end);
+        return (end == null) ? null : dtf.format(end);
     }
 
     public void setBegin(Instant begin) {
