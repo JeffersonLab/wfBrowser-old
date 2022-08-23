@@ -5,6 +5,7 @@
  */
 package org.jlab.wfbrowser.model;
 
+import java.util.Objects;
 import java.util.Set;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -72,5 +73,38 @@ public class SeriesSet {
                 .add("system", systemName)
                 .add("series", jab.build())
                 .build();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {return true;}
+        if (!(obj instanceof SeriesSet)) { return false;}
+        SeriesSet s = (SeriesSet) obj;
+
+        // Compare the simple attributes
+        if (id != s.id) { return false; }
+        if (!name.equals(s.name)) { return false; }
+        if (!systemName.equals(s.systemName)) { return false; }
+        if (!description.equals(s.description)) { return false; }
+
+        // Compare the series each one contains.
+        if (set.size() != s.set.size()) { return false; }
+        for (Series series : set) {
+            boolean foundIt = false;
+            for (Series oSeries : s.set) {
+                if (series.equals(oSeries)) {
+                    foundIt = true;
+                    break;
+                }
+            }
+            if (!foundIt) { return false; }
+        }
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(set, name, id, systemName, description);
     }
 }
