@@ -241,15 +241,16 @@ public class EventService {
 
     /**
      * Get the most recent event in the database given the applied filter.
-     * Includes data
+     * Optionally includes data
      *
      * @param filter An event filter for narrowing down the acceptable Event responses
+     * @param includeData Should data be included
      * @return The most recent event passing the filter
      * @throws SQLException If problems arise accessing database
      * @throws IOException  If problems arise accessing waveform data on disk
      */
-    public Event getMostRecentEvent(EventFilter filter) throws SQLException, IOException {
-        List<Event> eventList = getEventList(filter, 1L, true, true);
+    public Event getMostRecentEvent(EventFilter filter, boolean includeData) throws SQLException, IOException {
+        List<Event> eventList = getEventList(filter, 1L, includeData, includeData);
         Event out = null;
         if (!eventList.isEmpty()) {
             out = eventList.get(0);
@@ -568,7 +569,7 @@ public class EventService {
 
             // Unless we also filter this subquery we end up counting the entire waveform database.  Ends up being a major
             // problem as the number of events grow.  Easiest to make another filter with some of the original filter parameters.
-            if (filter.getBegin() != null || filter.getEnd() != null || filter.getSystem() != null) {
+            if (filter != null && (filter.getBegin() != null || filter.getEnd() != null || filter.getSystem() != null)) {
                 subqueryFilter = new EventFilter(null, filter.getBegin(), filter.getEnd(), filter.getSystem(), null, null, null, null, null);
                 getEventSql += subqueryFilter.getWhereClause();
             }
