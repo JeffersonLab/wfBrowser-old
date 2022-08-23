@@ -108,7 +108,6 @@ public class GraphConfig {
         try {
             currentEvent = es.getMostRecentEvent(new EventFilter(null, begin, end, system, locationOptions,
                     classificationOptions, null, null, minCaptureFiles), false);
-            System.out.println(currentEvent);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error querying database for latest event", ex);
             throw new RuntimeException("Error querying database for latest event", ex);
