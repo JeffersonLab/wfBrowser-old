@@ -168,7 +168,7 @@ public class GraphConfig {
 
 
     public GraphConfig(String system, Set<String> locations, Set<String> classifications, Integer minCaptureFiles,
-                       Long eventid, Instant begin, Instant end, List<String> classificationOptions,
+                       Long eventId, Instant begin, Instant end, List<String> classificationOptions,
                        List<String> locationOptions, Set<Series> series, List<Series> seriesOptions,
                        Set<SeriesSet> seriesSets, List<SeriesSet> seriesSetOptions) {
         if (system == null) {
