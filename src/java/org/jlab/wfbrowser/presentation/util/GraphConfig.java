@@ -468,9 +468,11 @@ public class GraphConfig {
             eventId = other.eventId;
             update = true;
         }
-        if (!Objects.equals(begin, other.begin) || !Objects.equals(end, other.end)) {
-            setTimelineRange(other.begin, other.end);
-            update = true;
+        if (other.begin != null || other.end != null) {
+            if (!Objects.equals(begin, other.begin) || !Objects.equals(end, other.end)) {
+                setTimelineRange(other.begin, other.end);
+                update = true;
+            }
         }
         if (other.classificationOptions != null &&
                 !Objects.equals(classificationOptions, other.classificationOptions)) {
