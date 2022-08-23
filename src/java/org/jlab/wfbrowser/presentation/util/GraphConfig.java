@@ -338,6 +338,69 @@ public class GraphConfig {
         }
     }
 
+    /**
+     * Convenience function for producing maps from options to whether that option was selected.
+     * @param key A case-insensitive keyword used to specify which selection map is needed. (series, seriesSet,
+     *            location, classification)
+     * @return A map with the display name of the option matched to a boolean for whether it was selected
+     */
+    public Map<String, Boolean> getSelectionMap(String key) {
+        Map<String, Boolean> out = new TreeMap<>();
+        switch (key.toLowerCase()) {
+            case "series":
+                if (seriesOptions != null) {
+                    for (Series s : seriesOptions) {
+                        out.put(s.getName(), false);
+                    }
+                    if (series != null) {
+                        for(Series s : series) {
+                            out.put(s.getName(), true);
+                        }
+                    }
+                }
+                break;
+            case "seriesset":
+                if (seriesSetOptions != null) {
+                    for (SeriesSet s : seriesSetOptions) {
+                        out.put(s.getName(), false);
+                    }
+                    if (seriesSets != null) {
+                        for(SeriesSet s : seriesSets) {
+                            out.put(s.getName(), true);
+                        }
+                    }
+                }
+                break;
+            case "location":
+                if (locationOptions != null) {
+                    for (String l : locationOptions) {
+                        out.put(l, false);
+                    }
+                    if (locations != null) {
+                        for (String l : locations) {
+                            out.put(l, true);
+                        }
+                    }
+                }
+                break;
+            case "classification":
+                if (classificationOptions != null) {
+                    for (String c : classificationOptions) {
+                        out.put(c, false);
+                    }
+                    if (classifications != null) {
+                        for (String c : classifications) {
+                            out.put(c, true);
+                        }
+                    }
+                }
+                break;
+            default:
+                throw new RuntimeException("Unsupported key: " + key);
+        }
+        return out;
+    }
+
     public String getBeginString() {
         return dtf.format(begin);
     }
