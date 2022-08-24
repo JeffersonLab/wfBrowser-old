@@ -62,11 +62,15 @@ public class RFFaultTable extends HttpServlet {
 
         Instant begin, end;
         Map<String, Boolean> locationSelectionMap;
+        Set<String> locations = null;
+        if (locationSelections != null) {
+            locations = new HashSet<>(locationSelections);
+        }
 
         String system = "rf";
         GraphConfig defaultGraphConfig = GraphConfig.getDefaultConfig(system);
-        GraphConfig requestGraphConfig = new GraphConfig(system, null, null,
-                null, null, beginString, endString, null, locationSelections,
+        GraphConfig requestGraphConfig = new GraphConfig(system, locations, null,
+                null, null, beginString, endString, null, null,
                 null, null, null, null);
 
 
