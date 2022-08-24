@@ -415,6 +415,7 @@ jlab.wfb.loadNewGraphs = (function () {
                     includeData: true,
                     requester: "graph",
                     series: jlab.wfb.seriesMasterSet,
+                    system: jlab.wfb.system
                 },
                 traditional: true
             });
