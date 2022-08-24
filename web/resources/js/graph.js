@@ -598,7 +598,7 @@ jlab.wfb.makeGraphs = function (event, $graphPanel, series) {
         window.location = jlab.contextPath + "/ajax/event?id=" + event.id + "&out=orig&includeData=true";
     });
 
-    // Setup the archive button.  Admins see an "unarchive" button if the event is archvied.  Everyone else sees a disabled archvie button.
+    // Setup the archive button.  Admins see an "unarchive" button if the event is archive.  Everyone else sees a disabled archive button.
     if (event.archive) {
         if (jlab.isUserAdmin) {
             $("#graph-panel .graph-panel-action-controls").prepend("<button class=archive>Unarchive</button>");
