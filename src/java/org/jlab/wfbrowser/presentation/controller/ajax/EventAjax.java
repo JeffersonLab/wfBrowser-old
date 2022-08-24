@@ -4,11 +4,7 @@ import java.io.*;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.json.*;
@@ -27,6 +23,7 @@ import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Label;
 import org.jlab.wfbrowser.model.Series;
 import org.jlab.wfbrowser.model.SeriesSet;
+import org.jlab.wfbrowser.presentation.util.GraphConfig;
 import org.jlab.wfbrowser.presentation.util.SessionUtils;
 
 /**
@@ -170,16 +167,31 @@ public class EventAjax extends HttpServlet {
 
         // Update the session's graphEventId if the request came from graph page
         if (requester != null && requester.equals("graph")) {
-            // Make sure that only one request is updating the session variable at a time.
-            synchronized (SessionUtils.getSessionLock(request, null)) {
-                HttpSession session = request.getSession();
-                if (!eventList.isEmpty() && eventList.get(0) != null) {
-                    if (session.getAttribute("graphEventId") == null) {
-                        // We haven't selected an event to graph yet.  Pick the first one.
-                        session.setAttribute("graphEventId", eventList.get(0).getEventId());
-                    } else if (eventIdList.size() == 1) {
-                        // The user requested information on a single event from the graph page.  Update the eventId.
-                        session.setAttribute("graphEventId", eventList.get(0).getEventId());
+            // The session-based graph configuration is keyed off of system.  We only update the graph configuration
+            // if we're sure that the request is relevant to the graph display.
+            if (system != null) {
+                // Make sure that only one request is updating the session variable at a time.
+                synchronized (SessionUtils.getSessionLock(request, null)) {
+                    HttpSession session = request.getSession();
+                    // This should almost certainly have a graph config already if the requester is truly the graph page.
+                    Map<String, GraphConfig> gcMap = (Map<String, GraphConfig>) session.getAttribute("graphConfigMap");
+                    if (gcMap == null) {
+                        gcMap = new HashMap<>();
+                        session.setAttribute("graphConfigMap", gcMap);
+                    }
+                    gcMap.putIfAbsent(system, GraphConfig.getDefaultConfig(system));
+                    GraphConfig sessionGraphConfig = gcMap.get(system);
+
+                    if (!eventList.isEmpty() && eventList.get(0) != null) {
+                        if (sessionGraphConfig.getEventId() == null) {
+                            if (!eventList.isEmpty()) {
+                                // We haven't selected an event to graph yet.  Pick the first one.
+                                sessionGraphConfig.setEventId(eventList.get(0).getEventId());
+                            }
+                        } else if (eventIdList.size() == 1) {
+                            // The user requested information on a single event from the graph page.  Update the eventId.
+                            sessionGraphConfig.setEventId(eventList.get(0).getEventId());
+                        }
                     }
                 }
             }
