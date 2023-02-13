@@ -42,13 +42,34 @@ public class Label {
     public Label(JsonObject json) {
         id = null;
         labelTime = null;
-        modelName =  json.getString("model-name");
-        name = json.getString("name");
-        value = json.getString("value");
+        try {
+            modelName =  json.getString("model-name");
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Error parsing label.  Invalid model-name: " + json.get("model-name"));
+        }
 
-        // Not all models necessarily produce confidence numbers.
-        JsonNumber conf = json.getJsonNumber("confidence");
-        confidence = conf == null ? null : conf.doubleValue();
+        try {
+            name = json.getString("name");
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Error parsing label.  Invalid name: " + json.get("name"));
+        }
+
+        try {
+            value = json.getString("value");
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Error parsing label.  Invalid value: " + json.get("value"));
+        }
+
+        try {
+            JsonValue conf = json.get("confidence");
+            if (conf.getValueType().equals(JsonValue.ValueType.NULL)) {
+                confidence = null;
+            } else {
+                confidence = Double.valueOf(conf.toString());
+            }
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Error parsing label.  Invalid confidence: " + json.get("confidence"));
+        }
     }
 
     public String getModelName() {
