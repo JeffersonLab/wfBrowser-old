@@ -85,6 +85,7 @@ public class Graph extends HttpServlet {
                 }
             }
             session.setAttribute("graphSystem", system);
+            @SuppressWarnings("unchecked")
             Map<String, GraphConfig> gcMap = (Map<String, GraphConfig>) session.getAttribute("graphConfigMap");
             if (gcMap == null) {
                 gcMap = new HashMap<>();
@@ -160,6 +161,7 @@ public class Graph extends HttpServlet {
         Event currentEvent = null;
 
         synchronized (SessionUtils.getSessionLock(request, null)) {
+            @SuppressWarnings("unchecked")
             Map<String, GraphConfig> gcMap = (Map<String, GraphConfig>) session.getAttribute("graphConfigMap");
             GraphConfig sessionGraphConfig = gcMap.get(system);
             boolean updated = sessionGraphConfig.overwriteWith(requestGraphConfig);

@@ -84,6 +84,7 @@ public class RFLabelSummary extends HttpServlet {
         synchronized (SessionUtils.getSessionLock(request, null)) {
             HttpSession session = request.getSession();
 
+            @SuppressWarnings("unchecked")
             Map<String, GraphConfig> gcMap = (Map<String, GraphConfig>) session.getAttribute("graphConfigMap");
             if (gcMap == null) {
                 gcMap = new HashMap<>();

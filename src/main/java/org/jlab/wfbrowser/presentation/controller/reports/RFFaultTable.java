@@ -76,6 +76,7 @@ public class RFFaultTable extends HttpServlet {
 
         HttpSession session = request.getSession();
         synchronized (SessionUtils.getSessionLock(request, null)) {
+            @SuppressWarnings("unchecked")
             Map<String, GraphConfig> gcMap = (Map<String, GraphConfig>) session.getAttribute("graphConfigMap");
             if (gcMap == null) {
                 gcMap = new HashMap<>();

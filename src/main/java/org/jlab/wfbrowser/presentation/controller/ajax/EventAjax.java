@@ -174,6 +174,7 @@ public class EventAjax extends HttpServlet {
                 synchronized (SessionUtils.getSessionLock(request, null)) {
                     HttpSession session = request.getSession();
                     // This should almost certainly have a graph config already if the requester is truly the graph page.
+                    @SuppressWarnings("unchecked")
                     Map<String, GraphConfig> gcMap = (Map<String, GraphConfig>) session.getAttribute("graphConfigMap");
                     if (gcMap == null) {
                         gcMap = new HashMap<>();
