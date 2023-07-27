@@ -1,0 +1,55 @@
+plugins {
+    id 'war'
+}
+
+description "Waveform Viewer and Browsing App for CEBAF"
+group 'org.jlab'
+version '2.0.0'
+ext.releaseDate = 'TBD'
+ext.resourceNumber = '40'
+// version '1.6.3'
+// ext.releaseDate = 'Feb 13, 2023'
+// ext.resourceNumber = '42'
+
+tasks.withType(JavaCompile) {
+    options.release = 8
+    options.encoding = 'UTF-8'
+//    options.compilerArgs += ["-Xlint:deprecation", "-Xlint:unchecked"]
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.tuckey:urlrewritefilter:4.0.4'
+    implementation 'org.apache.commons:commons-compress:1.18'
+    testImplementation 'junit:junit:4.13.2'
+    providedCompile 'javax:javaee-api:8.0.1'
+    providedCompile 'javax.servlet:jstl:1.2'
+}
+
+war {
+    archiveName "wfbrowser.war"
+    filesMatching('WEB-INF/web.xml') {
+        filter {
+            String line -> line.replaceAll('@VERSION@', project.version)
+        }
+        filter {
+            String line -> line.replaceAll('@RELEASE_DATE@', releaseDate)
+        }
+        filter {
+            String line -> line.replaceAll('@RESOURCE_NUMBER@', resourceNumber)
+        }
+    }
+}
+
+test {
+    useJUnit()
+    maxHeapSize = '1G'
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
+}
