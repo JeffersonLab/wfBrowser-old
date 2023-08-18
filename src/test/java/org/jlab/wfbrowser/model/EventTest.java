@@ -278,7 +278,7 @@ public class EventTest {
         result = real_grp_incon_noclass.toDyGraphJsonObject(null).toString();
         try {
             System.out.println(System.getProperty("user.dir"));
-            expResult = new String(Files.readAllBytes((Paths.get("test/files/real-inconsistent-example-dygraph.json"))));
+            expResult = new String(Files.readAllBytes((Paths.get("src/test/files/real-inconsistent-example-dygraph.json"))));
         } catch(IOException e) {
             throw new RuntimeException(e);
         }
