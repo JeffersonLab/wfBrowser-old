@@ -81,7 +81,7 @@ public class StandaloneJndi implements InitialContextFactory {
 
         @Override
         public void unbind(String name) throws NamingException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            DB.remove(name);
         }
 
         @Override
