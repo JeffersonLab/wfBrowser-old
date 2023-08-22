@@ -1,0 +1,380 @@
+# Make the user and home dir
+groupadd -r -g 112 glassfish
+useradd -r -m -u 112 -g 112 -d /opt/glassfish -s /bin/bash glassfish
+
+# Copy over files from the test box
+scp root@waveformstest:/scr/*.{zip,jar,war} root@waveforms:/scr/
+scp root@waveformstest:/opt/glassfish/lib/*.jar root@waveforms:/scr/
+
+# Deploy the copies of glassfish - only 4.0.0 will be used
+unzip /scr/glassfish-4.0.zip -d /opt/glassfish/
+mv /opt/glassfish/glassfish4/ /opt/glassfish/4.0.0
+unzip /scr/glassfish-4.1.2.zip -d /opt/glassfish/
+mv /opt/glassfish/glassfish4/ /opt/glassfish/4.1.2
+
+# Create friendly links
+cd /opt/glassfish
+ln -s 4.0.0 pro
+ln -s pro/bin bin
+ln -s pro/glassfish/domains/domain1/lib lib
+ln -s pro/glassfish/domains/domain1/config config
+ln -s pro/glassfish/domains/domain1/logs logs
+
+# Set some options to work around problems with v4.0
+/opt/glassfish/bin/asadmin start-domain
+/opt/glassfish/bin/asadmin set configs.config.server-config.cdi-service.enable-implicit-cdi=false
+/opt/glassfish/bin/asadmin set-log-levels javax.enterprise.system.tools.deployment=WARNING
+
+# Set up oracle connectivity - used for the staff database
+cp /scr/ojdbc8.jar /opt/glassfish/lib/
+/opt/glassfish/bin/asadmin restart-domain
+
+# Add the mysql driver so glassfish can connect to waveforms database
+scp /scr/mysql-connector-java-8.0.12.jar /opt/glassfish/lib/
+/opt/glassfish/bin/asadmin stop-domain
+/opt/glassfish/bin/asadmin start-domain
+
+# Do some tuning
+/opt/glassfish/bin/asadmin create-jvm-options -Djava.security.egd=file\\:/dev/./urandom
+
+# Setup JLab Authentication
+cp /scr/glassfish-auth-1.4.jar /opt/glassfish/lib/
+vi /opt/glassfish/pro/glassfish/domains/domain1/config/login.conf
+...
+aceRealm {
+        org.jlab.glassfish.login.KerberosLoginModule sufficient;
+        org.jlab.glassfish.login.IMAPLoginModule sufficient;
+};
+accKerberosContext {
+        com.sun.security.auth.module.Krb5LoginModule
+        required
+        storeKey=false
+        useTicketCache=false
+        useKeyTab=false;
+};
+
+vi /opt/glassfish/pro/glassfish/domains/domain1/config/krb5.conf
+###### FILE START ########
+[libdefaults]
+   default_realm = ACC.JLAB.ORG
+[realms]
+   ACC.JLAB.ORG  = {
+      kdc = accauth1.acc.jlab.org
+      kdc = accauth2.acc.jlab.org
+}
+
+[domain_realm]
+   .acc.jlab.org = ACC.JLAB.ORG
+###### FILE END ########
+
+
+/opt/glassfish/bin/asadmin create-jvm-options '-Djava.security.krb5.conf=${com.sun.aas.instanceRoot}/config/krb5.conf'
+
+# Restart glassfish to pickup the changes so far
+/opt/glassfish/bin/asadmin stop-domain
+/opt/glassfish/bin/asadmin start-domain
+
+/opt/glassfish/bin/asadmin create-auth-realm --classname=org.jlab.glassfish.realm.AceRealm --property jaas-context=aceRealm:ldap-url=ldaps\\://ccw40.jlab.org\\:636:ldap-base-dn=CN\\=Users,DC\\=jlab,DC\\=org:imap-host=mail.jlab.org:imap-port=993:ds=jdbc/support:authenticated-group=Users:kerberos-context=accKerberosContext aceRealm
+
+# Import the JLab Root CA certs
+cd /opt/glassfish/config/
+keytool -keystore cacerts.jks -import -alias JLabWinCA -file /scr/JLabWinCA.crt
+keytool -keystore cacerts.jks -import -alias JLabCA -file /scr/JLabCA.crt
+cd -
+
+# Configure Email
+/opt/glassfish/bin/asadmin create-javamail-resource --mailhost=smtpmail.jlab.org --mailuser=glassfish --fromaddress=glassfish@jlab.org --enabled=true --description="Email for JLab" --storeprotocol=imaps --storeprotocolclass=com.sun.mail.imap.IMAPSSLStore --transprotocol smtp --transprotocolclass com.sun.mail.smtp.SMTPTransport --property mail-auth=true:mail-smtp-port=25:mail-imaps-port=993 mail/jlab
+
+#
+# Install and configure Apache - then go back to complete the glassfish setup
+#
+yum -y install httpd mod_ssl
+
+vi /var/www/html/index.html
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>TODO supply a title</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script>window.location = "wfbrowser";</script>
+    </head>
+    <body>
+    </body>
+</html>
+
+vi /etc/httpd/conf.d/ssl.conf
+######## FILE START ############
+# Require SSL on everything
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://waveformtest.acc.jlab.org%{REQUEST_URI} [R,L,NE]
+
+
+...
+
+<VirtualHost _default_:443>
+
+
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+
+RewriteEngine On
+LogLevel rewrite:info
+RewriteCond %{HTTP_HOST} !^waveforms.acc.jlab.org [NC]
+RewriteRule (.*) https://waveforms.acc.jlab.org%{REQUEST_URI} [L,R,NE]
+
+
+SSLProxyEngine on
+# Only seems to be needed on RHEL 7
+# Glassfish is sharing the certificate with apache, but we're calling it via localhost
+# the name (FQDN) and CN pieces are not going to match.
+SSLProxyCheckPeerCN off
+SSLProxyCheckPeerName off
+ProxyPass /wfbrowser https://localhost:8181/wfbrowser
+ProxyPassReverse /wfbrowser https://localhost:8181/wfbrowser
+
+<Location "/wfbrowser">
+  SSLRequireSSL
+  Order allow,deny
+  Allow from all
+</Location>
+...
+######## FILE END ############
+
+systemctl enable httpd
+systemctl start httpd
+
+# Get JLab trusted certs
+vi /etc/httpd/conf.d/ssl.conf
+...
+  SSLCertificateKeyFile /etc/httpd/conf/ssl.key
+...
+  SSLCertificateFile /etc/httpd/conf/ssl.crt
+...
+  SSLCertificateChainFile /etc/httpd/conf/ssl.crt
+...
+
+ssh root@opsfs opt/ace/acc-ca/scripts/deploy_apache_certs waveforms
+
+#
+# Back to configuring glassfish
+#
+
+# generate a java key store entry so glassfish can use the same cert/key as apache httpd
+cd /etc/httpd/conf
+openssl pkcs12 -export -in ssl.crt -inkey ssl.key -out ssl.p12 -name s1as
+cp /etc/httpd/conf/ssl.p12 /opt/glassfish/config/
+cd -
+cd /opt/glassfish/config
+keytool -delete -alias s1as -keystore keystore.jks
+keytool -importkeystore -srckeystore ssl.p12 -srcstoretype PKCS12 -destkeystore keystore.jks
+
+# Use the system keystore for CAs instead of the glassfish default
+mv cacerts.jks cacerts.jks.bak
+ln -s /etc/pki/java/cacerts cacerts.jks
+cd -
+
+# Test these changes with a restart
+/opt/glassfish/bin/asadmin stop-domain
+/opt/glassfish/bin/asadmin start-domain
+
+# Enable the access log file
+/opt/glassfish/bin/asadmin set server.http-service.access-logging-enabled=true
+/opt/glassfish/bin/asadmin set server.http-service.access-log.format="combined"
+/opt/glassfish/bin/asadmin set server.http-service.access-log.write-interval-seconds=60
+/opt/glassfish/bin/asadmin set server.http-service.access-log.max-history-files=30
+/opt/glassfish/bin/asadmin set server.http-service.access-log.format="%client.name% %auth-user-name% %datetime% %request% %status% %response.length% %header.X-Forwarded-For%"
+
+# Set the JVM memory limits a bit higher
+/opt/glassfish/bin/asadmin delete-jvm-options -Xmx512m
+/opt/glassfish/bin/asadmin create-jvm-options -Xmx3072m
+
+# Get a favico for glassfish docroot
+scp root@waveformstest:/scr/*.ico root@waveforms:/scr/
+cp /scr/favicon.ico /opt/glassfish/pro/glassfish/domains/domain1/docroot/
+
+
+# Setup for passwordless "run as" with init.d script
+/opt/glassfish/bin/asadmin change-admin-password
+sudo -u glassfish /opt/glassfish/bin/asadmin login
+
+vi /etc/init.d/glassfish
+########## START FILE ##########
+#!/bin/sh
+#
+# chkconfig: 345 99 01
+# description: Starts/Stops the GlassFish Java application server
+
+GF_RUN_AS=glassfish
+GF_EXEC="/opt/glassfish/bin/asadmin"
+GF_SU="su --login $GF_RUN_AS --command"
+GF_OUT="> /dev/null"
+
+case "$1" in
+start)
+    $GF_SU "$GF_EXEC start-domain $GF_OUT"
+    ;;
+stop)
+    $GF_SU "$GF_EXEC stop-domain $GF_OUT"
+    ;;
+status)
+    $GF_SU "$GF_EXEC list-domains"
+    ;;
+*)
+    echo "usage: $0 (start|stop|status|help)"
+esac
+########## END FILE ##########
+
+chkconfig glassfish on
+
+
+# Secure the admin web console
+/sbin/iptables -A INPUT -p tcp --destination-port 4848 ! -s 127.0.0.1 -j DROP
+service iptables save
+/sbin/chkconfig iptables on
+
+# Lock down response banners
+/opt/glassfish/bin/asadmin set server.network-config.protocols.protocol.http-listener-1.http.xpowered-by=false
+/opt/glassfish/bin/asadmin set server.network-config.protocols.protocol.http-listener-2.http.xpowered-by=false
+/opt/glassfish/bin/asadmin create-jvm-options -Dproduct.name=""
+
+# Deploy the waveforms database resource configurations
+chown -R glassfish:glassfish /opt/glassfish
+sudo -u glassfish /opt/glassfish/bin/asadmin stop-domain
+vi /opt/glassfish/config/domain.xml
+...
+    <jdbc-connection-pool statement-cache-size="10" fail-all-connections="true" validate-atmost-once-period-in-seconds="60" ping="true" connection-creation-retry-attempts="3" datasource-classname="com.mysql.cj.jdbc.MysqlDataSource" steady-pool-size="4" validation-table-name="dual" name="waveforms_rwPool" statement-timeout-in-seconds="120" is-connection-validation-required="true" res-type="javax.sql.DataSource">
+      <property name="user" value="waveforms_writer"></property>
+      <property name="url" value="jdbc:mysql://dbd.acc.jlab.org:3306/waveforms"></property>
+      <property name="password" value="PASSWORD"></property>
+      <property name="DatabaseName" value="waveforms"></property>
+      <property name="serverTimezone" value="America/New_York"></property>
+    </jdbc-connection-pool>
+    <jdbc-resource pool-name="waveforms_rwPool" jndi-name="jdbc/waveforms_rw"></jdbc-resource>
+    <jdbc-connection-pool statement-cache-size="10" fail-all-connections="true" validate-atmost-once-period-in-seconds="60" datasource-classname="oracle.jdbc.pool.OracleDataSource" steady-pool-size="4" validation-table-name="SYS.DUAL" name="supportPool" statement-timeout-in-seconds="120" is-connection-validation-required="true" res-type="javax.sql.DataSource">
+      <property name="serverName" value="dbd"></property>
+      <property name="databaseName" value="devldb01"></property>
+      <property name="portNumber" value="1521"></property>
+      <property name="password" value="PASSWORD"></property>
+      <property name="url" value="jdbc:oracle:thin:@dbd:1521:devldb01"></property>
+      <property name="user" value="support"></property>
+      <property name="driverClass" value="oracle.jdbc.OracleDriver"></property>
+    </jdbc-connection-pool>
+    <jdbc-resource pool-name="supportPool" jndi-name="jdbc/support"></jdbc-resource>
+
+...
+
+
+# Glassfish performance tuning - switching to use glassfish since this now requires password
+sudo -u glassfish /opt/glassfish/bin/asadmin list-jvm-options
+sudo -u glassfish /opt/glassfish/bin/asadmin delete-jvm-options -client
+sudo -u glassfish /opt/glassfish/bin/asadmin create-jvm-options -- -server
+sudo -u glassfish /opt/glassfish/bin/asadmin set server-config.network-config.protocols.protocol.http-listener-1.http.file-cache.enabled=true
+sudo -u glassfish /opt/glassfish/bin/asadmin set server-config.network-config.protocols.protocol.http-listener-2.http.file-cache.enabled=true
+
+# Connection pool tuning
+sudo -u glassfish /opt/glassfish/bin/asadmin get server.thread-pools..thread-pool.http-thread-pool.*
+sudo -u glassfish /opt/glassfish/bin/asadmin set server.thread-pools.thread-pool.http-thread-pool.max-thread-pool-size=25
+
+# Database resource pool tuning
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.validation-table-name=SYS.DUAL
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.is-connection-validation-required=true
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.validate-atmost-once-period-in-seconds=60
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.steady-pool-size=4
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.fail-all-connections=true
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.statement-cache-size=10
+sudo -u glassfish /opt/glassfish/bin/asadmin set resources.jdbc-connection-pool.waveforms_rwPool.statement-timeout-in-seconds=120
+
+# Enable SSO WITHIN glassfish server (from one app to another on a domain)
+sudo -u glassfish /opt/glassfish/bin/asadmin set server-config.http-service.sso-enabled=true
+sudo -u glassfish /opt/glassfish/bin/asadmin set server-config.http-service.virtual-server.server.property.sso-max-inactive-seconds=28800
+sudo -u glassfish /opt/glassfish/bin/asadmin set server-config.http-service.virtual-server.server.property.sso-reap-interval-seconds=300
+
+# Set an explicit locale for glassfish to prevent some weird occasional issues
+sudo -u glassfish /opt/glassfish/bin/asadmin set domain.locale=en_US
+
+# Disable the autodeply feature
+sudo -u glassfish /opt/glassfish/bin/asadmin set server.admin-service.das-config.autodeploy-enabled=false
+
+# Disable dynamic reload.  Only reload app on explicit command
+sudo -u glassfish /opt/glassfish/bin/asadmin set server.admin-service.das-config.dynamic-reload-enabled=false
+
+# Block glassfish direct access from outside localhost
+/sbin/iptables -A INPUT -p tcp --destination-port 8080 ! -s 127.0.0.1 -j DROP
+/sbin/iptables -A INPUT -p tcp --destination-port 8181 ! -s 127.0.0.1 -j DROP
+/sbin/iptables -A INPUT -p tcp --destination-port 8009 ! -s 127.0.0.1 -j DROP
+service iptables save
+/sbin/chkconfig iptables on
+
+#
+# Configure the automounter for opsdata/waveforms
+#
+mkdir /a
+ln -s /a/opsdata /usr/opsdata
+
+vi /etc/auto.master
+...
+/a      auto.opsdata
+#/a      auto.a.home
+#/s      auto.s.snapshots
+
+
+vi /etc/auto.opsdata
+opsdata -ro opsfs:/home/opsdata
+
+# Set options for SELinux on HTTPD
+setsebool -P httpd_can_network_connect 1 
+
+
+# Found I couldn't get to webapp via standard URL.
+# Disabled SELinux and IPtables and could connect to web app via glassfish 8181 port,
+# but resources wouldn't load.
+
+# Disable security
+service iptables stop
+setenforce Permissive
+
+# Add in the tuckey URL rewrite jar (needed for resource links)
+cp /scr/urlrewritefilter-4.0.3.jar /opt/glassfish/lib/
+sudo -u glassfish /opt/glassfish/bin/asadmin stop-domain
+sudo -u glassfish /opt/glassfish/bin/asadmin start-domain
+
+# Found that the apache proxy was unhappy about ssl from glassfish.  Makes since
+# because httpd is proxying https://localhost:8181 and the cert doesn't mention localhost.
+# Disable the checks that validate the name matches since we know we're working with localhost.
+# This was done in the config list above, but here is the change for reference.
+# Only seems to be needed on RHEL 7
+# Glassfish is sharing the certificate with apache, but we're calling it via localhost
+# the name (FQDN) and CN pieces are not going to match.
+SSLProxyCheckPeerCN off
+SSLProxyCheckPeerName off
+
+# Enable the firewall and it should work
+start iptables.service
+
+##############################################################
+# Now setup the production database and point it at that.
+# The easiest thing to do is to do a mysql dump of dbd and import it into dbm.
+# Then add the users by copying and pasting the user setup lines from the stock
+# setup script.
+##############################################################
+
+ssh root@dbd.acc.jlab.org
+mysqldump -u root -p waveforms > /tmp/waveforms.dmp
+
+# Add these two lines at top to create and use the waveforms database
+vi /tmp/waveforms.dmp
+CREATE DATABASE waveforms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE waveforms;
+
+scp /tmp/waveforms.dmp dbm:/scr/
+ssh root@dbm
+mysql -u root -p < /scr/waveforms.dmp
+
+CREATE USER 'waveforms_owner' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON waveforms.* TO 'waveforms_owner';
+CREATE USER 'waveforms_writer' IDENTIFIED BY 'passowrd';
+GRANT SELECT,UPDATE,INSERT,DELETE ON waveforms.* to 'waveforms_writer';
+CREATE USER 'waveforms_reader' IDENTIFIED BY 'password';
+GRANT SELECT ON waveforms.* TO 'waveforms_reader';
+

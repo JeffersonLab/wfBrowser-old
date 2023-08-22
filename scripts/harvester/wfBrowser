@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+firefox http://accweb.acc.jlab.org/wfbrowser/graph

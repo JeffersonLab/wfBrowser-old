@@ -1,0 +1,15 @@
+/build/
+/dist/
+/out/
+/config/wfBrowser.properties
+/nbproject/
+/lib/nblibraries.properties
+/build.xml
+*.dmp
+*.iml
+.idea/
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build

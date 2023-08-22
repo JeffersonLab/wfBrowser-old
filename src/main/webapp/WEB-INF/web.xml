@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+    <context-param>
+        <param-name>cdnContextPath</param-name>
+        <param-value>https://cdn.acc.jlab.org</param-value>
+    </context-param>
+    <context-param>
+        <param-name>appName</param-name>
+        <param-value>Waveform Browser</param-value>
+    </context-param>
+    <context-param>
+        <param-name>appShortName</param-name>
+        <param-value>WFB</param-value>
+    </context-param>
+    <context-param>
+        <param-name>resourceVersionNumber</param-name>
+        <param-value>@RESOURCE_NUMBER@</param-value>
+    </context-param>
+    <context-param>
+        <param-name>releaseNumber</param-name>
+        <param-value>@VERSION@</param-value>
+    </context-param>
+    <context-param>
+        <param-name>releaseDate</param-name>
+        <param-value>@RELEASE_DATE@</param-value>
+    </context-param>
+    <context-param>
+        <param-name>contentContact</param-name>
+        <param-value>Adam Carpenter (adamc), Gary Croke (gcroke)</param-value>
+    </context-param>
+    <context-param>
+        <param-name>technicalContact</param-name>
+        <param-value>Adam Carpenter (adamc)</param-value>
+    </context-param>
+    <context-param>
+        <param-name>documentationUrl</param-name>
+        <param-value>https://accwiki.acc.jlab.org/do/view/AHLA/WaveformBrowser#User_Guide</param-value>
+    </context-param>
+    <filter>
+        <filter-name>UrlRewriteFilter</filter-name>
+        <filter-class>org.tuckey.web.filters.urlrewrite.UrlRewriteFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>UrlRewriteFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>FORWARD</dispatcher>
+    </filter-mapping>
+    <error-page>
+        <error-code>500</error-code>
+        <location>/error</location>
+    </error-page>
+    <error-page>
+        <exception-type>java.lang.Throwable</exception-type>
+        <location>/error</location>
+    </error-page>
+    <session-config>
+        <session-timeout>480</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+            <secure>true</secure>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
+    
+    <security-constraint>
+        <display-name>Enforce Authenticated on SSO Redirect Page</display-name>
+        <web-resource-collection>
+            <web-resource-name>SSO Page</web-resource-name>
+            <url-pattern>/sso</url-pattern>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>ipausers</role-name>
+        </auth-constraint>
+        <user-data-constraint>
+            <transport-guarantee>CONFIDENTIAL</transport-guarantee>
+        </user-data-constraint>
+    </security-constraint>
+    <security-constraint>
+        <display-name>Restrict who can add events</display-name>
+        <web-resource-collection>
+            <web-resource-name>Ajax Event POST</web-resource-name>
+            <description/>
+            <url-pattern>/ajax/event</url-pattern>
+            <http-method>POST</http-method>
+        </web-resource-collection>
+        <auth-constraint>
+            <description/>
+            <role-name>wfb_admin</role-name>
+            <role-name>wfb_eventpost</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <security-constraint>
+        <display-name>Restrict who can label events</display-name>
+        <web-resource-collection>
+            <web-resource-name>Ajax Event Label POST</web-resource-name>
+            <description/>
+            <url-pattern>/ajax/event-label</url-pattern>
+            <http-method>POST</http-method>
+        </web-resource-collection>
+        <auth-constraint>
+            <description>Restrict to only admins or those given explicit permission</description>
+            <role-name>wfb_admin</role-name>
+            <role-name>wfb_eventpost</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <security-constraint>
+        <display-name>Enforce Admin on setup pages</display-name>
+        <web-resource-collection>
+            <web-resource-name>Setup Pages</web-resource-name>
+            <description/>
+            <url-pattern>/admin/*</url-pattern>
+        </web-resource-collection>
+        <auth-constraint>
+            <description/>
+            <role-name>wfb_admin</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <login-config>
+        <auth-method>KEYCLOAK</auth-method>
+        <realm-name>jlab</realm-name>
+    </login-config>
+    <security-role>
+        <description>Role that provides admin permissions for the app.</description>
+        <role-name>wfb_admin</role-name>
+    </security-role>
+    <security-role>
+        <description>Role that provides permissions necessary for posting a new event</description>
+        <role-name>wfb_eventpost</role-name>
+    </security-role>
+</web-app>
