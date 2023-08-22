@@ -19,8 +19,6 @@ import javax.naming.NamingException;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.service.EventService;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
-import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
-import org.junit.AfterClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
@@ -31,7 +29,6 @@ import org.junit.BeforeClass;
  */
 public class EventTest {
 
-    private static StandaloneConnectionPools pools;
 
     // Consistent, no class, grouped, with metadata
     private static Event e1_grp_con_noclass_meta = null;
@@ -63,16 +60,10 @@ public class EventTest {
     private static Event real_grp_incon_noclass_full = null;
     private static Event real_grp_con_noclass_full = null;
 
-//    public EventTest() {
-//    }
-
     @BeforeClass
     public static void oneTimeSetUp() throws IOException, SQLException, NamingException {
         System.out.println("Start of setup");
-
-        // Setup the data connection and connection pools
-        new StandaloneJndi();
-        pools = new StandaloneConnectionPools();
+        StandaloneConnectionPools.setupConnectionPool();
 
         // Create some events to add to the database - files that match these must exist on the filesystem
         Instant t1 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the unzipped files
@@ -143,17 +134,6 @@ public class EventTest {
         e2_ungrp_noclass = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, noClass, zipCF, null);
         e1_ungrp_class1 = new Event(t1, ungrp, "test", unarchive, noDelete, ungrouped, class1, unzipCF, null);
         e2_ungrp_class1 = new Event(t2, ungrp, "test", unarchive, noDelete, ungrouped, class1, zipCF, null);
-    }
-
-    @AfterClass
-    public static void oneTimeTearDown() throws IOException, SQLException {
-
-        System.out.println("==== Doing one Time Tear Down");
-
-        // Close down the database connections
-        if (pools.isOpen()) {
-            pools.close();
-        }
     }
 
     @Test
