@@ -14,10 +14,8 @@ import javax.naming.NamingException;
 import org.jlab.wfbrowser.business.filter.EventFilter;
 import org.jlab.wfbrowser.business.filter.LabelFilter;
 import org.jlab.wfbrowser.connectionpools.StandaloneConnectionPools;
-import org.jlab.wfbrowser.connectionpools.StandaloneJndi;
 import org.jlab.wfbrowser.model.Event;
 import org.jlab.wfbrowser.model.Label;
-import org.junit.AfterClass;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -62,19 +60,12 @@ public class EventServiceTest {
     private static Event e3_grp_con_noclass_label = null;
     private static Event e4_grp_con_noclass_label = null;
 
-    private static StandaloneConnectionPools pools;
     private static List<Event> eventList = new ArrayList<>();
-
-    public EventServiceTest() {
-    }
 
     @BeforeClass
     public static void oneTimeSetUp() throws NamingException, SQLException, IOException {
         System.out.println("EventServiceTest Start of setup");
-
-        // Setup the data connection and connection pools
-        new StandaloneJndi();
-        pools = new StandaloneConnectionPools();
+        StandaloneConnectionPools.setupConnectionPool();
 
         // Create some events to add to the database - files that match these must exist on the filesystem
         t1 = LocalDateTime.of(2017, 9, 14, 10, 0, 0).atZone(ZoneId.systemDefault()).toInstant().plusMillis(100);  // For the unzipped files
@@ -145,12 +136,6 @@ public class EventServiceTest {
         eventList.add(e4_grp_con_noclass_label);
     }
 
-    @AfterClass
-    public static void oneTimeTearDown() throws IOException {
-        if (pools.isOpen()) {
-            pools.close();
-        }
-    }
 
     /**
      * Test of addEvent method, of class EventService.
